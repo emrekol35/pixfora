@@ -3,6 +3,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { generateOrderNumber } from "@/lib/utils";
+import { sendEmail, orderConfirmationEmail, bankTransferInfoEmail } from "@/lib/email";
+import { getBankAccounts } from "@/services/payment/bank-transfer";
 
 // GET - Siparisleri listele (admin veya kullanici)
 export async function GET(request: NextRequest) {
@@ -231,6 +233,38 @@ export async function POST(request: NextRequest) {
       await prisma.cartItem.deleteMany({
         where: { userId: session.user.id },
       });
+    }
+
+    // Email bildirim gonder
+    const customerEmail = session?.user?.email || guestEmail;
+    if (customerEmail) {
+      try {
+        if (paymentMethod === "BANK_TRANSFER") {
+          // Havale bilgileri maili
+          const emailData = bankTransferInfoEmail({
+            orderNumber: order.orderNumber,
+            total,
+            bankAccounts: getBankAccounts(),
+          });
+          sendEmail({ to: customerEmail, ...emailData }).catch(console.error);
+        } else if (paymentMethod === "CASH_ON_DELIVERY") {
+          // Kapida odeme - siparis onay maili
+          const emailData = orderConfirmationEmail({
+            orderNumber: order.orderNumber,
+            total,
+            items: orderItems.map((oi) => ({
+              name: typeof oi.name === "string" ? oi.name : "Urun",
+              quantity: typeof oi.quantity === "number" ? oi.quantity : 1,
+              price: typeof oi.price === "number" ? oi.price : 0,
+            })),
+            paymentMethod,
+          });
+          sendEmail({ to: customerEmail, ...emailData }).catch(console.error);
+        }
+        // CREDIT_CARD icin email iyzico callback'ten gonderilecek
+      } catch (emailError) {
+        console.error("Email send error:", emailError);
+      }
     }
 
     return NextResponse.json({ order }, { status: 201 });

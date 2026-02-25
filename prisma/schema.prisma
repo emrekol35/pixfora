@@ -186,6 +186,7 @@ model Product {
   minQty       Int     @default(1) @map("min_qty")
   maxQty       Int?    @map("max_qty")
   weight       Float?
+  desi         Float?
   isActive     Boolean @default(true) @map("is_active")
   isFeatured   Boolean @default(false) @map("is_featured")
   membersOnly  Boolean @default(false) @map("members_only")

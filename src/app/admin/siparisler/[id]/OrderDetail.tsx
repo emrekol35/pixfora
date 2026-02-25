@@ -51,7 +51,9 @@ interface Props {
       status: string;
       amount: number;
       transactionId: string | null;
+      provider: string | null;
       createdAt: string;
+      providerData: Record<string, unknown> | null;
     }[];
     coupon: {
       code: string;
@@ -71,6 +73,13 @@ const STATUS_LABELS: Record<string, string> = {
   REFUNDED: "Iade Edildi",
 };
 
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  PENDING: "Beklemede",
+  PAID: "Odendi",
+  FAILED: "Basarisiz",
+  REFUNDED: "Iade Edildi",
+};
+
 export default function OrderDetail({ order }: Props) {
   const [status, setStatus] = useState(order.status);
   const [paymentStatus, setPaymentStatus] = useState(order.paymentStatus);
@@ -78,6 +87,8 @@ export default function OrderDetail({ order }: Props) {
   const [shippingCompany, setShippingCompany] = useState(order.shippingCompany || "");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [shippingLoading, setShippingLoading] = useState(false);
+  const [confirmingPayment, setConfirmingPayment] = useState(false);
 
   const formatPrice = (price: number) =>
     new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(price);
@@ -109,6 +120,70 @@ export default function OrderDetail({ order }: Props) {
     }
   };
 
+  // Kargo olustur
+  const handleCreateShipment = async () => {
+    if (!shippingCompany) {
+      setMessage("Kargo firmasi seciniz");
+      return;
+    }
+    setShippingLoading(true);
+    setMessage("");
+    try {
+      const res = await fetch("/api/shipping/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId: order.id,
+          provider: shippingCompany,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.trackingNumber) {
+        setTrackingNumber(data.trackingNumber);
+        setStatus("SHIPPED");
+        setMessage(`Kargo olusturuldu! Takip No: ${data.trackingNumber}`);
+        setTimeout(() => setMessage(""), 5000);
+      } else {
+        setMessage(data.error || "Kargo olusturulamadi");
+      }
+    } catch {
+      setMessage("Kargo olusturma hatasi");
+    } finally {
+      setShippingLoading(false);
+    }
+  };
+
+  // Havale onaylama
+  const handleConfirmPayment = async () => {
+    setConfirmingPayment(true);
+    setMessage("");
+    try {
+      const res = await fetch("/api/payment/bank-transfer/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: order.id }),
+      });
+      if (res.ok) {
+        setPaymentStatus("PAID");
+        setStatus("CONFIRMED");
+        setMessage("Odeme onaylandi!");
+        setTimeout(() => setMessage(""), 3000);
+      } else {
+        const data = await res.json();
+        setMessage(data.error || "Onay hatasi");
+      }
+    } catch {
+      setMessage("Onay hatasi");
+    } finally {
+      setConfirmingPayment(false);
+    }
+  };
+
+  // Fatura indir
+  const handleDownloadInvoice = () => {
+    window.open(`/api/orders/${order.id}/invoice`, "_blank");
+  };
+
   const customer = order.user || {
     name: order.guestName || "-",
     email: order.guestEmail || "-",
@@ -126,6 +201,14 @@ export default function OrderDetail({ order }: Props) {
           <p className="text-sm text-muted-foreground">
             {new Date(order.createdAt).toLocaleString("tr-TR")}
           </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={handleDownloadInvoice}
+            className="px-4 py-2 bg-muted rounded-lg text-sm font-medium hover:bg-border"
+          >
+            📄 Fatura Indir
+          </button>
         </div>
       </div>
 
@@ -209,6 +292,41 @@ export default function OrderDetail({ order }: Props) {
             )}
           </div>
 
+          {/* Payment History */}
+          {order.payments.length > 0 && (
+            <div className="bg-white rounded-xl border border-border p-6">
+              <h2 className="font-bold mb-4">Odeme Gecmisi</h2>
+              <div className="space-y-3">
+                {order.payments.map((payment) => (
+                  <div key={payment.id} className="flex items-center justify-between p-3 bg-muted rounded-lg text-sm">
+                    <div>
+                      <p className="font-medium">
+                        {payment.method === "CREDIT_CARD" && "Kredi Karti"}
+                        {payment.method === "BANK_TRANSFER" && "Havale/EFT"}
+                        {payment.method === "CASH_ON_DELIVERY" && "Kapida Odeme"}
+                        {payment.provider && ` (${payment.provider})`}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(payment.createdAt).toLocaleString("tr-TR")}
+                        {payment.transactionId && ` • ${payment.transactionId}`}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold">{formatPrice(payment.amount)}</p>
+                      <span className={`text-xs font-medium ${
+                        payment.status === "PAID" ? "text-success" :
+                        payment.status === "FAILED" ? "text-danger" :
+                        payment.status === "REFUNDED" ? "text-purple-600" : "text-warning"
+                      }`}>
+                        {PAYMENT_STATUS_LABELS[payment.status] || payment.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Notes */}
           {order.note && (
             <div className="bg-white rounded-xl border border-border p-6">
@@ -220,6 +338,23 @@ export default function OrderDetail({ order }: Props) {
 
         {/* Sidebar */}
         <div className="space-y-6">
+          {/* Quick Actions */}
+          {order.paymentMethod === "BANK_TRANSFER" && paymentStatus === "PENDING" && (
+            <div className="bg-yellow-50 rounded-xl border border-yellow-200 p-6">
+              <h2 className="font-bold mb-2 text-yellow-800">Havale Bekliyor</h2>
+              <p className="text-sm text-yellow-700 mb-4">
+                Bu siparis havale/EFT ile odenmek uzere bekliyor. Odeme alindiysa asagidan onaylayiniz.
+              </p>
+              <button
+                onClick={handleConfirmPayment}
+                disabled={confirmingPayment}
+                className="w-full py-2.5 bg-success text-white rounded-lg text-sm font-semibold hover:bg-success/90 disabled:opacity-50"
+              >
+                {confirmingPayment ? "Onaylaniyor..." : "Havale Onay Alindi"}
+              </button>
+            </div>
+          )}
+
           {/* Status Update */}
           <div className="bg-white rounded-xl border border-border p-6">
             <h2 className="font-bold mb-4">Durum Guncelle</h2>
@@ -244,10 +379,9 @@ export default function OrderDetail({ order }: Props) {
                   onChange={(e) => setPaymentStatus(e.target.value)}
                   className="w-full px-3 py-2 border border-border rounded-lg text-sm"
                 >
-                  <option value="PENDING">Beklemede</option>
-                  <option value="PAID">Odendi</option>
-                  <option value="FAILED">Basarisiz</option>
-                  <option value="REFUNDED">Iade Edildi</option>
+                  {Object.entries(PAYMENT_STATUS_LABELS).map(([k, v]) => (
+                    <option key={k} value={k}>{v}</option>
+                  ))}
                 </select>
               </div>
 
@@ -278,16 +412,29 @@ export default function OrderDetail({ order }: Props) {
                 />
               </div>
 
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="w-full py-2.5 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary-dark disabled:opacity-50"
-              >
-                {saving ? "Kaydediliyor..." : "Kaydet"}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="flex-1 py-2.5 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary-dark disabled:opacity-50"
+                >
+                  {saving ? "Kaydediliyor..." : "Kaydet"}
+                </button>
+                {shippingCompany && !trackingNumber && (
+                  <button
+                    onClick={handleCreateShipment}
+                    disabled={shippingLoading}
+                    className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {shippingLoading ? "Olusturuluyor..." : "Kargo Olustur"}
+                  </button>
+                )}
+              </div>
 
               {message && (
-                <p className={`text-sm text-center ${message === "Kaydedildi!" ? "text-success" : "text-danger"}`}>
+                <p className={`text-sm text-center ${
+                  message.includes("Hata") || message.includes("hatasi") ? "text-danger" : "text-success"
+                }`}>
                   {message}
                 </p>
               )}
@@ -300,22 +447,26 @@ export default function OrderDetail({ order }: Props) {
             <div className="text-sm space-y-2">
               <p>
                 <span className="text-muted-foreground">Yontem:</span>{" "}
-                {order.paymentMethod === "CREDIT_CARD" && "Kredi Karti"}
+                {order.paymentMethod === "CREDIT_CARD" && "Kredi Karti (iyzico)"}
                 {order.paymentMethod === "BANK_TRANSFER" && "Havale/EFT"}
                 {order.paymentMethod === "CASH_ON_DELIVERY" && "Kapida Odeme"}
               </p>
               <p>
                 <span className="text-muted-foreground">Durum:</span>{" "}
                 <span className={`font-medium ${
-                  order.paymentStatus === "PAID" ? "text-success" :
-                  order.paymentStatus === "FAILED" ? "text-danger" : "text-warning"
+                  paymentStatus === "PAID" ? "text-success" :
+                  paymentStatus === "FAILED" ? "text-danger" :
+                  paymentStatus === "REFUNDED" ? "text-purple-600" : "text-warning"
                 }`}>
-                  {order.paymentStatus === "PAID" && "Odendi"}
-                  {order.paymentStatus === "PENDING" && "Beklemede"}
-                  {order.paymentStatus === "FAILED" && "Basarisiz"}
-                  {order.paymentStatus === "REFUNDED" && "Iade Edildi"}
+                  {PAYMENT_STATUS_LABELS[paymentStatus] || paymentStatus}
                 </span>
               </p>
+              {trackingNumber && (
+                <p>
+                  <span className="text-muted-foreground">Takip No:</span>{" "}
+                  <span className="font-mono font-medium">{trackingNumber}</span>
+                </p>
+              )}
             </div>
           </div>
         </div>

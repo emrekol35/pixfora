@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { sendEmail, shippingNotificationEmail } from "@/lib/email";
 
 // GET - Siparis detayi
 export async function GET(
@@ -78,6 +79,19 @@ export async function PUT(
         user: { select: { name: true, email: true } },
       },
     });
+
+    // Kargoya verildi maili gonder
+    if (status === "SHIPPED" && order.trackingNumber && order.shippingCompany) {
+      const email = order.user?.email;
+      if (email) {
+        const emailData = shippingNotificationEmail({
+          orderNumber: order.orderNumber,
+          trackingNumber: order.trackingNumber,
+          shippingCompany: order.shippingCompany,
+        });
+        sendEmail({ to: email, ...emailData }).catch(console.error);
+      }
+    }
 
     // Iptal durumunda stok iade
     if (status === "CANCELLED") {
