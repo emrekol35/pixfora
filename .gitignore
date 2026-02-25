@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Build
+.next/
+out/
+
+# Prisma generated
+generated/
+
+# Environment
+.env
+.env.local
+.env.production
+.env.production.local
+CREDENTIALS.txt
+
+# Uploads (kullanici dosyalari)
+public/uploads/*
+!public/uploads/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Debug
+npm-debug.log*
+
+# Misc
+*.tsbuildinfo
+next-env.d.ts

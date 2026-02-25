@@ -1,0 +1,91 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pixfora-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://pixfora:${DB_PASSWORD}@postgres:5432/pixfora?schema=public
+      - REDIS_URL=redis://redis:6379
+      - AUTH_SECRET=${AUTH_SECRET}
+      - AUTH_URL=${AUTH_URL}
+      - NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
+      - NEXT_PUBLIC_SITE_NAME=Pixfora
+    volumes:
+      - uploads_data:/app/public/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - pixfora-net
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: pixfora-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pixfora
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: pixfora
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pixfora"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pixfora-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: pixfora-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - pixfora-net
+
+  nginx:
+    image: nginx:alpine
+    container_name: pixfora-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - certbot_data:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
+    depends_on:
+      - app
+    networks:
+      - pixfora-net
+
+  certbot:
+    image: certbot/certbot
+    container_name: pixfora-certbot
+    volumes:
+      - certbot_data:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - pixfora-net
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads_data:
+  certbot_data:
+  certbot_www:
+
+networks:
+  pixfora-net:
+    driver: bridge
