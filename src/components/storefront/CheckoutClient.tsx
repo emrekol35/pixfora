@@ -60,6 +60,8 @@ export default function CheckoutClient() {
 
   const [paymentMethod, setPaymentMethod] = useState<string>("CREDIT_CARD");
   const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<{ type: string; discount: number; message: string } | null>(null);
+  const [couponError, setCouponError] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [note, setNote] = useState("");
   const [selectedShipping, setSelectedShipping] = useState("standard");
@@ -92,10 +94,12 @@ export default function CheckoutClient() {
   }
 
   const subtotal = getSubtotal();
-  const baseShippingCost = subtotal >= 500 ? 0 : 39.9;
+  const couponDiscount = appliedCoupon?.discount || 0;
+  const hasFreeShippingCoupon = appliedCoupon?.type === "FREE_SHIPPING";
+  const baseShippingCost = (subtotal >= 500 || hasFreeShippingCoupon) ? 0 : 39.9;
   const shippingCost = selectedShipping === "express" ? baseShippingCost + 20 : baseShippingCost;
   const codFee = paymentMethod === "CASH_ON_DELIVERY" ? 10 : 0;
-  const total = subtotal + shippingCost + codFee;
+  const total = subtotal - couponDiscount + shippingCost + codFee;
 
   const formatPrice = (price: number) =>
     new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(price);
@@ -378,9 +382,29 @@ export default function CheckoutClient() {
               <div className="mt-6 pt-4 border-t border-border">
                 <label className="text-sm font-medium mb-2 block">Kupon Kodu</label>
                 <div className="flex gap-2">
-                  <input type="text" className="flex-1 px-3 py-2 border border-border rounded-lg text-sm" value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} placeholder="Kupon kodunuzu girin" />
-                  <button className="px-4 py-2 bg-muted rounded-lg text-sm font-medium hover:bg-border">Uygula</button>
+                  <input type="text" className="flex-1 px-3 py-2 border border-border rounded-lg text-sm" value={couponCode} onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponError(""); }} placeholder="Kupon kodunuzu girin" disabled={!!appliedCoupon} />
+                  {appliedCoupon ? (
+                    <button onClick={() => { setAppliedCoupon(null); setCouponCode(""); }} className="px-4 py-2 bg-danger/10 text-danger rounded-lg text-sm font-medium hover:bg-danger/20">Kaldir</button>
+                  ) : (
+                    <button onClick={async () => {
+                      if (!couponCode) return;
+                      setCouponError("");
+                      const res = await fetch("/api/coupons/validate", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ code: couponCode, subtotal }),
+                      });
+                      const data = await res.json();
+                      if (data.valid) {
+                        setAppliedCoupon({ type: data.type, discount: data.discount, message: data.message });
+                      } else {
+                        setCouponError(data.message);
+                      }
+                    }} className="px-4 py-2 bg-muted rounded-lg text-sm font-medium hover:bg-border">Uygula</button>
+                  )}
                 </div>
+                {couponError && <p className="text-xs text-danger mt-1">{couponError}</p>}
+                {appliedCoupon && <p className="text-xs text-success mt-1">{appliedCoupon.message}</p>}
               </div>
 
               <div className="flex gap-3 mt-6">
@@ -434,6 +458,7 @@ export default function CheckoutClient() {
             </div>
             <div className="space-y-2 py-4 text-sm">
               <div className="flex justify-between"><span className="text-muted-foreground">Ara Toplam</span><span>{formatPrice(subtotal)}</span></div>
+              {couponDiscount > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Kupon Indirimi</span><span className="text-success font-medium">-{formatPrice(couponDiscount)}</span></div>}
               <div className="flex justify-between"><span className="text-muted-foreground">Kargo</span><span className={shippingCost === 0 ? "text-success font-medium" : ""}>{shippingCost === 0 ? "Ucretsiz" : formatPrice(shippingCost)}</span></div>
               {codFee > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Kapida Odeme</span><span>{formatPrice(codFee)}</span></div>}
             </div>

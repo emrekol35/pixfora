@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { auth } from "@/lib/auth";
 import type { Metadata } from "next";
 import ProductDetail from "@/components/storefront/ProductDetail";
 import Link from "next/link";
@@ -64,6 +65,28 @@ export default async function ProductPage({ params }: Props) {
       ? product.reviews.reduce((sum, r) => sum + r.rating, 0) / product.reviews.length
       : 0;
 
+  // Tamamlayici urunler
+  const complementaryData = await prisma.complementaryProduct.findMany({
+    where: { mainProductId: product.id },
+    include: {
+      compProduct: {
+        include: {
+          images: { orderBy: { order: "asc" }, take: 1 },
+          category: { select: { name: true } },
+          brand: { select: { name: true } },
+        },
+      },
+    },
+  });
+  const complementaryProducts = complementaryData
+    .filter((cp) => cp.compProduct.isActive)
+    .map((cp) => cp.compProduct);
+
+  // Hediyeli urunler
+  const giftProducts = await prisma.giftProduct.findMany({
+    where: { productId: product.id },
+  });
+
   // Benzer urunler
   const relatedProducts = await prisma.product.findMany({
     where: {
@@ -78,6 +101,23 @@ export default async function ProductPage({ params }: Props) {
     },
     take: 4,
   });
+
+  // canReview kontrolu
+  const session = await auth();
+  let canReview = false;
+  if (session?.user?.id) {
+    const deliveredOrder = await prisma.order.findFirst({
+      where: {
+        userId: session.user.id,
+        status: "DELIVERED",
+        items: { some: { productId: product.id } },
+      },
+    });
+    const existingReview = await prisma.review.findFirst({
+      where: { userId: session.user.id, productId: product.id },
+    });
+    canReview = !!deliveredOrder && !existingReview;
+  }
 
   // Variant options'lari duzgun formata cevir
   const variants = product.variants.map((v) => ({
@@ -137,6 +177,9 @@ export default async function ProductPage({ params }: Props) {
           avgRating,
         }}
         relatedProducts={relatedProducts}
+        complementaryProducts={complementaryProducts}
+        giftProducts={giftProducts}
+        canReview={canReview}
       />
     </div>
   );

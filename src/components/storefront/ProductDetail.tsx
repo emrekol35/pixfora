@@ -73,16 +73,30 @@ interface RelatedProduct {
   brand: { name: string } | null;
 }
 
+interface GiftProduct {
+  id: string;
+  giftName: string;
+  giftImage: string | null;
+  minOrderQty: number;
+}
+
 interface Props {
   product: ProductData;
   relatedProducts: RelatedProduct[];
+  complementaryProducts?: RelatedProduct[];
+  giftProducts?: GiftProduct[];
+  canReview?: boolean;
 }
 
-export default function ProductDetail({ product, relatedProducts }: Props) {
+export default function ProductDetail({ product, relatedProducts, complementaryProducts, giftProducts, canReview }: Props) {
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [quantity, setQuantity] = useState(product.minQty);
   const [activeTab, setActiveTab] = useState<"desc" | "reviews">("desc");
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
   const addItem = useCartStore((s) => s.addItem);
 
   // Secili varyanti bul
@@ -298,6 +312,26 @@ export default function ProductDetail({ product, relatedProducts }: Props) {
             )}
           </div>
 
+          {/* Gift Products Badge */}
+          {giftProducts && giftProducts.length > 0 && (
+            <div className="bg-success/10 border border-success/20 rounded-lg p-3 mb-4">
+              <p className="text-sm font-semibold text-success mb-1">
+                Bu urunu aldiginizda hediye:
+              </p>
+              {giftProducts.map((gift) => (
+                <div key={gift.id} className="flex items-center gap-2 mt-1">
+                  {gift.giftImage && (
+                    <img src={gift.giftImage} alt={gift.giftName} className="w-8 h-8 rounded object-cover" />
+                  )}
+                  <span className="text-sm">{gift.giftName}</span>
+                  {gift.minOrderQty > 1 && (
+                    <span className="text-xs text-muted-foreground">(min. {gift.minOrderQty} adet)</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Quantity & Add to Cart */}
           <div className="flex items-center gap-3 mb-6">
             <div className="flex items-center border border-border rounded-lg">
@@ -436,10 +470,105 @@ export default function ProductDetail({ product, relatedProducts }: Props) {
                   Henuz degerlendirme yapilmamis.
                 </p>
               )}
+
+              {/* Review Form */}
+              {canReview && !reviewSubmitted && (
+                <div className="mt-8 border-t border-border pt-6">
+                  <h3 className="text-lg font-semibold mb-4">Degerlendirme Yap</h3>
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      setReviewSubmitting(true);
+                      try {
+                        const res = await fetch("/api/reviews", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            productId: product.id,
+                            rating: reviewRating,
+                            comment: reviewComment,
+                          }),
+                        });
+                        if (res.ok) {
+                          setReviewSubmitted(true);
+                        } else {
+                          const data = await res.json();
+                          alert(data.error || "Yorum gonderilemedi.");
+                        }
+                      } catch {
+                        alert("Bir hata olustu.");
+                      } finally {
+                        setReviewSubmitting(false);
+                      }
+                    }}
+                    className="space-y-4"
+                  >
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Puaniniz</label>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setReviewRating(star)}
+                            className="focus:outline-none"
+                          >
+                            <svg
+                              className={`w-7 h-7 transition-colors ${
+                                star <= reviewRating ? "text-warning" : "text-border hover:text-warning/50"
+                              }`}
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                            </svg>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Yorumunuz</label>
+                      <textarea
+                        value={reviewComment}
+                        onChange={(e) => setReviewComment(e.target.value)}
+                        rows={3}
+                        className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="Urun hakkindaki dusuncelerinizi yazin..."
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={reviewSubmitting}
+                      className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 text-sm"
+                    >
+                      {reviewSubmitting ? "Gonderiliyor..." : "Degerlendirmeyi Gonder"}
+                    </button>
+                  </form>
+                </div>
+              )}
+              {reviewSubmitted && (
+                <div className="mt-8 border-t border-border pt-6">
+                  <div className="bg-success/10 text-success rounded-lg p-4 text-sm">
+                    Degerlendirmeniz basariyla gonderildi. Moderasyon sonrasi yayinlanacaktir.
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
       </div>
+
+      {/* Complementary Products */}
+      {complementaryProducts && complementaryProducts.length > 0 && (
+        <div className="mt-12">
+          <h2 className="text-xl font-bold mb-6">Birlikte Sik Alinan Urunler</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            {complementaryProducts.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Related Products */}
       {relatedProducts.length > 0 && (

@@ -168,14 +168,38 @@ export async function POST(request: NextRequest) {
             if (coupon.maxDiscount) discount = Math.min(discount, coupon.maxDiscount);
           } else if (coupon.type === "FIXED_AMOUNT") {
             discount = coupon.value;
+          } else if (coupon.type === "FREE_SHIPPING") {
+            // Indirim yok ama kargo ucretsiz olacak
           }
           couponId = coupon.id;
         }
       }
     }
 
-    // Kargo ucreti (500 TL ustu ucretsiz)
-    const shippingCost = subtotal >= 500 ? 0 : 39.9;
+    // Grup indirimi kontrolu
+    if (session?.user?.id) {
+      const userWithGroup = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        include: { group: true },
+      });
+      if (userWithGroup?.group && userWithGroup.group.discountPercent > 0) {
+        const groupDiscount = (subtotal * userWithGroup.group.discountPercent) / 100;
+        // Kupon indirimi ile grup indirimi karsilastirilir, buyuk olan uygulanir
+        if (groupDiscount > discount) {
+          discount = groupDiscount;
+        }
+      }
+    }
+
+    // FREE_SHIPPING kupon kontrolu
+    let hasFreeShippingCoupon = false;
+    if (couponId && couponCode) {
+      const appliedCoupon = await prisma.coupon.findUnique({ where: { code: couponCode } });
+      if (appliedCoupon?.type === "FREE_SHIPPING") hasFreeShippingCoupon = true;
+    }
+
+    // Kargo ucreti (500 TL ustu veya FREE_SHIPPING kuponu ile ucretsiz)
+    const shippingCost = (subtotal >= 500 || hasFreeShippingCoupon) ? 0 : 39.9;
     const total = subtotal - discount + shippingCost;
 
     // Siparis olustur

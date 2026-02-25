@@ -43,6 +43,11 @@ const menuItems = [
     title: "Indirimler",
     href: "/admin/indirimler",
     icon: "🎫",
+    children: [
+      { title: "Kuponlar", href: "/admin/indirimler" },
+      { title: "Kampanyalar", href: "/admin/indirimler/kampanyalar" },
+      { title: "Yorumlar", href: "/admin/indirimler/yorumlar" },
+    ],
   },
   {
     title: "Icerik",
