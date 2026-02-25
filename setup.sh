@@ -163,21 +163,21 @@ log "Git clone tamamlandi"
 # ============================================================
 info "6/8 - Yapilandirma dosyalari olusturuluyor..."
 
-# --- .env ---
+# --- .env (TIRNAKSIZ - Docker Compose uyumlulugu icin) ---
 cat > .env << ENVEOF
-DATABASE_URL="postgresql://pixfora:${DB_PASSWORD}@postgres:5432/pixfora?schema=public"
-DB_PASSWORD="${DB_PASSWORD}"
-AUTH_SECRET="${AUTH_SECRET_VAL}"
-AUTH_URL="https://${DOMAIN}"
-REDIS_URL="redis://redis:6379"
-NEXT_PUBLIC_SITE_URL="https://${DOMAIN}"
-NEXT_PUBLIC_SITE_NAME="Pixfora"
-SMTP_HOST="smtp.gmail.com"
+DATABASE_URL=postgresql://pixfora:${DB_PASSWORD}@postgres:5432/pixfora?schema=public
+DB_PASSWORD=${DB_PASSWORD}
+AUTH_SECRET=${AUTH_SECRET_VAL}
+AUTH_URL=https://${DOMAIN}
+REDIS_URL=redis://redis:6379
+NEXT_PUBLIC_SITE_URL=https://${DOMAIN}
+NEXT_PUBLIC_SITE_NAME=Pixfora
+SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
-SMTP_USER=""
-SMTP_PASS=""
-SMTP_FROM="noreply@${DOMAIN}"
-UPLOAD_DIR="public/uploads"
+SMTP_USER=
+SMTP_PASS=
+SMTP_FROM=noreply@${DOMAIN}
+UPLOAD_DIR=public/uploads
 MAX_FILE_SIZE=10485760
 ENVEOF
 

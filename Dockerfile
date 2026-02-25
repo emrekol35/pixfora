@@ -4,14 +4,17 @@ FROM node:20-alpine AS base
 FROM base AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci --only=production && \
-    cp -R node_modules /tmp/prod_node_modules && \
-    npm ci
+# Once tum bagimliliklari kur (build icin gerekli)
+RUN npm ci
+# Prod bagimliliklari ayri kaydet (runner icin)
+RUN cp -R node_modules /tmp/all_node_modules && \
+    npm ci --omit=dev && \
+    cp -R node_modules /tmp/prod_node_modules
 
 # --- Builder ---
 FROM base AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /tmp/all_node_modules ./node_modules
 COPY . .
 
 # Prisma generate
@@ -31,21 +34,25 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copy production dependencies (bcryptjs, prisma cli, vb dahil)
+# 1) Once standalone output'u kopyala (server.js + minimal node_modules)
+COPY --from=builder /app/.next/standalone ./
+
+# 2) Standalone'un ustune eksik prod bagimliliklari ekle (bcryptjs, slugify vb)
 COPY --from=deps /tmp/prod_node_modules ./node_modules
 
-# Copy Prisma schema and generated client
-COPY --from=builder /app/prisma ./prisma
+# 3) Prisma client'i kopyala (standalone bunu dogru trace edemiyor)
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
-# Copy built app
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
+# 4) Prisma schema (migration icin)
+COPY --from=builder /app/prisma ./prisma
+
+# 5) Static dosyalar ve public
 COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
 COPY --from=builder /app/package.json ./package.json
 
-# Upload directory
+# Upload dizini
 RUN mkdir -p public/uploads && chown -R nextjs:nodejs public/uploads
 
 USER nextjs
