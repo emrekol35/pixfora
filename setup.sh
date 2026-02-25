@@ -4,7 +4,7 @@
 # ============================================================
 # Kullanim:
 #   ssh root@SUNUCU_IP
-#   bash <(curl -sL https://raw.githubusercontent.com/KULLANICI/pixfora/main/setup.sh)
+#   bash <(curl -sL https://raw.githubusercontent.com/emrekol35/pixfora/main/setup.sh)
 # ============================================================
 set -e
 
