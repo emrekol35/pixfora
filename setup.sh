@@ -32,21 +32,23 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # --- Bilgileri topla ---
+# Not: curl | bash ile calistiginda stdin pipe'a bagli olur,
+# bu yuzden read komutlari /dev/tty uzerinden okumalidir.
 GIT_REPO=""
 DOMAIN=""
 EMAIL=""
 
-read -p "Git repo URL'si (ornek: https://github.com/kullanici/pixfora.git): " GIT_REPO
+read -p "Git repo URL'si (varsayilan: https://github.com/emrekol35/pixfora.git): " GIT_REPO < /dev/tty
 if [ -z "$GIT_REPO" ]; then
-  err "Git repo URL'si zorunludur!"
+  GIT_REPO="https://github.com/emrekol35/pixfora.git"
 fi
 
-read -p "Domain adresi (ornek: pixfora.com): " DOMAIN
+read -p "Domain adresi (ornek: pixfora.com): " DOMAIN < /dev/tty
 if [ -z "$DOMAIN" ]; then
   err "Domain adresi zorunludur!"
 fi
 
-read -p "SSL icin e-posta adresi: " EMAIL
+read -p "SSL icin e-posta adresi: " EMAIL < /dev/tty
 if [ -z "$EMAIL" ]; then
   err "E-posta adresi zorunludur!"
 fi
@@ -61,7 +63,7 @@ info "Domain:   $DOMAIN"
 info "E-posta:  $EMAIL"
 info "DB sifresi & Auth secret otomatik uretildi"
 echo ""
-read -p "Devam edilsin mi? (y/n): " CONFIRM
+read -p "Devam edilsin mi? (y/n): " CONFIRM < /dev/tty
 if [ "$CONFIRM" != "y" ]; then
   echo "Iptal edildi."
   exit 0
