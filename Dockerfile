@@ -31,7 +31,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copy production dependencies
+# Copy production dependencies (bcryptjs, prisma cli, vb dahil)
 COPY --from=deps /tmp/prod_node_modules ./node_modules
 
 # Copy Prisma schema and generated client

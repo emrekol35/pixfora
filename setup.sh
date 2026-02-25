@@ -6,6 +6,19 @@
 #   ssh root@SUNUCU_IP
 #   curl -sL https://raw.githubusercontent.com/emrekol35/pixfora/main/setup.sh | bash
 # ============================================================
+#
+# NASIL CALISIYOR?
+# ----------------
+# Sunucuya sadece Docker kurulur. Node.js, npm, PostgreSQL vb.
+# DOGRUDAN sunucuya KURULMAZ. Hersey Docker container icinde calisir:
+#
+#   pixfora-app     → Node.js 20 + Next.js (uygulama)
+#   pixfora-db      → PostgreSQL 16 (veritabani)
+#   pixfora-redis   → Redis 7 (cache/session)
+#   pixfora-nginx   → Nginx (reverse proxy + SSL)
+#   pixfora-certbot → Let's Encrypt (SSL sertifika)
+#
+# ============================================================
 set -e
 
 # --- Renkler ---
@@ -75,7 +88,7 @@ PROJECT_DIR="/home/pixfora/app"
 # 1. SISTEM GUNCELLEME
 # ============================================================
 echo ""
-info "1/9 - Sistem guncelleniyor..."
+info "1/8 - Sistem guncelleniyor..."
 
 apt update -qq && apt upgrade -y -qq
 apt install -y -qq curl git ufw fail2ban ca-certificates gnupg lsb-release
@@ -84,7 +97,7 @@ log "Sistem guncellendi"
 # ============================================================
 # 2. FIREWALL
 # ============================================================
-info "2/9 - Firewall ayarlaniyor..."
+info "2/8 - Firewall ayarlaniyor..."
 
 ufw --force reset > /dev/null 2>&1
 ufw default deny incoming > /dev/null 2>&1
@@ -98,7 +111,7 @@ log "Firewall aktif (22, 80, 443)"
 # ============================================================
 # 3. DOCKER KURULUMU
 # ============================================================
-info "3/9 - Docker kuruluyor..."
+info "3/8 - Docker kuruluyor..."
 
 if ! command -v docker &> /dev/null; then
   curl -fsSL https://get.docker.com | sh -s -- --quiet
@@ -109,10 +122,16 @@ else
   log "Docker zaten kurulu"
 fi
 
+# Docker Compose plugin kontrolu
+if ! docker compose version &> /dev/null; then
+  err "Docker Compose plugin bulunamadi! Docker kurulumunu kontrol edin."
+fi
+log "Docker Compose $(docker compose version --short) hazir"
+
 # ============================================================
 # 4. KULLANICI OLUSTUR
 # ============================================================
-info "4/9 - pixfora kullanicisi olusturuluyor..."
+info "4/8 - pixfora kullanicisi olusturuluyor..."
 
 if ! id "pixfora" &>/dev/null; then
   useradd -m -s /bin/bash pixfora
@@ -128,7 +147,7 @@ mkdir -p /home/pixfora/backups
 # ============================================================
 # 5. GIT CLONE
 # ============================================================
-info "5/9 - Proje Git'ten cekiliyor..."
+info "5/8 - Proje Git'ten cekiliyor..."
 
 if [ -d "$PROJECT_DIR" ]; then
   warn "Mevcut proje dizini bulundu, yedekleniyor..."
@@ -142,7 +161,7 @@ log "Git clone tamamlandi"
 # ============================================================
 # 6. ENV & NGINX DOSYALARI
 # ============================================================
-info "6/9 - Yapilandirma dosyalari olusturuluyor..."
+info "6/8 - Yapilandirma dosyalari olusturuluyor..."
 
 # --- .env ---
 cat > .env << ENVEOF
@@ -227,40 +246,113 @@ NGCEOF
 log "Yapilandirma dosyalari olusturuldu"
 
 # ============================================================
-# 7. NPM INSTALL (package-lock.json olusturmak icin)
+# 7. BUILD & BASLAT
 # ============================================================
-info "7/9 - npm install (package-lock.json olusturuluyor)..."
+info "7/8 - Docker build & baslatiliyor (5-10 dakika surebilir)..."
+info "       Node.js, PostgreSQL, Redis, Nginx hepsi Docker icinde calisacak"
 
-docker run --rm -v "$PROJECT_DIR:/app" -w /app node:20-alpine npm install 2>&1 | tail -3
-log "npm install tamamlandi"
+# Once DB ve Redis'i baslat
+docker compose -f docker-compose.prod.yml up -d postgres redis
+info "PostgreSQL ve Redis baslatildi, hazir olmasini bekleniyor..."
+sleep 10
 
-# ============================================================
-# 8. BUILD & BASLAT
-# ============================================================
-info "8/9 - Docker build & baslatiliyor (3-5 dakika surebilir)..."
-
-docker compose -f docker-compose.prod.yml build --no-cache app 2>&1 | tail -5
+# App'i build et ve baslat
+docker compose -f docker-compose.prod.yml build --no-cache app 2>&1 | tail -10
 log "Docker build tamamlandi"
 
 docker compose -f docker-compose.prod.yml up -d
 log "Tum servisler baslatildi"
 
-# DB'nin hazir olmasini bekle
-info "Veritabani hazirlaniyor..."
-sleep 10
+# DB'nin tamamen hazir olmasini bekle
+info "Veritabani migration ve seed isleniyor..."
+sleep 5
 
-# Migration
-docker compose -f docker-compose.prod.yml exec -T app npx prisma migrate deploy 2>&1 | tail -3
+# Migration - container icinde calisir (Node.js container icinde kurulu)
+docker compose -f docker-compose.prod.yml exec -T app npx prisma migrate deploy 2>&1 | tail -5
 log "Veritabani migration tamamlandi"
 
-# Seed
-docker compose -f docker-compose.prod.yml exec -T app npx tsx prisma/seed.ts 2>&1 | tail -1
-log "Seed data yuklendi"
+# Seed - ts dosyasini calistir
+docker compose -f docker-compose.prod.yml exec -T app node -e "
+const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
+const prisma = new PrismaClient();
+
+async function main() {
+  // Admin kullanici
+  const hashedPassword = await bcrypt.hash('admin123', 12);
+  await prisma.user.upsert({
+    where: { email: 'admin@pixfora.com' },
+    update: {},
+    create: {
+      email: 'admin@pixfora.com',
+      name: 'Admin',
+      password: hashedPassword,
+      role: 'ADMIN',
+    },
+  });
+
+  // Kategoriler
+  const elektronik = await prisma.category.upsert({
+    where: { slug: 'elektronik' },
+    update: {},
+    create: { name: 'Elektronik', slug: 'elektronik', description: 'Elektronik urunler', order: 1 },
+  });
+  await prisma.category.upsert({
+    where: { slug: 'telefonlar' },
+    update: {},
+    create: { name: 'Telefonlar', slug: 'telefonlar', parentId: elektronik.id, order: 1 },
+  });
+  await prisma.category.upsert({
+    where: { slug: 'bilgisayarlar' },
+    update: {},
+    create: { name: 'Bilgisayarlar', slug: 'bilgisayarlar', parentId: elektronik.id, order: 2 },
+  });
+
+  const giyim = await prisma.category.upsert({
+    where: { slug: 'giyim' },
+    update: {},
+    create: { name: 'Giyim', slug: 'giyim', description: 'Giyim urunleri', order: 2 },
+  });
+  await prisma.category.upsert({
+    where: { slug: 'erkek-giyim' },
+    update: {},
+    create: { name: 'Erkek Giyim', slug: 'erkek-giyim', parentId: giyim.id, order: 1 },
+  });
+  await prisma.category.upsert({
+    where: { slug: 'kadin-giyim' },
+    update: {},
+    create: { name: 'Kadin Giyim', slug: 'kadin-giyim', parentId: giyim.id, order: 2 },
+  });
+
+  // Markalar
+  for (const brand of [
+    { name: 'Apple', slug: 'apple', order: 1 },
+    { name: 'Samsung', slug: 'samsung', order: 2 },
+    { name: 'Nike', slug: 'nike', order: 3 },
+  ]) {
+    await prisma.brand.upsert({ where: { slug: brand.slug }, update: {}, create: brand });
+  }
+
+  // Ayarlar
+  for (const setting of [
+    { key: 'site_name', value: 'Pixfora', group: 'general' },
+    { key: 'currency', value: 'TRY', group: 'general' },
+    { key: 'free_shipping_min', value: '500', group: 'shipping' },
+    { key: 'default_tax_rate', value: '20', group: 'tax' },
+  ]) {
+    await prisma.setting.upsert({ where: { key: setting.key }, update: {}, create: setting });
+  }
+
+  console.log('Seed tamamlandi!');
+}
+main().catch(console.error).finally(() => prisma.\$disconnect());
+" 2>&1 | tail -3
+log "Seed data yuklendi (admin@pixfora.com / admin123)"
 
 # ============================================================
-# 9. SSL SERTIFIKASI
+# 8. SSL SERTIFIKASI
 # ============================================================
-info "9/9 - SSL sertifikasi aliniyor..."
+info "8/8 - SSL sertifikasi aliniyor..."
 
 docker compose -f docker-compose.prod.yml run --rm certbot \
   certonly --webroot --webroot-path=/var/www/certbot \
@@ -269,7 +361,6 @@ docker compose -f docker-compose.prod.yml run --rm certbot \
 
 # SSL alindiysa HTTPS config'e gec
 if [ -d "/home/pixfora/app" ]; then
-  # certbot volume icinde kontrol yapmak zor, her durumda yaz
   cat > nginx/conf.d/default.conf << SSLEOF
 server {
     listen 80;
