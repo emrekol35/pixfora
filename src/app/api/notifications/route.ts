@@ -1,11 +1,22 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Yetkisiz erisim" }, { status: 401 });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const countOnly = searchParams.get("countOnly") === "true";
+
+  // Sadece okunmamis bildirim sayisi (polling icin hafif endpoint)
+  if (countOnly) {
+    const unreadCount = await prisma.notification.count({
+      where: { userId: session.user.id, isRead: false },
+    });
+    return NextResponse.json({ unreadCount });
   }
 
   const notifications = await prisma.notification.findMany({

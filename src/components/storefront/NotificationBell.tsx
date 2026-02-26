@@ -63,6 +63,20 @@ export default function NotificationBell() {
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Hafif polling - sadece okunmamis bildirim sayisini sorgula
+  const pollUnreadCount = useCallback(async () => {
+    try {
+      const res = await fetch("/api/notifications?countOnly=true");
+      if (res.ok) {
+        const data = await res.json();
+        setUnreadCount(data.unreadCount);
+      }
+    } catch {
+      // silently fail
+    }
+  }, []);
+
+  // Tam bildirim listesini yukle (dropdown acildiginda)
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
     try {
@@ -78,6 +92,17 @@ export default function NotificationBell() {
       setLoading(false);
     }
   }, []);
+
+  // 60 saniyede bir okunmamis bildirim sayisi polling
+  useEffect(() => {
+    if (!session?.user) return;
+
+    // Ilk yukleme
+    pollUnreadCount();
+
+    const interval = setInterval(pollUnreadCount, 60000);
+    return () => clearInterval(interval);
+  }, [session?.user, pollUnreadCount]);
 
   useEffect(() => {
     if (open) {

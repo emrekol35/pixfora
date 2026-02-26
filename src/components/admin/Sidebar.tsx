@@ -106,6 +106,11 @@ const menuItems = [
     icon: "📧",
   },
   {
+    title: "Otomasyon",
+    href: "/admin/otomasyon",
+    icon: "🤖",
+  },
+  {
     title: "Aktiviteler",
     href: "/admin/aktiviteler",
     icon: "📋",

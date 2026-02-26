@@ -2,6 +2,7 @@ import Header from "@/components/storefront/Header";
 import Footer from "@/components/storefront/Footer";
 import CartDrawer from "@/components/storefront/CartDrawer";
 import WishlistInit from "@/components/storefront/WishlistInit";
+import CartSyncProvider from "@/components/storefront/CartSyncProvider";
 import Providers from "@/components/storefront/Providers";
 
 export default function StorefrontLayout({
@@ -15,6 +16,7 @@ export default function StorefrontLayout({
         <Header />
         <CartDrawer />
         <WishlistInit />
+        <CartSyncProvider />
         <main className="flex-1">{children}</main>
         <Footer />
       </div>

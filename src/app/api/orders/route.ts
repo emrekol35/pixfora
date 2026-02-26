@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { generateOrderNumber } from "@/lib/utils";
 import { sendEmail, orderConfirmationEmail, bankTransferInfoEmail } from "@/lib/email";
 import { getBankAccounts } from "@/services/payment/bank-transfer";
+import { createNotification } from "@/lib/notifications";
 
 // GET - Siparisleri listele (admin veya kullanici)
 export async function GET(request: NextRequest) {
@@ -268,6 +269,16 @@ export async function POST(request: NextRequest) {
       await prisma.cartItem.deleteMany({
         where: { userId: session.user.id },
       });
+    }
+
+    // DB bildirim olustur (giris yapmis kullanici icin)
+    if (session?.user?.id) {
+      createNotification({
+        userId: session.user.id,
+        type: "order",
+        title: "Siparisiniz Alindi",
+        message: `#${order.orderNumber} numarali siparisiniz basariyla olusturuldu.`,
+      }).catch(console.error);
     }
 
     // Email bildirim gonder

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
-import { sendEmail, shippingNotificationEmail } from "@/lib/email";
+import { sendEmail, shippingNotificationEmail, orderStatusChangeEmail } from "@/lib/email";
+import { createNotification } from "@/lib/notifications";
 
 // GET - Siparis detayi
 export async function GET(
@@ -80,16 +81,61 @@ export async function PUT(
       },
     });
 
-    // Kargoya verildi maili gonder
-    if (status === "SHIPPED" && order.trackingNumber && order.shippingCompany) {
-      const email = order.user?.email;
-      if (email) {
-        const emailData = shippingNotificationEmail({
-          orderNumber: order.orderNumber,
-          trackingNumber: order.trackingNumber,
-          shippingCompany: order.shippingCompany,
-        });
-        sendEmail({ to: email, ...emailData }).catch(console.error);
+    // Durum degisikliginde bildirim + e-posta gonder
+    if (status) {
+      const STATUS_LABELS: Record<string, string> = {
+        CONFIRMED: "Onaylandi",
+        PROCESSING: "Hazirlaniyor",
+        SHIPPED: "Kargoda",
+        DELIVERED: "Teslim Edildi",
+        CANCELLED: "Iptal Edildi",
+        REFUNDED: "Iade Edildi",
+      };
+
+      const NOTIF_MESSAGES: Record<string, string> = {
+        CONFIRMED: `#${order.orderNumber} numarali siparisiniz onaylandi.`,
+        PROCESSING: `#${order.orderNumber} numarali siparisiniz hazirlaniyor.`,
+        SHIPPED: `#${order.orderNumber} numarali siparisiniz kargoya verildi.${order.trackingNumber ? ` Takip No: ${order.trackingNumber}` : ""}`,
+        DELIVERED: `#${order.orderNumber} numarali siparisiniz teslim edildi.`,
+        CANCELLED: `#${order.orderNumber} numarali siparisiniz iptal edildi.`,
+        REFUNDED: `#${order.orderNumber} numarali siparisiniz icin iade islemi tamamlandi.`,
+      };
+
+      const statusLabel = STATUS_LABELS[status];
+      const notifMessage = NOTIF_MESSAGES[status];
+
+      // DB bildirimi (giris yapmis kullanici icin)
+      if (order.userId && statusLabel && notifMessage) {
+        createNotification({
+          userId: order.userId,
+          type: "order",
+          title: `Siparis ${statusLabel}`,
+          message: notifMessage,
+        }).catch(console.error);
+      }
+
+      // E-posta gonder
+      const customerEmail = order.user?.email || order.guestEmail;
+      if (customerEmail && statusLabel) {
+        if (status === "SHIPPED" && order.trackingNumber && order.shippingCompany) {
+          // Kargoya verildi - detayli kargo maili
+          const emailData = shippingNotificationEmail({
+            orderNumber: order.orderNumber,
+            trackingNumber: order.trackingNumber,
+            shippingCompany: order.shippingCompany,
+          });
+          sendEmail({ to: customerEmail, ...emailData }).catch(console.error);
+        } else {
+          // Diger durumlar - genel durum degisikligi maili
+          const emailData = orderStatusChangeEmail({
+            orderNumber: order.orderNumber,
+            status,
+            statusLabel,
+            trackingNumber: order.trackingNumber,
+            shippingCompany: order.shippingCompany,
+          });
+          sendEmail({ to: customerEmail, ...emailData }).catch(console.error);
+        }
       }
     }
 

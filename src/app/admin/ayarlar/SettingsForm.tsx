@@ -66,6 +66,15 @@ const SETTING_GROUPS: SettingGroup[] = [
     ],
   },
   {
+    key: "stock_alerts",
+    title: "Stok Uyarilari",
+    fields: [
+      { key: "stock_alert_enabled", label: "Stok Uyarilarini Etkinlestir", type: "checkbox" },
+      { key: "stock_alert_threshold", label: "Stok Uyari Esigi (adet)", type: "number", placeholder: "5" },
+      { key: "stock_alert_email", label: "Uyari E-posta Adresi", type: "email", placeholder: "admin@pixfora.com" },
+    ],
+  },
+  {
     key: "email",
     title: "E-posta Ayarlari",
     fields: [
