@@ -89,6 +89,9 @@ export default function OrderDetail({ order }: Props) {
   const [message, setMessage] = useState("");
   const [shippingLoading, setShippingLoading] = useState(false);
   const [confirmingPayment, setConfirmingPayment] = useState(false);
+  const [refundAmount, setRefundAmount] = useState(String(order.total));
+  const [refunding, setRefunding] = useState(false);
+  const [showRefundForm, setShowRefundForm] = useState(false);
 
   const formatPrice = (price: number) =>
     new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(price);
@@ -176,6 +179,42 @@ export default function OrderDetail({ order }: Props) {
       setMessage("Onay hatasi");
     } finally {
       setConfirmingPayment(false);
+    }
+  };
+
+  // Iade baslat
+  const handleRefund = async () => {
+    const amount = parseFloat(refundAmount);
+    if (isNaN(amount) || amount <= 0 || amount > order.total) {
+      setMessage("Gecerli bir iade tutari giriniz");
+      return;
+    }
+    if (!confirm(`${amount.toFixed(2)} TL tutarinda iade yapmak istediginize emin misiniz?`)) return;
+    setRefunding(true);
+    setMessage("");
+    try {
+      const res = await fetch("/api/payment/iyzico/refund", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId: order.id,
+          amount,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setPaymentStatus("REFUNDED");
+        setStatus("REFUNDED");
+        setShowRefundForm(false);
+        setMessage("Iade basariyla gerceklestirildi!");
+        setTimeout(() => setMessage(""), 5000);
+      } else {
+        setMessage(data.error || "Iade hatasi olustu");
+      }
+    } catch {
+      setMessage("Iade islemi basarisiz");
+    } finally {
+      setRefunding(false);
     }
   };
 
@@ -352,6 +391,54 @@ export default function OrderDetail({ order }: Props) {
               >
                 {confirmingPayment ? "Onaylaniyor..." : "Havale Onay Alindi"}
               </button>
+            </div>
+          )}
+
+          {/* Iade Butonu - Kredi karti + odendi durumlu siparisler */}
+          {order.paymentMethod === "CREDIT_CARD" && paymentStatus === "PAID" && status !== "REFUNDED" && (
+            <div className="bg-white rounded-xl border border-border p-6">
+              <h2 className="font-bold mb-2">Iade Islemi</h2>
+              {!showRefundForm ? (
+                <button
+                  onClick={() => setShowRefundForm(true)}
+                  className="w-full py-2.5 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700"
+                >
+                  Iade Baslat
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">Iade Tutari (TL)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      max={order.total}
+                      value={refundAmount}
+                      onChange={(e) => setRefundAmount(e.target.value)}
+                      className="w-full px-3 py-2 border border-border rounded-lg text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Siparis toplami: {formatPrice(order.total)}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleRefund}
+                      disabled={refunding}
+                      className="flex-1 py-2.5 bg-danger text-white rounded-lg text-sm font-semibold hover:bg-danger/90 disabled:opacity-50"
+                    >
+                      {refunding ? "Iade Yapiliyor..." : "Iade Onayla"}
+                    </button>
+                    <button
+                      onClick={() => setShowRefundForm(false)}
+                      className="px-4 py-2.5 bg-muted rounded-lg text-sm font-medium hover:bg-border"
+                    >
+                      Iptal
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

@@ -37,8 +37,13 @@ export default async function OrderDetailPage({
     id: order.id,
     orderNumber: order.orderNumber,
     status: order.status,
+    paymentMethod: order.paymentMethod,
+    subtotal: Number(order.subtotal),
+    shippingCost: Number(order.shippingCost),
+    discount: Number(order.discount),
     total: Number(order.total),
     trackingNumber: order.trackingNumber,
+    shippingCompany: order.shippingCompany,
     shippingAddress: order.shippingAddress ? {
       title: order.shippingAddress.title,
       firstName: order.shippingAddress.firstName,

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useCartStore } from "@/store/cart";
 
@@ -31,14 +31,43 @@ interface BankAccount {
   iban: string;
 }
 
+interface SavedAddress {
+  id: string;
+  title: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  city: string;
+  district: string;
+  neighborhood?: string;
+  address: string;
+  zipCode?: string;
+  isDefault: boolean;
+}
+
+interface ShippingRate {
+  provider: string;
+  providerName: string;
+  price: number;
+  estimatedDays: string;
+  description?: string;
+}
+
 export default function CheckoutClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { items, getSubtotal, getItemPrice, clearCart } = useCartStore();
   const [mounted, setMounted] = useState(false);
   const [step, setStep] = useState<Step>("address");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const iframeRef = useRef<HTMLDivElement>(null);
+
+  // Kayitli adresler
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [useNewAddress, setUseNewAddress] = useState(false);
+  const [loadingAddresses, setLoadingAddresses] = useState(true);
 
   const [addressForm, setAddressForm] = useState<AddressForm>({
     firstName: "",
@@ -64,18 +93,170 @@ export default function CheckoutClient() {
   const [couponError, setCouponError] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [note, setNote] = useState("");
-  const [selectedShipping, setSelectedShipping] = useState("standard");
   const [showBankInfo, setShowBankInfo] = useState(false);
 
-  const bankAccounts: BankAccount[] = [
-    { bankName: "Ziraat Bankasi", accountHolder: "Pixfora Ticaret A.S.", iban: "TR00 0000 0000 0000 0000 0000 00" },
-    { bankName: "Is Bankasi", accountHolder: "Pixfora Ticaret A.S.", iban: "TR00 0000 0000 0000 0000 0000 00" },
-    { bankName: "Garanti BBVA", accountHolder: "Pixfora Ticaret A.S.", iban: "TR00 0000 0000 0000 0000 0000 00" },
-  ];
+  // Dinamik kargo
+  const [shippingRates, setShippingRates] = useState<ShippingRate[]>([]);
+  const [selectedShippingProvider, setSelectedShippingProvider] = useState<string>("");
+  const [loadingRates, setLoadingRates] = useState(false);
+  const [fallbackShipping, setFallbackShipping] = useState(false);
+
+  // Banka hesaplari (API'den)
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+
+  // Taksit
+  const [installments, setInstallments] = useState<{ installmentCount: number; totalPrice: number; installmentPrice: number; bankName: string }[]>([]);
+  const [selectedInstallment, setSelectedInstallment] = useState<number>(1);
+  const [loadingInstallments, setLoadingInstallments] = useState(false);
+
+  // Kayitli adresleri yukle
+  const loadSavedAddresses = useCallback(async () => {
+    try {
+      const res = await fetch("/api/account/addresses");
+      if (res.ok) {
+        const data = await res.json();
+        setSavedAddresses(data);
+        // Varsayilan adresi sec
+        const defaultAddr = data.find((a: SavedAddress) => a.isDefault);
+        if (defaultAddr) {
+          setSelectedAddressId(defaultAddr.id);
+          setAddressForm({
+            firstName: defaultAddr.firstName,
+            lastName: defaultAddr.lastName,
+            phone: defaultAddr.phone,
+            city: defaultAddr.city,
+            district: defaultAddr.district,
+            address: defaultAddr.address,
+            zipCode: defaultAddr.zipCode || "",
+          });
+        } else if (data.length > 0) {
+          setSelectedAddressId(data[0].id);
+          const a = data[0];
+          setAddressForm({
+            firstName: a.firstName,
+            lastName: a.lastName,
+            phone: a.phone,
+            city: a.city,
+            district: a.district,
+            address: a.address,
+            zipCode: a.zipCode || "",
+          });
+        } else {
+          setUseNewAddress(true);
+        }
+      } else {
+        // Giris yapilmamis kullanici
+        setUseNewAddress(true);
+      }
+    } catch {
+      setUseNewAddress(true);
+    } finally {
+      setLoadingAddresses(false);
+    }
+  }, []);
+
+  // Banka hesaplarini yukle
+  const loadBankAccounts = useCallback(async () => {
+    try {
+      const keys = [
+        "bank_account_1_name", "bank_account_1_holder", "bank_account_1_iban",
+        "bank_account_2_name", "bank_account_2_holder", "bank_account_2_iban",
+        "bank_account_3_name", "bank_account_3_holder", "bank_account_3_iban",
+      ].join(",");
+      const res = await fetch(`/api/settings/public?keys=${keys}`);
+      if (res.ok) {
+        const data = await res.json();
+        const accounts: BankAccount[] = [];
+        for (let i = 1; i <= 3; i++) {
+          const name = data[`bank_account_${i}_name`];
+          const iban = data[`bank_account_${i}_iban`];
+          if (name && iban) {
+            accounts.push({
+              bankName: name,
+              accountHolder: data[`bank_account_${i}_holder`] || "",
+              iban,
+            });
+          }
+        }
+        if (accounts.length > 0) {
+          setBankAccounts(accounts);
+          return;
+        }
+      }
+    } catch {
+      // fallback
+    }
+    // Fallback
+    setBankAccounts([
+      { bankName: "Ziraat Bankasi", accountHolder: "Pixfora Ticaret A.S.", iban: "TR00 0000 0000 0000 0000 0000 00" },
+      { bankName: "Is Bankasi", accountHolder: "Pixfora Ticaret A.S.", iban: "TR00 0000 0000 0000 0000 0000 00" },
+      { bankName: "Garanti BBVA", accountHolder: "Pixfora Ticaret A.S.", iban: "TR00 0000 0000 0000 0000 0000 00" },
+    ]);
+  }, []);
+
+  // Taksit sorgula
+  const loadInstallments = useCallback(async (binNumber: string, price: number) => {
+    if (binNumber.length < 6) {
+      setInstallments([]);
+      return;
+    }
+    setLoadingInstallments(true);
+    try {
+      const res = await fetch("/api/payment/iyzico/installments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ binNumber: binNumber.substring(0, 6), price }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setInstallments(data.installments || []);
+      }
+    } catch {
+      setInstallments([]);
+    } finally {
+      setLoadingInstallments(false);
+    }
+  }, []);
+
+  // Kargo ucretlerini sorgula
+  const loadShippingRates = useCallback(async (city: string) => {
+    setLoadingRates(true);
+    setFallbackShipping(false);
+    try {
+      const res = await fetch(`/api/shipping/rates?city=${encodeURIComponent(city)}&weight=1&desi=1`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.rates && data.rates.length > 0) {
+          setShippingRates(data.rates);
+          setSelectedShippingProvider(data.rates[0].provider);
+          setLoadingRates(false);
+          return;
+        }
+      }
+    } catch {
+      // fallback
+    }
+    // Fallback - statik kargo secenekleri
+    setFallbackShipping(true);
+    setShippingRates([
+      { provider: "standard", providerName: "Standart Kargo", price: 39.9, estimatedDays: "3-5 is gunu" },
+      { provider: "express", providerName: "Hizli Kargo", price: 59.9, estimatedDays: "1-2 is gunu" },
+    ]);
+    setSelectedShippingProvider("standard");
+    setLoadingRates(false);
+  }, []);
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    loadSavedAddresses();
+    loadBankAccounts();
+
+    // URL'den kupon kodu al
+    const urlCoupon = searchParams.get("coupon");
+    if (urlCoupon) {
+      setCouponCode(urlCoupon);
+    }
+  }, [loadSavedAddresses, loadBankAccounts, searchParams]);
 
   if (!mounted) {
     return <div className="max-w-4xl mx-auto px-4 py-8"><p>Yukleniyor...</p></div>;
@@ -96,8 +277,12 @@ export default function CheckoutClient() {
   const subtotal = getSubtotal();
   const couponDiscount = appliedCoupon?.discount || 0;
   const hasFreeShippingCoupon = appliedCoupon?.type === "FREE_SHIPPING";
-  const baseShippingCost = (subtotal >= 500 || hasFreeShippingCoupon) ? 0 : 39.9;
-  const shippingCost = selectedShipping === "express" ? baseShippingCost + 20 : baseShippingCost;
+
+  // Kargo ucreti hesapla
+  const selectedRate = shippingRates.find((r) => r.provider === selectedShippingProvider);
+  const rawShippingCost = selectedRate?.price || 39.9;
+  const shippingCost = (subtotal >= 500 || hasFreeShippingCoupon) ? 0 : rawShippingCost;
+
   const codFee = paymentMethod === "CASH_ON_DELIVERY" ? 10 : 0;
   const total = subtotal - couponDiscount + shippingCost + codFee;
 
@@ -131,6 +316,27 @@ export default function CheckoutClient() {
     return nums.replace(/(\d{4})(?=\d)/g, "$1 ");
   };
 
+  const handleSelectAddress = (addr: SavedAddress) => {
+    setSelectedAddressId(addr.id);
+    setUseNewAddress(false);
+    setAddressForm({
+      firstName: addr.firstName,
+      lastName: addr.lastName,
+      phone: addr.phone,
+      city: addr.city,
+      district: addr.district,
+      address: addr.address,
+      zipCode: addr.zipCode || "",
+    });
+  };
+
+  const handleProceedToShipping = () => {
+    if (addressForm.city) {
+      loadShippingRates(addressForm.city);
+    }
+    setStep("shipping");
+  };
+
   const handleSubmitOrder = async () => {
     setIsSubmitting(true);
     setError("");
@@ -142,6 +348,9 @@ export default function CheckoutClient() {
         quantity: item.quantity,
         price: getItemPrice(item),
       }));
+
+      // Adres ID gonder (kayitli adres secildiyse)
+      const shippingAddressId = (!useNewAddress && selectedAddressId) ? selectedAddressId : undefined;
 
       // 1. Siparis olustur
       const res = await fetch("/api/orders", {
@@ -155,6 +364,9 @@ export default function CheckoutClient() {
           guestName: `${addressForm.firstName} ${addressForm.lastName}`,
           guestPhone: addressForm.phone,
           note: note || undefined,
+          shippingAddressId,
+          shippingProvider: selectedShippingProvider || undefined,
+          shippingCost: shippingCost,
         }),
       });
 
@@ -173,7 +385,7 @@ export default function CheckoutClient() {
           body: JSON.stringify({
             orderId,
             card: cardForm,
-            installment: 1,
+            installment: selectedInstallment,
           }),
         });
 
@@ -299,20 +511,100 @@ export default function CheckoutClient() {
           {step === "address" && (
             <div className="bg-white rounded-xl border border-border p-6">
               <h2 className="text-lg font-bold mb-4">Teslimat Adresi</h2>
-              <div className="mb-4">
-                <label className="text-sm font-medium mb-1 block">E-posta (misafir siparis icin)</label>
-                <input type="email" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={guestEmail} onChange={(e) => setGuestEmail(e.target.value)} placeholder="ornek@email.com" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div><label className="text-sm font-medium mb-1 block">Ad *</label><input type="text" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={addressForm.firstName} onChange={(e) => setAddressForm((p) => ({ ...p, firstName: e.target.value }))} /></div>
-                <div><label className="text-sm font-medium mb-1 block">Soyad *</label><input type="text" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={addressForm.lastName} onChange={(e) => setAddressForm((p) => ({ ...p, lastName: e.target.value }))} /></div>
-                <div className="col-span-2"><label className="text-sm font-medium mb-1 block">Telefon *</label><input type="tel" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={addressForm.phone} onChange={(e) => setAddressForm((p) => ({ ...p, phone: e.target.value }))} placeholder="05XX XXX XX XX" /></div>
-                <div><label className="text-sm font-medium mb-1 block">Sehir *</label><input type="text" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={addressForm.city} onChange={(e) => setAddressForm((p) => ({ ...p, city: e.target.value }))} /></div>
-                <div><label className="text-sm font-medium mb-1 block">Ilce *</label><input type="text" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={addressForm.district} onChange={(e) => setAddressForm((p) => ({ ...p, district: e.target.value }))} /></div>
-                <div className="col-span-2"><label className="text-sm font-medium mb-1 block">Adres *</label><textarea rows={3} className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none" value={addressForm.address} onChange={(e) => setAddressForm((p) => ({ ...p, address: e.target.value }))} /></div>
-                <div><label className="text-sm font-medium mb-1 block">Posta Kodu</label><input type="text" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={addressForm.zipCode} onChange={(e) => setAddressForm((p) => ({ ...p, zipCode: e.target.value }))} /></div>
-              </div>
-              <button onClick={() => setStep("shipping")} disabled={!isAddressValid} className="mt-6 w-full py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark disabled:bg-muted disabled:text-muted-foreground transition-colors">Devam Et</button>
+
+              {/* Kayitli adresler */}
+              {!loadingAddresses && savedAddresses.length > 0 && (
+                <div className="mb-6">
+                  <p className="text-sm font-medium text-muted-foreground mb-3">Kayitli Adresleriniz</p>
+                  <div className="space-y-2">
+                    {savedAddresses.map((addr) => (
+                      <label
+                        key={addr.id}
+                        className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition-colors ${
+                          selectedAddressId === addr.id && !useNewAddress
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="savedAddress"
+                          checked={selectedAddressId === addr.id && !useNewAddress}
+                          onChange={() => handleSelectAddress(addr)}
+                          className="w-4 h-4 text-primary mt-0.5"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium">{addr.title}</p>
+                            {addr.isDefault && (
+                              <span className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary rounded font-medium">Varsayilan</span>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-0.5">
+                            {addr.firstName} {addr.lastName} - {addr.phone}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {addr.address}, {addr.district}/{addr.city}
+                          </p>
+                        </div>
+                      </label>
+                    ))}
+
+                    {/* Yeni adres secenegi */}
+                    <label
+                      className={`flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition-colors ${
+                        useNewAddress
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-primary"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="savedAddress"
+                        checked={useNewAddress}
+                        onChange={() => {
+                          setUseNewAddress(true);
+                          setSelectedAddressId(null);
+                          setAddressForm({ firstName: "", lastName: "", phone: "", city: "", district: "", address: "", zipCode: "" });
+                        }}
+                        className="w-4 h-4 text-primary"
+                      />
+                      <div>
+                        <p className="text-sm font-medium">+ Yeni adres girin</p>
+                        <p className="text-xs text-muted-foreground">Farkli bir adrese gonderim yapmak istiyorsaniz</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {loadingAddresses && (
+                <div className="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  Kayitli adresler yukleniyor...
+                </div>
+              )}
+
+              {/* Adres formu (yeni adres veya kayitli adres yoksa) */}
+              {(useNewAddress || savedAddresses.length === 0) && !loadingAddresses && (
+                <>
+                  <div className="mb-4">
+                    <label className="text-sm font-medium mb-1 block">E-posta (misafir siparis icin)</label>
+                    <input type="email" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={guestEmail} onChange={(e) => setGuestEmail(e.target.value)} placeholder="ornek@email.com" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><label className="text-sm font-medium mb-1 block">Ad *</label><input type="text" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={addressForm.firstName} onChange={(e) => setAddressForm((p) => ({ ...p, firstName: e.target.value }))} /></div>
+                    <div><label className="text-sm font-medium mb-1 block">Soyad *</label><input type="text" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={addressForm.lastName} onChange={(e) => setAddressForm((p) => ({ ...p, lastName: e.target.value }))} /></div>
+                    <div className="col-span-2"><label className="text-sm font-medium mb-1 block">Telefon *</label><input type="tel" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={addressForm.phone} onChange={(e) => setAddressForm((p) => ({ ...p, phone: e.target.value }))} placeholder="05XX XXX XX XX" /></div>
+                    <div><label className="text-sm font-medium mb-1 block">Sehir *</label><input type="text" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={addressForm.city} onChange={(e) => setAddressForm((p) => ({ ...p, city: e.target.value }))} /></div>
+                    <div><label className="text-sm font-medium mb-1 block">Ilce *</label><input type="text" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={addressForm.district} onChange={(e) => setAddressForm((p) => ({ ...p, district: e.target.value }))} /></div>
+                    <div className="col-span-2"><label className="text-sm font-medium mb-1 block">Adres *</label><textarea rows={3} className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none" value={addressForm.address} onChange={(e) => setAddressForm((p) => ({ ...p, address: e.target.value }))} /></div>
+                    <div><label className="text-sm font-medium mb-1 block">Posta Kodu</label><input type="text" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={addressForm.zipCode} onChange={(e) => setAddressForm((p) => ({ ...p, zipCode: e.target.value }))} /></div>
+                  </div>
+                </>
+              )}
+
+              <button onClick={handleProceedToShipping} disabled={!isAddressValid} className="mt-6 w-full py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark disabled:bg-muted disabled:text-muted-foreground transition-colors">Devam Et</button>
             </div>
           )}
 
@@ -320,24 +612,68 @@ export default function CheckoutClient() {
           {step === "shipping" && (
             <div className="bg-white rounded-xl border border-border p-6">
               <h2 className="text-lg font-bold mb-4">Kargo Secimi</h2>
-              <div className="space-y-3">
-                {[
-                  { id: "standard", name: "Standart Kargo", desc: "3-5 is gunu", price: baseShippingCost },
-                  { id: "express", name: "Hizli Kargo", desc: "1-2 is gunu", price: baseShippingCost + 20 },
-                ].map((option) => (
-                  <label key={option.id} className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-colors ${selectedShipping === option.id ? "border-primary bg-primary/5" : "border-border hover:border-primary"}`}>
-                    <div className="flex items-center gap-3">
-                      <input type="radio" name="shipping" value={option.id} checked={selectedShipping === option.id} onChange={() => setSelectedShipping(option.id)} className="w-4 h-4 text-primary" />
-                      <div><p className="text-sm font-medium">{option.name}</p><p className="text-xs text-muted-foreground">{option.desc}</p></div>
-                    </div>
-                    <span className={`text-sm font-bold ${option.price === 0 ? "text-success" : ""}`}>{option.price === 0 ? "Ucretsiz" : formatPrice(option.price)}</span>
-                  </label>
-                ))}
+
+              {loadingRates ? (
+                <div className="flex items-center justify-center py-8 gap-2 text-sm text-muted-foreground">
+                  <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  Kargo ucretleri hesaplaniyor...
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {shippingRates.map((rate) => {
+                    const isFree = subtotal >= 500 || hasFreeShippingCoupon;
+                    const displayPrice = isFree ? 0 : rate.price;
+                    return (
+                      <label
+                        key={rate.provider}
+                        className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-colors ${
+                          selectedShippingProvider === rate.provider
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="radio"
+                            name="shipping"
+                            value={rate.provider}
+                            checked={selectedShippingProvider === rate.provider}
+                            onChange={() => setSelectedShippingProvider(rate.provider)}
+                            className="w-4 h-4 text-primary"
+                          />
+                          <div>
+                            <p className="text-sm font-medium">{rate.providerName}</p>
+                            <p className="text-xs text-muted-foreground">{rate.estimatedDays}</p>
+                          </div>
+                        </div>
+                        <span className={`text-sm font-bold ${displayPrice === 0 ? "text-success" : ""}`}>
+                          {displayPrice === 0 ? "Ucretsiz" : formatPrice(displayPrice)}
+                        </span>
+                      </label>
+                    );
+                  })}
+
+                  {!fallbackShipping && subtotal < 500 && !hasFreeShippingCoupon && (
+                    <p className="text-xs text-info mt-2">
+                      {formatPrice(500 - subtotal)} daha ekleyerek ucretsiz kargo firsatindan yararlanin!
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-4">
+                <label className="text-sm font-medium mb-1 block">Siparis Notu (opsiyonel)</label>
+                <textarea
+                  rows={2}
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Teslimat ile ilgili notunuz..."
+                />
               </div>
-              <div className="mt-4"><label className="text-sm font-medium mb-1 block">Siparis Notu (opsiyonel)</label><textarea rows={2} className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Teslimat ile ilgili notunuz..." /></div>
               <div className="flex gap-3 mt-6">
                 <button onClick={() => setStep("address")} className="flex-1 py-3 border border-border rounded-lg text-sm font-medium hover:bg-muted">Geri</button>
-                <button onClick={() => setStep("payment")} className="flex-1 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark">Devam Et</button>
+                <button onClick={() => setStep("payment")} disabled={!selectedShippingProvider} className="flex-1 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark disabled:bg-muted disabled:text-muted-foreground">Devam Et</button>
               </div>
             </div>
           )}
@@ -365,12 +701,58 @@ export default function CheckoutClient() {
                 <div className="mt-6 pt-4 border-t border-border space-y-4">
                   <h3 className="text-sm font-bold">Kart Bilgileri</h3>
                   <div><label className="text-sm font-medium mb-1 block">Kart Uzerindeki Isim</label><input type="text" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={cardForm.holderName} onChange={(e) => setCardForm((p) => ({ ...p, holderName: e.target.value.toUpperCase() }))} placeholder="AD SOYAD" /></div>
-                  <div><label className="text-sm font-medium mb-1 block">Kart Numarasi</label><input type="text" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary font-mono" value={cardForm.number} onChange={(e) => setCardForm((p) => ({ ...p, number: formatCardNumber(e.target.value) }))} placeholder="0000 0000 0000 0000" maxLength={19} /></div>
+                  <div><label className="text-sm font-medium mb-1 block">Kart Numarasi</label><input type="text" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary font-mono" value={cardForm.number} onChange={(e) => {
+                    const formatted = formatCardNumber(e.target.value);
+                    setCardForm((p) => ({ ...p, number: formatted }));
+                    const digits = formatted.replace(/\s/g, "");
+                    if (digits.length >= 6) {
+                      loadInstallments(digits, total);
+                    } else {
+                      setInstallments([]);
+                      setSelectedInstallment(1);
+                    }
+                  }} placeholder="0000 0000 0000 0000" maxLength={19} /></div>
                   <div className="grid grid-cols-3 gap-3">
                     <div><label className="text-sm font-medium mb-1 block">Ay</label><select className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={cardForm.expireMonth} onChange={(e) => setCardForm((p) => ({ ...p, expireMonth: e.target.value }))}><option value="">Ay</option>{Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0")).map((m) => (<option key={m} value={m}>{m}</option>))}</select></div>
                     <div><label className="text-sm font-medium mb-1 block">Yil</label><select className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={cardForm.expireYear} onChange={(e) => setCardForm((p) => ({ ...p, expireYear: e.target.value }))}><option value="">Yil</option>{Array.from({ length: 10 }, (_, i) => String(new Date().getFullYear() + i)).map((y) => (<option key={y} value={y}>{y}</option>))}</select></div>
                     <div><label className="text-sm font-medium mb-1 block">CVC</label><input type="text" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary font-mono" value={cardForm.cvc} onChange={(e) => setCardForm((p) => ({ ...p, cvc: e.target.value.replace(/\D/g, "").substring(0, 4) }))} placeholder="000" maxLength={4} /></div>
                   </div>
+                  {/* Taksit Secenekleri */}
+                  {loadingInstallments && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                      <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      Taksit secenekleri sorgulanıyor...
+                    </div>
+                  )}
+                  {installments.length > 0 && !loadingInstallments && (
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Taksit Secenekleri</label>
+                      <div className="border border-border rounded-lg overflow-hidden">
+                        {/* Tek cekim */}
+                        <label className={`flex items-center justify-between p-3 cursor-pointer transition-colors ${selectedInstallment === 1 ? "bg-primary/5" : "hover:bg-muted"}`}>
+                          <div className="flex items-center gap-2">
+                            <input type="radio" name="installment" checked={selectedInstallment === 1} onChange={() => setSelectedInstallment(1)} className="w-4 h-4 text-primary" />
+                            <span className="text-sm">Tek Cekim</span>
+                          </div>
+                          <span className="text-sm font-bold">{formatPrice(total)}</span>
+                        </label>
+                        {installments.map((inst) => (
+                          <label key={inst.installmentCount} className={`flex items-center justify-between p-3 border-t border-border cursor-pointer transition-colors ${selectedInstallment === inst.installmentCount ? "bg-primary/5" : "hover:bg-muted"}`}>
+                            <div className="flex items-center gap-2">
+                              <input type="radio" name="installment" checked={selectedInstallment === inst.installmentCount} onChange={() => setSelectedInstallment(inst.installmentCount)} className="w-4 h-4 text-primary" />
+                              <span className="text-sm">{inst.installmentCount} Taksit</span>
+                              <span className="text-xs text-muted-foreground">(Aylik {formatPrice(inst.installmentPrice)})</span>
+                            </div>
+                            <span className="text-sm font-bold">{formatPrice(inst.totalPrice)}</span>
+                          </label>
+                        ))}
+                      </div>
+                      {installments[0]?.bankName && (
+                        <p className="text-xs text-muted-foreground mt-1">{installments[0].bankName}</p>
+                      )}
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted rounded-lg p-3">
                     <span>🔒</span>
                     <span>Kart bilgileriniz iyzico altyapisi ile guvenle islenir. Bilgileriniz sunucularimizda saklanmaz.</span>
@@ -419,6 +801,13 @@ export default function CheckoutClient() {
             <div className="bg-white rounded-xl border border-border p-6">
               <h2 className="text-lg font-bold mb-4">Siparis Ozeti</h2>
               <div className="p-4 bg-muted rounded-lg mb-4"><p className="text-sm font-medium mb-1">Teslimat Adresi</p><p className="text-sm text-muted-foreground">{addressForm.firstName} {addressForm.lastName} - {addressForm.phone}<br />{addressForm.address}, {addressForm.district}/{addressForm.city}</p></div>
+              <div className="p-4 bg-muted rounded-lg mb-4">
+                <p className="text-sm font-medium mb-1">Kargo</p>
+                <p className="text-sm text-muted-foreground">
+                  {selectedRate?.providerName || "Standart Kargo"} — {selectedRate?.estimatedDays || "3-5 is gunu"}
+                  {shippingCost === 0 ? " (Ucretsiz)" : ` (${formatPrice(shippingCost)})`}
+                </p>
+              </div>
               <div className="p-4 bg-muted rounded-lg mb-4"><p className="text-sm font-medium mb-1">Odeme Yontemi</p><p className="text-sm text-muted-foreground">{paymentMethod === "CREDIT_CARD" && `Kredi Karti (**** ${cardForm.number.replace(/\s/g, "").slice(-4)})`}{paymentMethod === "BANK_TRANSFER" && "Havale / EFT"}{paymentMethod === "CASH_ON_DELIVERY" && "Kapida Odeme"}</p></div>
               <div className="space-y-3 mb-4">
                 {items.map((item) => {

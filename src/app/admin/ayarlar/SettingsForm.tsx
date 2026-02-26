@@ -42,6 +42,21 @@ const SETTING_GROUPS: SettingGroup[] = [
     ],
   },
   {
+    key: "bank_accounts",
+    title: "Banka Hesap Bilgileri",
+    fields: [
+      { key: "bank_account_1_name", label: "1. Banka Adi", type: "text", placeholder: "Ziraat Bankasi" },
+      { key: "bank_account_1_holder", label: "1. Hesap Sahibi", type: "text", placeholder: "Pixfora Ticaret A.S." },
+      { key: "bank_account_1_iban", label: "1. IBAN", type: "text", placeholder: "TR00 0000 0000 0000 0000 0000 00" },
+      { key: "bank_account_2_name", label: "2. Banka Adi", type: "text", placeholder: "Is Bankasi" },
+      { key: "bank_account_2_holder", label: "2. Hesap Sahibi", type: "text", placeholder: "Pixfora Ticaret A.S." },
+      { key: "bank_account_2_iban", label: "2. IBAN", type: "text", placeholder: "TR00 0000 0000 0000 0000 0000 00" },
+      { key: "bank_account_3_name", label: "3. Banka Adi", type: "text", placeholder: "Garanti BBVA" },
+      { key: "bank_account_3_holder", label: "3. Hesap Sahibi", type: "text", placeholder: "Pixfora Ticaret A.S." },
+      { key: "bank_account_3_iban", label: "3. IBAN", type: "text", placeholder: "TR00 0000 0000 0000 0000 0000 00" },
+    ],
+  },
+  {
     key: "shipping",
     title: "Kargo Ayarlari",
     fields: [

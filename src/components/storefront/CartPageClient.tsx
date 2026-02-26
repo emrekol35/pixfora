@@ -8,7 +8,13 @@ export default function CartPageClient() {
   const { items, removeItem, updateQuantity, getSubtotal, getItemPrice, clearCart } = useCartStore();
   const [mounted, setMounted] = useState(false);
   const [couponCode, setCouponCode] = useState("");
-  const [couponMessage, setCouponMessage] = useState("");
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    type: string;
+    discount: number;
+    message: string;
+  } | null>(null);
+  const [couponError, setCouponError] = useState("");
 
   useEffect(() => {
     setMounted(true);
@@ -24,11 +30,45 @@ export default function CartPageClient() {
   }
 
   const subtotal = getSubtotal();
-  const shippingCost = subtotal >= 500 ? 0 : 39.9;
-  const total = subtotal + shippingCost;
+  const couponDiscount = appliedCoupon?.discount || 0;
+  const hasFreeShippingCoupon = appliedCoupon?.type === "FREE_SHIPPING";
+  const shippingCost = (subtotal >= 500 || hasFreeShippingCoupon) ? 0 : 39.9;
+  const total = subtotal - couponDiscount + shippingCost;
 
   const formatPrice = (price: number) =>
     new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(price);
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode) return;
+    setCouponLoading(true);
+    setCouponError("");
+    try {
+      const res = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: couponCode, subtotal }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setAppliedCoupon({ type: data.type, discount: data.discount, message: data.message });
+      } else {
+        setCouponError(data.message || "Gecersiz kupon kodu");
+      }
+    } catch {
+      setCouponError("Kupon dogrulanamadi");
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode("");
+    setCouponError("");
+  };
+
+  // Checkout link'i kupon kodu ile
+  const checkoutUrl = appliedCoupon ? `/odeme?coupon=${encodeURIComponent(couponCode)}` : "/odeme";
 
   if (items.length === 0) {
     return (
@@ -153,19 +193,31 @@ export default function CartPageClient() {
                   placeholder="Kupon kodu"
                   className="flex-1 px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                   value={couponCode}
-                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                  onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponError(""); }}
+                  disabled={!!appliedCoupon}
                 />
-                <button
-                  onClick={() => {
-                    if (couponCode) setCouponMessage("Kupon odeme sayfasinda uygulanacak");
-                  }}
-                  className="px-4 py-2 bg-muted text-foreground rounded-lg text-sm font-medium hover:bg-border transition-colors"
-                >
-                  Uygula
-                </button>
+                {appliedCoupon ? (
+                  <button
+                    onClick={handleRemoveCoupon}
+                    className="px-4 py-2 bg-danger/10 text-danger rounded-lg text-sm font-medium hover:bg-danger/20 transition-colors"
+                  >
+                    Kaldir
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleApplyCoupon}
+                    disabled={couponLoading || !couponCode}
+                    className="px-4 py-2 bg-muted text-foreground rounded-lg text-sm font-medium hover:bg-border transition-colors disabled:opacity-50"
+                  >
+                    {couponLoading ? "..." : "Uygula"}
+                  </button>
+                )}
               </div>
-              {couponMessage && (
-                <p className="text-xs text-info mt-1">{couponMessage}</p>
+              {couponError && (
+                <p className="text-xs text-danger mt-1">{couponError}</p>
+              )}
+              {appliedCoupon && (
+                <p className="text-xs text-success mt-1">{appliedCoupon.message}</p>
               )}
             </div>
 
@@ -174,13 +226,19 @@ export default function CartPageClient() {
                 <span className="text-muted-foreground">Ara Toplam</span>
                 <span>{formatPrice(subtotal)}</span>
               </div>
+              {couponDiscount > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Kupon Indirimi</span>
+                  <span className="text-success font-medium">-{formatPrice(couponDiscount)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Kargo</span>
                 <span className={shippingCost === 0 ? "text-success font-medium" : ""}>
                   {shippingCost === 0 ? "Ucretsiz" : formatPrice(shippingCost)}
                 </span>
               </div>
-              {subtotal < 500 && (
+              {subtotal < 500 && !hasFreeShippingCoupon && (
                 <p className="text-xs text-info">
                   {formatPrice(500 - subtotal)} daha ekleyerek ucretsiz kargo firsatindan yararlanin!
                 </p>
@@ -193,7 +251,7 @@ export default function CartPageClient() {
             </div>
 
             <Link
-              href="/odeme"
+              href={checkoutUrl}
               className="block w-full py-3 text-center bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark transition-colors"
             >
               Odemeye Gec

@@ -78,6 +78,8 @@ export async function POST(request: NextRequest) {
       guestEmail,
       guestPhone,
       guestName,
+      shippingProvider: clientShippingProvider,
+      shippingCost: clientShippingCost,
     } = body;
 
     if (!items || items.length === 0) {
@@ -199,7 +201,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Kargo ucreti (500 TL ustu veya FREE_SHIPPING kuponu ile ucretsiz)
-    const shippingCost = (subtotal >= 500 || hasFreeShippingCoupon) ? 0 : 39.9;
+    let shippingCost: number;
+    if (subtotal >= 500 || hasFreeShippingCoupon) {
+      shippingCost = 0;
+    } else if (typeof clientShippingCost === "number" && clientShippingCost >= 0 && clientShippingCost <= 200) {
+      // Client'tan gelen kargo ucretini kabul et (makul aralikta)
+      shippingCost = clientShippingCost;
+    } else {
+      shippingCost = 39.9;
+    }
     const total = subtotal - discount + shippingCost;
 
     // Siparis olustur
@@ -220,6 +230,7 @@ export async function POST(request: NextRequest) {
         note,
         shippingAddressId: shippingAddressId || null,
         billingAddressId: billingAddressId || null,
+        shippingCompany: clientShippingProvider || null,
         couponId,
         items: {
           create: orderItems,
@@ -265,10 +276,11 @@ export async function POST(request: NextRequest) {
       try {
         if (paymentMethod === "BANK_TRANSFER") {
           // Havale bilgileri maili
+          const accounts = await getBankAccounts();
           const emailData = bankTransferInfoEmail({
             orderNumber: order.orderNumber,
             total,
-            bankAccounts: getBankAccounts(),
+            bankAccounts: accounts,
           });
           sendEmail({ to: customerEmail, ...emailData }).catch(console.error);
         } else if (paymentMethod === "CASH_ON_DELIVERY") {

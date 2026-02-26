@@ -89,6 +89,18 @@ declare module "iyzipay" {
       ): void;
     };
 
+    installmentInfo: {
+      create(
+        request: {
+          locale: string;
+          conversationId: string;
+          binNumber: string;
+          price: string;
+        },
+        callback: IyzipayCallback
+      ): void;
+    };
+
     static LOCALE: { TR: string; EN: string };
     static CURRENCY: { TRY: string; EUR: string; USD: string; GBP: string };
     static PAYMENT_CHANNEL: { WEB: string; MOBILE: string; MOBILE_WEB: string };

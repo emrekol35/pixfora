@@ -115,7 +115,10 @@ export function shippingNotificationEmail(order: {
           <p style="margin:4px 0"><strong>Kargo Firmasi:</strong> ${companyName}</p>
           <p style="margin:4px 0"><strong>Takip Numarasi:</strong> ${order.trackingNumber}</p>
         </div>
-        <p><a href="${siteUrl}" style="color:#2563eb">Siparislerinizi takip etmek icin tiklayiniz</a></p>
+        <div style="text-align:center;margin:24px 0">
+          <a href="${siteUrl}/siparis-takip" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">Siparisimi Takip Et</a>
+        </div>
+        <p style="font-size:13px;color:#666">Siparis takip sayfasinda siparis numaranizi ve e-posta adresinizi girerek kargo durumunuzu ogrenebilirsiniz.</p>
       </div>
       <div style="padding:16px;background:#f5f5f5;text-align:center;font-size:12px;color:#888">
         <p>${siteName} | Bu e-posta otomatik olarak gonderilmistir.</p>

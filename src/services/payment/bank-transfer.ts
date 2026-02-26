@@ -1,6 +1,6 @@
 import type { BankAccount } from "./types";
+import { prisma } from "@/lib/db";
 
-// Bu bilgiler admin panelinden ayarlanabilir, simdilik sabit
 const DEFAULT_BANK_ACCOUNTS: BankAccount[] = [
   {
     bankName: "Ziraat Bankasi",
@@ -22,8 +22,33 @@ const DEFAULT_BANK_ACCOUNTS: BankAccount[] = [
   },
 ];
 
-export function getBankAccounts(): BankAccount[] {
-  return DEFAULT_BANK_ACCOUNTS;
+export async function getBankAccounts(): Promise<BankAccount[]> {
+  try {
+    const settings = await prisma.setting.findMany({
+      where: { key: { startsWith: "bank_account_" } },
+    });
+
+    if (settings.length === 0) return DEFAULT_BANK_ACCOUNTS;
+
+    const map: Record<string, string> = {};
+    for (const s of settings) {
+      map[s.key] = s.value;
+    }
+
+    const accounts: BankAccount[] = [];
+    for (let i = 1; i <= 3; i++) {
+      const name = map[`bank_account_${i}_name`];
+      const holder = map[`bank_account_${i}_holder`];
+      const iban = map[`bank_account_${i}_iban`];
+      if (name && iban) {
+        accounts.push({ bankName: name, accountHolder: holder || "", iban, branch: "" });
+      }
+    }
+
+    return accounts.length > 0 ? accounts : DEFAULT_BANK_ACCOUNTS;
+  } catch {
+    return DEFAULT_BANK_ACCOUNTS;
+  }
 }
 
 export function formatTransferDescription(orderNumber: string): string {

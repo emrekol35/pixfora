@@ -1,5 +1,5 @@
 import Iyzipay from "iyzipay";
-import type { PaymentRequest, PaymentResult, RefundRequest, RefundResult } from "./types";
+import type { PaymentRequest, PaymentResult, RefundRequest, RefundResult, InstallmentInfo } from "./types";
 
 let _iyzipay: Iyzipay | null = null;
 
@@ -129,6 +129,53 @@ export async function complete3DPayment(paymentId: string): Promise<PaymentResul
             errorMessage: (result.errorMessage as string) || "Odeme tamamlama hatasi",
             errorCode: result.errorCode as string,
           });
+        }
+      }
+    );
+  });
+}
+
+export async function getInstallmentInfo(binNumber: string, price: number): Promise<InstallmentInfo[]> {
+  return new Promise((resolve) => {
+    getClient().installmentInfo.create(
+      {
+        locale: Iyzipay.LOCALE.TR,
+        conversationId: `inst_${Date.now()}`,
+        binNumber,
+        price: price.toFixed(2),
+      },
+      (err: Error | null, result: Record<string, unknown>) => {
+        if (err) {
+          resolve([]);
+          return;
+        }
+
+        if (result.status === "success" && result.installmentDetails) {
+          const details = result.installmentDetails as Array<{
+            bankName: string;
+            installmentPrices: Array<{
+              installmentNumber: number;
+              totalPrice: number;
+              installmentPrice: number;
+            }>;
+          }>;
+
+          const installments: InstallmentInfo[] = [];
+          for (const detail of details) {
+            for (const inst of detail.installmentPrices || []) {
+              if (inst.installmentNumber > 1) {
+                installments.push({
+                  bankName: detail.bankName || "",
+                  installmentCount: inst.installmentNumber,
+                  totalPrice: typeof inst.totalPrice === "string" ? parseFloat(inst.totalPrice) : inst.totalPrice,
+                  installmentPrice: typeof inst.installmentPrice === "string" ? parseFloat(inst.installmentPrice) : inst.installmentPrice,
+                });
+              }
+            }
+          }
+          resolve(installments);
+        } else {
+          resolve([]);
         }
       }
     );

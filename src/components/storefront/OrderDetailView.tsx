@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -25,12 +26,24 @@ interface ShippingAddress {
   [key: string]: string | undefined;
 }
 
+interface TrackingEvent {
+  date: string;
+  status: string;
+  location: string;
+  description: string;
+}
+
 interface Order {
   id: string;
   orderNumber: string;
   status: string;
+  paymentMethod?: string;
+  subtotal?: number;
+  shippingCost?: number;
+  discount?: number;
   total: number;
   trackingNumber: string | null;
+  shippingCompany?: string | null;
   shippingAddress: ShippingAddress | null;
   createdAt: string;
   updatedAt: string;
@@ -55,6 +68,20 @@ const STATUS_COLORS: Record<string, string> = {
   DELIVERED: "bg-success",
   CANCELLED: "bg-danger",
   REFUNDED: "bg-muted",
+};
+
+const PAYMENT_LABELS: Record<string, string> = {
+  CREDIT_CARD: "Kredi Karti",
+  BANK_TRANSFER: "Havale / EFT",
+  CASH_ON_DELIVERY: "Kapida Odeme",
+};
+
+const SHIPPING_NAMES: Record<string, string> = {
+  yurtici: "Yurtici Kargo",
+  aras: "Aras Kargo",
+  mng: "MNG Kargo",
+  ptt: "PTT Kargo",
+  surat: "Surat Kargo",
 };
 
 const TIMELINE_STEPS = [
@@ -93,11 +120,27 @@ function formatDate(dateStr: string): string {
 export default function OrderDetailView({ order }: { order: Order }) {
   const isCancelled = order.status === "CANCELLED" || order.status === "REFUNDED";
   const currentStepIndex = STEP_ORDER[order.status] ?? -1;
+  const [trackingEvents, setTrackingEvents] = useState<TrackingEvent[]>([]);
+  const [trackingLoading, setTrackingLoading] = useState(false);
 
-  const subtotal = order.items.reduce(
+  const subtotal = order.subtotal ?? order.items.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
   );
+
+  // Kargo takip bilgisi
+  useEffect(() => {
+    if (order.trackingNumber && order.shippingCompany) {
+      setTrackingLoading(true);
+      fetch(`/api/shipping/track/${order.trackingNumber}?provider=${order.shippingCompany}`)
+        .then((res) => res.ok ? res.json() : null)
+        .then((data) => {
+          if (data?.events) setTrackingEvents(data.events);
+        })
+        .catch(() => {})
+        .finally(() => setTrackingLoading(false));
+    }
+  }, [order.trackingNumber, order.shippingCompany]);
 
   return (
     <div>
@@ -206,6 +249,50 @@ export default function OrderDetailView({ order }: { order: Order }) {
         )}
       </div>
 
+      {/* Kargo Takip Timeline */}
+      {order.trackingNumber && (
+        <div className="bg-card border border-border rounded-xl p-6 mb-6">
+          <h2 className="text-sm font-semibold text-foreground mb-4">Kargo Takibi</h2>
+          <div className="flex items-center gap-3 p-3 bg-muted rounded-lg mb-4">
+            <span className="text-lg">📦</span>
+            <div>
+              <p className="text-sm font-medium">
+                {SHIPPING_NAMES[order.shippingCompany || ""] || order.shippingCompany || "Kargo"}
+              </p>
+              <p className="text-xs text-muted-foreground font-mono">{order.trackingNumber}</p>
+            </div>
+          </div>
+
+          {trackingLoading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              Kargo takip bilgileri yukleniyor...
+            </div>
+          ) : trackingEvents.length > 0 ? (
+            <div className="relative pl-6">
+              {trackingEvents.map((event, idx) => (
+                <div key={idx} className="relative pb-6 last:pb-0">
+                  {idx < trackingEvents.length - 1 && (
+                    <div className="absolute left-[-16px] top-3 w-0.5 h-full bg-border" />
+                  )}
+                  <div className={`absolute left-[-20px] top-1.5 w-3 h-3 rounded-full border-2 ${
+                    idx === 0 ? "bg-primary border-primary" : "bg-white border-border"
+                  }`} />
+                  <div>
+                    <p className="text-sm font-medium">{event.description || event.status}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {event.location && `${event.location} • `}{event.date}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Kargo takip bilgisi henuz mevcut degil.</p>
+          )}
+        </div>
+      )}
+
       {/* Items Table */}
       <div className="bg-card border border-border rounded-xl overflow-hidden mb-6">
         <div className="p-4 border-b border-border">
@@ -248,7 +335,7 @@ export default function OrderDetailView({ order }: { order: Order }) {
         </div>
       </div>
 
-      {/* Shipping Address & Tracking */}
+      {/* Shipping Address & Info */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {/* Shipping Address */}
         {order.shippingAddress && (
@@ -281,22 +368,20 @@ export default function OrderDetailView({ order }: { order: Order }) {
           </div>
         )}
 
-        {/* Tracking Number */}
-        {order.trackingNumber && (
-          <div className="bg-card border border-border rounded-xl p-5">
-            <h2 className="text-sm font-semibold text-foreground mb-3">
-              Kargo Takip
-            </h2>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
-                Takip Numarasi:
-              </span>
-              <span className="text-sm font-mono font-medium text-foreground bg-muted px-3 py-1 rounded">
-                {order.trackingNumber}
-              </span>
-            </div>
+        {/* Payment Info */}
+        <div className="bg-card border border-border rounded-xl p-5">
+          <h2 className="text-sm font-semibold text-foreground mb-3">
+            Odeme Bilgileri
+          </h2>
+          <div className="space-y-1 text-sm text-muted-foreground">
+            {order.paymentMethod && (
+              <p>
+                <span className="text-foreground font-medium">Yontem:</span>{" "}
+                {PAYMENT_LABELS[order.paymentMethod] || order.paymentMethod}
+              </p>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {/* Order Summary */}
@@ -309,18 +394,24 @@ export default function OrderDetailView({ order }: { order: Order }) {
             <span className="text-muted-foreground">Ara Toplam</span>
             <span className="text-foreground">{formatCurrency(subtotal)}</span>
           </div>
-          {order.total !== subtotal && (
+          {(order.shippingCost !== undefined) && (
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Kargo</span>
-              <span className="text-foreground">
-                {formatCurrency(order.total - subtotal)}
+              <span className={order.shippingCost === 0 ? "text-success font-medium" : "text-foreground"}>
+                {order.shippingCost === 0 ? "Ucretsiz" : formatCurrency(order.shippingCost)}
               </span>
+            </div>
+          )}
+          {(order.discount !== undefined && order.discount > 0) && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Indirim</span>
+              <span className="text-success font-medium">-{formatCurrency(order.discount)}</span>
             </div>
           )}
           <div className="border-t border-border pt-2 mt-2">
             <div className="flex justify-between text-base font-bold">
               <span className="text-foreground">Toplam</span>
-              <span className="text-foreground">
+              <span className="text-primary">
                 {formatCurrency(order.total)}
               </span>
             </div>
