@@ -18,6 +18,8 @@ interface CategoryProductsProps {
     images: { url: string; alt: string | null }[];
     category: { name: string } | null;
     brand: { name: string } | null;
+    avgRating?: number;
+    reviewCount?: number;
   }[];
   brands: { name: string; slug: string }[];
   total: number;

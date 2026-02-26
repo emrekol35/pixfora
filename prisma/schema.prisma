@@ -32,14 +32,17 @@ model User {
   groupId String?    @map("group_id")
   group   UserGroup? @relation(fields: [groupId], references: [id])
 
-  addresses     Address[]
-  orders        Order[]
-  reviews       Review[]
-  cartItems     CartItem[]
-  notifications Notification[]
-  wishlists     Wishlist[]
-  accounts      Account[]
-  sessions      Session[]
+  addresses          Address[]
+  orders             Order[]
+  reviews            Review[]
+  cartItems          CartItem[]
+  notifications      Notification[]
+  wishlists          Wishlist[]
+  accounts           Account[]
+  sessions           Session[]
+  stockNotifications StockNotification[]
+  questions          ProductQuestion[]  @relation("QuestionAsker")
+  answers            ProductQuestion[]  @relation("QuestionAnswerer")
 
   @@map("users")
 }
@@ -216,6 +219,8 @@ model Product {
   complementaryTo     ComplementaryProduct[] @relation("CompProduct")
   giftProducts        GiftProduct[]
   wishlists           Wishlist[]
+  stockNotifications  StockNotification[]
+  questions           ProductQuestion[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -763,4 +768,53 @@ model Wishlist {
 
   @@unique([userId, productId])
   @@map("wishlists")
+}
+
+// ============================================================
+// STOK BILDIRIMI
+// ============================================================
+
+model StockNotification {
+  id         String  @id @default(cuid())
+  userId     String? @map("user_id")
+  productId  String  @map("product_id")
+  variantId  String? @map("variant_id")
+  email      String
+  isNotified Boolean @default(false) @map("is_notified")
+
+  user    User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  notifiedAt DateTime? @map("notified_at")
+
+  @@unique([email, productId, variantId])
+  @@index([productId])
+  @@index([isNotified])
+  @@map("stock_notifications")
+}
+
+// ============================================================
+// URUN SORU-CEVAP
+// ============================================================
+
+model ProductQuestion {
+  id          String    @id @default(cuid())
+  productId   String    @map("product_id")
+  userId      String    @map("user_id")
+  question    String    @db.Text
+  answer      String?   @db.Text
+  answeredById String?  @map("answered_by_id")
+  isPublished Boolean   @default(false) @map("is_published")
+
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user        User      @relation("QuestionAsker", fields: [userId], references: [id], onDelete: Cascade)
+  answeredBy  User?     @relation("QuestionAnswerer", fields: [answeredById], references: [id])
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  answeredAt  DateTime? @map("answered_at")
+
+  @@index([productId])
+  @@index([isPublished])
+  @@map("product_questions")
 }

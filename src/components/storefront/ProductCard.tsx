@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useCartStore } from "@/store/cart";
 import { useWishlistStore } from "@/store/wishlist";
+import { useCompareStore } from "@/store/compare";
 
 interface ProductCardProps {
   product: {
@@ -19,6 +20,8 @@ interface ProductCardProps {
     category?: { name: string } | null;
     brand?: { name: string } | null;
     isFeatured?: boolean;
+    avgRating?: number;
+    reviewCount?: number;
   };
 }
 
@@ -26,6 +29,9 @@ export default function ProductCard({ product }: ProductCardProps) {
   const addItem = useCartStore((s) => s.addItem);
   const toggleWishlist = useWishlistStore((s) => s.toggleWishlist);
   const isInWishlist = useWishlistStore((s) => s.isInWishlist(product.id));
+  const addToCompare = useCompareStore((s) => s.addItem);
+  const removeFromCompare = useCompareStore((s) => s.removeItem);
+  const isInCompare = useCompareStore((s) => s.isInCompare(product.id));
   const image = product.images[0];
   const hasDiscount = product.comparePrice && product.comparePrice > product.price;
   const discountPercent = hasDiscount
@@ -102,17 +108,50 @@ export default function ProductCard({ product }: ProductCardProps) {
           </svg>
         </button>
 
-        {/* Quick Add */}
-        {product.stock > 0 && (
+        {/* Quick Add & Compare */}
+        <div className="absolute bottom-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* Compare */}
           <button
-            onClick={handleAddToCart}
-            className="absolute bottom-2 right-2 w-9 h-9 bg-primary text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-primary-dark"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (isInCompare) {
+                removeFromCompare(product.id);
+              } else {
+                addToCompare({
+                  id: product.id,
+                  name: product.name,
+                  slug: product.slug,
+                  price: product.price,
+                  comparePrice: product.comparePrice || null,
+                  stock: product.stock,
+                  image: image?.url || null,
+                  category: product.category?.name || null,
+                  brand: product.brand?.name || null,
+                });
+              }
+            }}
+            className={`w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition-colors ${
+              isInCompare ? "bg-primary text-white" : "bg-white/90 text-muted-foreground hover:bg-white hover:text-primary"
+            }`}
+            title={isInCompare ? "Karsilastirmadan Cikar" : "Karsilastir"}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </button>
-        )}
+          {/* Quick Add */}
+          {product.stock > 0 && (
+            <button
+              onClick={handleAddToCart}
+              className="w-9 h-9 bg-primary text-white rounded-full flex items-center justify-center shadow-lg hover:bg-primary-dark"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Info */}
@@ -122,9 +161,17 @@ export default function ProductCard({ product }: ProductCardProps) {
             {product.category.name}
           </p>
         )}
-        <h3 className="text-sm font-medium text-foreground line-clamp-2 mb-2 min-h-[2.5rem] group-hover:text-primary transition-colors">
+        <h3 className="text-sm font-medium text-foreground line-clamp-2 mb-1.5 min-h-[2.5rem] group-hover:text-primary transition-colors">
           {product.name}
         </h3>
+        {product.avgRating && product.avgRating > 0 && product.reviewCount && product.reviewCount > 0 ? (
+          <div className="flex items-center gap-1 mb-1.5">
+            <svg className="w-3.5 h-3.5 text-warning" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+            </svg>
+            <span className="text-xs text-muted-foreground">{product.avgRating.toFixed(1)} ({product.reviewCount})</span>
+          </div>
+        ) : null}
         <div className="flex items-center gap-2">
           <span className="text-base font-bold text-primary">
             {new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(product.price)}

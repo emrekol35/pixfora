@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { useWishlistStore } from "@/store/wishlist";
+import { useCartStore } from "@/store/cart";
 
 interface FavoriteProduct {
   id: string;
@@ -24,6 +25,7 @@ interface FavoritesListProps {
 export default function FavoritesList({ products }: FavoritesListProps) {
   const router = useRouter();
   const toggleWishlist = useWishlistStore((s) => s.toggleWishlist);
+  const addToCart = useCartStore((s) => s.addItem);
 
   const handleRemove = async (productId: string) => {
     await toggleWishlist(productId);
@@ -141,7 +143,17 @@ export default function FavoritesList({ products }: FavoritesListProps) {
             <div className="flex items-center gap-2 mt-4">
               <button
                 onClick={() => {
-                  // Sepete ekleme islemi
+                  addToCart({
+                    id: product.id,
+                    name: product.name,
+                    slug: product.slug,
+                    price: product.price,
+                    comparePrice: product.comparePrice,
+                    image: product.image,
+                    stock: product.stock,
+                    minQty: 1,
+                    maxQty: null,
+                  });
                 }}
                 disabled={!product.isActive || product.stock === 0}
                 className="flex-1 bg-primary text-white text-sm py-2 px-3 rounded-lg hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"

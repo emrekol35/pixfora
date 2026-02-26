@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { addRatingToProducts } from "@/lib/product-helpers";
 import HomeProducts from "@/components/storefront/HomeProducts";
+import RecentlyViewed from "@/components/storefront/RecentlyViewed";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +14,7 @@ async function getHomeData() {
         images: { orderBy: { order: "asc" }, take: 1 },
         category: { select: { name: true } },
         brand: { select: { name: true } },
+        reviews: { where: { isApproved: true }, select: { rating: true } },
       },
       orderBy: { createdAt: "desc" },
       take: 8,
@@ -22,6 +25,7 @@ async function getHomeData() {
         images: { orderBy: { order: "asc" }, take: 1 },
         category: { select: { name: true } },
         brand: { select: { name: true } },
+        reviews: { where: { isApproved: true }, select: { rating: true } },
       },
       orderBy: { createdAt: "desc" },
       take: 8,
@@ -41,7 +45,12 @@ async function getHomeData() {
     }),
   ]);
 
-  return { featuredProducts, newProducts, categories, slides };
+  return {
+    featuredProducts: addRatingToProducts(featuredProducts),
+    newProducts: addRatingToProducts(newProducts),
+    categories,
+    slides,
+  };
 }
 
 export default async function HomePage() {
@@ -172,6 +181,9 @@ export default async function HomePage() {
           <HomeProducts products={newProducts} />
         </section>
       )}
+
+      {/* Recently Viewed */}
+      <RecentlyViewed />
 
       {/* Trust Badges */}
       <section className="bg-muted py-12 mt-8">

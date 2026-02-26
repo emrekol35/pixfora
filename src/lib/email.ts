@@ -322,6 +322,45 @@ export function lowStockAlertEmail(products: {
 }
 
 // Terk Edilen Sepet Kurtarma Maili
+export function stockBackInStockEmail(data: {
+  name: string;
+  productName: string;
+  productSlug: string;
+  productImage: string | null;
+  productPrice: number;
+}) {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pixfora.com";
+  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Pixfora";
+  const formatPrice = (p: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(p);
+
+  return {
+    subject: `${siteName} - ${data.productName} tekrar stokta!`,
+    html: `
+    <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
+      <div style="background:#2563eb;padding:24px;text-align:center">
+        <h1 style="color:#fff;margin:0;font-size:24px">${siteName}</h1>
+      </div>
+      <div style="padding:24px;background:#fff">
+        <h2 style="margin-top:0">Merhaba${data.name ? ` ${data.name}` : ""},</h2>
+        <p>Takip ettiginiz urun tekrar stokta! Hemen satin alabilirsiniz:</p>
+        <div style="margin:16px 0;padding:16px;border:1px solid #eee;border-radius:12px;display:flex;align-items:center;gap:16px">
+          ${data.productImage ? `<img src="${data.productImage}" alt="" style="width:80px;height:80px;object-fit:cover;border-radius:8px" />` : `<div style="width:80px;height:80px;background:#f5f5f5;border-radius:8px"></div>`}
+          <div>
+            <p style="margin:0;font-weight:600;font-size:16px">${data.productName}</p>
+            <p style="margin:8px 0 0;color:#2563eb;font-weight:bold;font-size:18px">${formatPrice(data.productPrice)}</p>
+          </div>
+        </div>
+        <div style="text-align:center;margin:24px 0">
+          <a href="${siteUrl}/urun/${data.productSlug}" style="display:inline-block;background:#2563eb;color:#fff;padding:14px 40px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px">Urunu Incele</a>
+        </div>
+      </div>
+      <div style="padding:16px;background:#f5f5f5;text-align:center;font-size:12px;color:#888">
+        <p>${siteName} | Bu e-posta otomatik olarak gonderilmistir.</p>
+      </div>
+    </div>`,
+  };
+}
+
 export function abandonedCartEmail(user: {
   name: string;
   items: { name: string; price: number; image: string | null }[];

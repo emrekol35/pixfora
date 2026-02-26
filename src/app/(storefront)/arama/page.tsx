@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { addRatingToProducts } from "@/lib/product-helpers";
 import type { Metadata } from "next";
 import HomeProducts from "@/components/storefront/HomeProducts";
 
@@ -36,6 +37,7 @@ export default async function SearchPage({ searchParams }: Props) {
     images: { url: string; alt: string | null }[];
     category: { name: string } | null;
     brand: { name: string } | null;
+    reviews: { rating: number }[];
   }[] = [];
   let total = 0;
 
@@ -59,6 +61,7 @@ export default async function SearchPage({ searchParams }: Props) {
           images: { orderBy: { order: "asc" }, take: 1 },
           category: { select: { name: true } },
           brand: { select: { name: true } },
+          reviews: { where: { isApproved: true }, select: { rating: true } },
         },
         orderBy: [{ isFeatured: "desc" }, { name: "asc" }],
         take: limit,
@@ -109,7 +112,7 @@ export default async function SearchPage({ searchParams }: Props) {
 
       {query && products.length > 0 && (
         <>
-          <HomeProducts products={products} />
+          <HomeProducts products={addRatingToProducts(products)} />
 
           {/* Pagination */}
           {totalPages > 1 && (

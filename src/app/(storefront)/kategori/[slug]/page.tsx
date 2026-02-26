@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { addRatingToProducts } from "@/lib/product-helpers";
 import type { Metadata } from "next";
 import CategoryProducts from "@/components/storefront/CategoryProducts";
 
@@ -77,6 +78,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         images: { orderBy: { order: "asc" }, take: 1 },
         category: { select: { name: true } },
         brand: { select: { name: true } },
+        reviews: { where: { isApproved: true }, select: { rating: true } },
       },
       orderBy,
       take: limit,
@@ -144,7 +146,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
       {/* Content */}
       <CategoryProducts
-        products={products}
+        products={addRatingToProducts(products)}
         brands={brands}
         total={total}
         page={page}

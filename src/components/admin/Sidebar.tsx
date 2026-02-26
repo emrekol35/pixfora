@@ -106,6 +106,11 @@ const menuItems = [
     icon: "📧",
   },
   {
+    title: "Sorular",
+    href: "/admin/sorular",
+    icon: "❓",
+  },
+  {
     title: "Otomasyon",
     href: "/admin/otomasyon",
     icon: "🤖",

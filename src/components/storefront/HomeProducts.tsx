@@ -16,6 +16,8 @@ interface HomeProductsProps {
     images: { url: string; alt: string | null }[];
     category: { name: string } | null;
     brand: { name: string } | null;
+    avgRating?: number;
+    reviewCount?: number;
   }[];
 }
 

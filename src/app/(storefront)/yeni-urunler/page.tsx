@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { addRatingToProducts } from "@/lib/product-helpers";
 import type { Metadata } from "next";
 import HomeProducts from "@/components/storefront/HomeProducts";
 
@@ -52,6 +53,7 @@ export default async function NewProductsPage({ searchParams }: Props) {
         images: { orderBy: { order: "asc" }, take: 1 },
         category: { select: { name: true } },
         brand: { select: { name: true } },
+        reviews: { where: { isApproved: true }, select: { rating: true } },
       },
       orderBy,
       take: limit,
@@ -105,7 +107,7 @@ export default async function NewProductsPage({ searchParams }: Props) {
       </div>
 
       {products.length > 0 ? (
-        <HomeProducts products={products} />
+        <HomeProducts products={addRatingToProducts(products)} />
       ) : (
         <div className="text-center py-16 text-muted-foreground">
           <svg className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
