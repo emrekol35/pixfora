@@ -283,6 +283,7 @@ export default function Header() {
               { href: "/markalar", label: "Markalar" },
               { href: "/firsatlar", label: "Firsatlar" },
               { href: "/yeni-urunler", label: "Yeni Urunler" },
+              { href: "/cok-satanlar", label: "Cok Satanlar" },
               { href: session?.user ? "/hesabim" : "/giris", label: session?.user ? "Hesabim" : "Giris Yap" },
               { href: "/blog", label: "Blog" },
               { href: "/iletisim", label: "Iletisim" },

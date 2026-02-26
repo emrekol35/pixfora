@@ -192,6 +192,7 @@ model Product {
   isFeatured   Boolean @default(false) @map("is_featured")
   membersOnly  Boolean @default(false) @map("members_only")
   hasVariants  Boolean @default(false) @map("has_variants")
+  salesCount   Int     @default(0) @map("sales_count")
 
   // SEO
   seoTitle       String? @map("seo_title")
@@ -223,6 +224,7 @@ model Product {
   @@index([brandId])
   @@index([isActive])
   @@index([price])
+  @@index([salesCount])
   @@map("products")
 }
 

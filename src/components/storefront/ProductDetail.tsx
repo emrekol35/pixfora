@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useCartStore, CartVariant } from "@/store/cart";
 import ProductCard from "./ProductCard";
 
@@ -176,12 +177,15 @@ export default function ProductDetail({ product, relatedProducts, complementaryP
         {/* Images */}
         <div>
           {/* Main Image */}
-          <div className="aspect-square bg-muted rounded-xl overflow-hidden mb-3">
+          <div className="relative aspect-square bg-muted rounded-xl overflow-hidden mb-3">
             {product.images[selectedImage] ? (
-              <img
+              <Image
                 src={product.images[selectedImage].url}
                 alt={product.images[selectedImage].alt || product.name}
-                className="w-full h-full object-contain"
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-contain"
+                priority
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-muted-foreground">
@@ -199,11 +203,11 @@ export default function ProductDetail({ product, relatedProducts, complementaryP
                 <button
                   key={img.id}
                   onClick={() => setSelectedImage(idx)}
-                  className={`w-16 h-16 rounded-lg overflow-hidden shrink-0 border-2 transition-colors ${
+                  className={`relative w-16 h-16 rounded-lg overflow-hidden shrink-0 border-2 transition-colors ${
                     idx === selectedImage ? "border-primary" : "border-transparent hover:border-border"
                   }`}
                 >
-                  <img src={img.url} alt={img.alt || ""} className="w-full h-full object-cover" />
+                  <Image src={img.url} alt={img.alt || ""} fill sizes="64px" className="object-cover" />
                 </button>
               ))}
             </div>
@@ -321,7 +325,7 @@ export default function ProductDetail({ product, relatedProducts, complementaryP
               {giftProducts.map((gift) => (
                 <div key={gift.id} className="flex items-center gap-2 mt-1">
                   {gift.giftImage && (
-                    <img src={gift.giftImage} alt={gift.giftName} className="w-8 h-8 rounded object-cover" />
+                    <Image src={gift.giftImage} alt={gift.giftName} width={32} height={32} className="rounded object-cover" />
                   )}
                   <span className="text-sm">{gift.giftName}</span>
                   {gift.minOrderQty > 1 && (

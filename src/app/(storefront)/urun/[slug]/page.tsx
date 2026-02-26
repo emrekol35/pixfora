@@ -15,12 +15,36 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const product = await prisma.product.findUnique({
     where: { slug },
-    select: { name: true, seoTitle: true, seoDescription: true, shortDesc: true },
+    select: {
+      name: true,
+      seoTitle: true,
+      seoDescription: true,
+      shortDesc: true,
+      price: true,
+      images: { orderBy: { order: "asc" }, take: 1, select: { url: true } },
+    },
   });
   if (!product) return { title: "Urun Bulunamadi" };
+
+  const title = product.seoTitle || product.name;
+  const description = product.seoDescription || product.shortDesc || product.name;
+  const imageUrl = product.images[0]?.url;
+
   return {
-    title: product.seoTitle || product.name,
-    description: product.seoDescription || product.shortDesc || product.name,
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      ...(imageUrl && { images: [{ url: imageUrl, width: 800, height: 800, alt: product.name }] }),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      ...(imageUrl && { images: [imageUrl] }),
+    },
   };
 }
 
