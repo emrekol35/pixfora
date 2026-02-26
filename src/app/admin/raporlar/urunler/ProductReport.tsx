@@ -1,21 +1,35 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
+import { useProductReport } from "@/hooks/useReportData";
+import StatCard from "@/components/admin/StatCard";
+import { formatCurrency } from "@/lib/utils";
+
+const BarChartHorizontal = dynamic(
+  () => import("@/components/admin/charts/BarChartHorizontal"),
+  { ssr: false }
+);
+const StatusPieChart = dynamic(
+  () => import("@/components/admin/charts/StatusPieChart"),
+  { ssr: false }
+);
 
 interface ProductData {
   id: string;
   name: string;
   slug: string;
   price: number;
+  stock: number;
   image: string | null;
+  categoryName: string;
   totalQuantity: number;
   totalRevenue: number;
 }
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("tr-TR", {
-    minimumFractionDigits: 2,
-  }).format(amount);
+interface CategoryData {
+  name: string;
+  revenue: number;
+  quantity: number;
 }
 
 function truncate(str: string, maxLen: number): string {
@@ -24,32 +38,45 @@ function truncate(str: string, maxLen: number): string {
 }
 
 export default function ProductReport() {
-  const [loading, setLoading] = useState(true);
-  const [products, setProducts] = useState<ProductData[]>([]);
+  const { data, isLoading } = useProductReport({ limit: 30 });
 
-  useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      try {
-        const res = await fetch("/api/reports/products?limit=30");
-        if (!res.ok) throw new Error("Veri alinamadi");
-        const json = await res.json();
-        setProducts(json.products || []);
-      } catch (error) {
-        console.error("Product report fetch error:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
+  const products: ProductData[] = data?.products || [];
+  const categoryRevenue: CategoryData[] = data?.categoryRevenue || [];
 
-    fetchData();
-  }, []);
+  // Top 10 urun bar chart data
+  const top10BarData = products.slice(0, 10).map((p) => ({
+    name: truncate(p.name, 25),
+    value: p.totalQuantity,
+  }));
 
-  const top10 = products.slice(0, 10);
-  const maxQuantity =
-    top10.length > 0 ? Math.max(...top10.map((p) => p.totalQuantity)) : 0;
+  // Top 10 gelir bar data
+  const top10RevenueData = products.slice(0, 10).map((p) => ({
+    name: truncate(p.name, 25),
+    value: p.totalRevenue,
+  }));
 
-  if (loading) {
+  // Kategori pie data
+  const categoryPieData = categoryRevenue.map((c) => ({
+    name: c.name,
+    value: c.revenue,
+  }));
+
+  // Ozet istatistikler
+  const totalProducts = products.length;
+  const totalQuantitySold = products.reduce(
+    (sum, p) => sum + p.totalQuantity,
+    0
+  );
+  const totalProductRevenue = products.reduce(
+    (sum, p) => sum + p.totalRevenue,
+    0
+  );
+  const avgPrice =
+    products.length > 0
+      ? products.reduce((sum, p) => sum + p.price, 0) / products.length
+      : 0;
+
+  if (isLoading) {
     return (
       <div className="text-center py-12 text-muted-foreground">
         Yukleniyor...
@@ -67,26 +94,112 @@ export default function ProductReport() {
 
   return (
     <div className="space-y-6">
-      {/* Products Table */}
+      {/* Ozet Kartlari */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <StatCard
+          label="Satilan Urun Cesidi"
+          value={totalProducts}
+          icon={<span className="text-lg">📦</span>}
+          color="bg-blue-500/10 text-blue-600"
+        />
+        <StatCard
+          label="Toplam Satilan Adet"
+          value={totalQuantitySold.toLocaleString("tr-TR")}
+          icon={<span className="text-lg">🛒</span>}
+          color="bg-green-500/10 text-green-600"
+        />
+        <StatCard
+          label="Toplam Urun Geliri"
+          value={`${formatCurrency(totalProductRevenue)} TL`}
+          icon={<span className="text-lg">💰</span>}
+          color="bg-purple-500/10 text-purple-600"
+        />
+        <StatCard
+          label="Ort. Urun Fiyati"
+          value={`${formatCurrency(avgPrice)} TL`}
+          icon={<span className="text-lg">💲</span>}
+          color="bg-orange-500/10 text-orange-600"
+        />
+      </div>
+
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Top 10 Urun Adet Bar Chart */}
+        {top10BarData.length > 0 && (
+          <div className="bg-card border border-border rounded-xl p-6">
+            <h2 className="text-lg font-semibold mb-4">
+              En Cok Satan 10 Urun (Adet)
+            </h2>
+            <BarChartHorizontal
+              data={top10BarData}
+              height={350}
+              layout="horizontal"
+            />
+          </div>
+        )}
+
+        {/* Kategori Gelir Pasta Grafigi */}
+        {categoryPieData.length > 0 && (
+          <div className="bg-card border border-border rounded-xl p-6">
+            <h2 className="text-lg font-semibold mb-4">
+              Kategori Bazli Gelir Dagilimi
+            </h2>
+            <StatusPieChart
+              data={categoryPieData}
+              height={350}
+              innerRadius={50}
+              outerRadius={110}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Top 10 Gelir Bar Chart */}
+      {top10RevenueData.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-6">
+          <h2 className="text-lg font-semibold mb-4">
+            En Cok Gelir Getiren 10 Urun (TL)
+          </h2>
+          <BarChartHorizontal
+            data={top10RevenueData}
+            height={350}
+            isCurrency
+            layout="horizontal"
+          />
+        </div>
+      )}
+
+      {/* Urun Tablosu */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <div className="p-6 border-b border-border">
-          <h2 className="text-lg font-semibold">En Cok Satan Urunler</h2>
+          <h2 className="text-lg font-semibold">
+            Tum Urunler ({products.length})
+          </h2>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-[500px]">
           <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted">
+            <thead className="sticky top-0 bg-muted z-10">
+              <tr className="border-b border-border">
                 <th className="text-left px-6 py-3 font-medium text-muted-foreground w-12">
                   #
                 </th>
                 <th className="text-left px-6 py-3 font-medium text-muted-foreground">
                   Urun
                 </th>
-                <th className="text-right px-6 py-3 font-medium text-muted-foreground">
-                  Satilan Adet
+                <th className="text-left px-6 py-3 font-medium text-muted-foreground">
+                  Kategori
                 </th>
                 <th className="text-right px-6 py-3 font-medium text-muted-foreground">
-                  Toplam Gelir (TL)
+                  Fiyat
+                </th>
+                <th className="text-right px-6 py-3 font-medium text-muted-foreground">
+                  Stok
+                </th>
+                <th className="text-right px-6 py-3 font-medium text-muted-foreground">
+                  Satilan
+                </th>
+                <th className="text-right px-6 py-3 font-medium text-muted-foreground">
+                  Gelir (TL)
                 </th>
               </tr>
             </thead>
@@ -94,16 +207,35 @@ export default function ProductReport() {
               {products.map((product, index) => (
                 <tr
                   key={product.id}
-                  className="border-b border-border hover:bg-muted transition-colors"
+                  className="border-b border-border hover:bg-muted/50 transition-colors"
                 >
                   <td className="px-6 py-3 text-muted-foreground">
                     {index + 1}
                   </td>
-                  <td className="px-6 py-3 font-medium">{product.name}</td>
+                  <td className="px-6 py-3 font-medium">
+                    {truncate(product.name, 40)}
+                  </td>
+                  <td className="px-6 py-3 text-muted-foreground">
+                    {product.categoryName}
+                  </td>
+                  <td className="px-6 py-3 text-right">
+                    {formatCurrency(product.price)}
+                  </td>
+                  <td className="px-6 py-3 text-right">
+                    <span
+                      className={
+                        product.stock <= 5
+                          ? "text-red-500 font-medium"
+                          : ""
+                      }
+                    >
+                      {product.stock}
+                    </span>
+                  </td>
                   <td className="px-6 py-3 text-right">
                     {product.totalQuantity.toLocaleString("tr-TR")}
                   </td>
-                  <td className="px-6 py-3 text-right">
+                  <td className="px-6 py-3 text-right font-medium">
                     {formatCurrency(product.totalRevenue)}
                   </td>
                 </tr>
@@ -112,42 +244,6 @@ export default function ProductReport() {
           </table>
         </div>
       </div>
-
-      {/* Bar Chart - Top 10 by Quantity */}
-      {top10.length > 0 && (
-        <div className="bg-card border border-border rounded-xl p-6">
-          <h2 className="text-lg font-semibold mb-4">
-            En Cok Satan 10 Urun (Adet)
-          </h2>
-          <div className="space-y-3">
-            {top10.map((product) => {
-              const widthPercent =
-                maxQuantity > 0
-                  ? (product.totalQuantity / maxQuantity) * 100
-                  : 0;
-              return (
-                <div key={product.id} className="flex items-center gap-3">
-                  <span
-                    className="text-xs text-muted-foreground w-32 shrink-0 text-right truncate"
-                    title={product.name}
-                  >
-                    {truncate(product.name, 20)}
-                  </span>
-                  <div className="flex-1 h-6 bg-muted rounded overflow-hidden">
-                    <div
-                      className="h-full bg-primary rounded transition-all duration-300"
-                      style={{ width: `${widthPercent}%` }}
-                    />
-                  </div>
-                  <span className="text-xs font-medium w-12 shrink-0 text-right">
-                    {product.totalQuantity}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -89,6 +89,7 @@ const menuItems = [
       { title: "Genel Bakis", href: "/admin/raporlar" },
       { title: "Satis Raporu", href: "/admin/raporlar/satis" },
       { title: "Urun Performansi", href: "/admin/raporlar/urunler" },
+      { title: "Musteri Analizi", href: "/admin/raporlar/musteriler" },
     ],
   },
   {
