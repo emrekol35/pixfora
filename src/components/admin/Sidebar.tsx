@@ -38,6 +38,10 @@ const menuItems = [
     title: "Musteriler",
     href: "/admin/musteriler",
     icon: "👥",
+    children: [
+      { title: "Tum Musteriler", href: "/admin/musteriler" },
+      { title: "Musteri Gruplari", href: "/admin/musteriler/gruplar" },
+    ],
   },
   {
     title: "Indirimler",
@@ -59,6 +63,7 @@ const menuItems = [
       { title: "Sliderlar", href: "/admin/icerik/sliderlar" },
       { title: "Menuler", href: "/admin/icerik/menuler" },
       { title: "Pop-uplar", href: "/admin/icerik/popuplar" },
+      { title: "Duyurular", href: "/admin/icerik/duyurular" },
     ],
   },
   {
@@ -75,11 +80,20 @@ const menuItems = [
     title: "Raporlar",
     href: "/admin/raporlar",
     icon: "📈",
+    children: [
+      { title: "Genel Bakis", href: "/admin/raporlar" },
+      { title: "Satis Raporu", href: "/admin/raporlar/satis" },
+      { title: "Urun Performansi", href: "/admin/raporlar/urunler" },
+    ],
   },
   {
     title: "Entegrasyonlar",
     href: "/admin/entegrasyonlar",
     icon: "🔗",
+    children: [
+      { title: "Tum Entegrasyonlar", href: "/admin/entegrasyonlar" },
+      { title: "E-posta Sablonlari", href: "/admin/entegrasyonlar/sablonlar" },
+    ],
   },
   {
     title: "Ayarlar",
