@@ -44,6 +44,11 @@ const menuItems = [
     ],
   },
   {
+    title: "Mesajlar",
+    href: "/admin/mesajlar",
+    icon: "💬",
+  },
+  {
     title: "Indirimler",
     href: "/admin/indirimler",
     icon: "🎫",
@@ -94,6 +99,16 @@ const menuItems = [
       { title: "Tum Entegrasyonlar", href: "/admin/entegrasyonlar" },
       { title: "E-posta Sablonlari", href: "/admin/entegrasyonlar/sablonlar" },
     ],
+  },
+  {
+    title: "E-Bulten",
+    href: "/admin/bueltenler",
+    icon: "📧",
+  },
+  {
+    title: "Aktiviteler",
+    href: "/admin/aktiviteler",
+    icon: "📋",
   },
   {
     title: "Ayarlar",

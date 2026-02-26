@@ -37,6 +37,7 @@ model User {
   reviews       Review[]
   cartItems     CartItem[]
   notifications Notification[]
+  wishlists     Wishlist[]
   accounts      Account[]
   sessions      Session[]
 
@@ -213,6 +214,7 @@ model Product {
   complementaryFrom   ComplementaryProduct[] @relation("MainProduct")
   complementaryTo     ComplementaryProduct[] @relation("CompProduct")
   giftProducts        GiftProduct[]
+  wishlists           Wishlist[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -744,4 +746,18 @@ model Media {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("media")
+}
+
+model Wishlist {
+  id        String @id @default(cuid())
+  userId    String @map("user_id")
+  productId String @map("product_id")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, productId])
+  @@map("wishlists")
 }

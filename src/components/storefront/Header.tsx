@@ -2,14 +2,19 @@
 
 import Link from "next/link";
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import { useCartStore } from "@/store/cart";
+import { useWishlistStore } from "@/store/wishlist";
 import { useSearchStore, SearchResult } from "@/store/search";
+import NotificationBell from "@/components/storefront/NotificationBell";
 
 export default function Header() {
+  const { data: session } = useSession();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const itemCount = useCartStore((s) => s.getItemCount());
   const openCart = useCartStore((s) => s.openCart);
+  const wishlistCount = useWishlistStore((s) => s.getCount());
 
   const { query, setQuery, results, setResults, isLoading, setLoading, isOpen, openSearch, closeSearch } = useSearchStore();
   const searchRef = useRef<HTMLDivElement>(null);
@@ -157,12 +162,29 @@ export default function Header() {
             </Link>
 
             {/* Account */}
-            <Link href="/hesabim" className="hidden sm:flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+            <Link href={session?.user ? "/hesabim" : "/giris"} className="hidden sm:flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
-              <span className="hidden lg:inline">Hesabim</span>
+              <span className="hidden lg:inline">{session?.user ? session.user.name || "Hesabim" : "Giris Yap"}</span>
             </Link>
+
+            {/* Notifications */}
+            <NotificationBell />
+
+            {/* Wishlist */}
+            {session?.user && (
+              <Link href="/hesabim/favorilerim" className="relative hidden sm:flex items-center text-muted-foreground hover:text-foreground">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+                {mounted && wishlistCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-danger text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center">
+                    {wishlistCount}
+                  </span>
+                )}
+              </Link>
+            )}
 
             {/* Cart */}
             <button
@@ -261,7 +283,7 @@ export default function Header() {
               { href: "/markalar", label: "Markalar" },
               { href: "/firsatlar", label: "Firsatlar" },
               { href: "/yeni-urunler", label: "Yeni Urunler" },
-              { href: "/hesabim", label: "Hesabim" },
+              { href: session?.user ? "/hesabim" : "/giris", label: session?.user ? "Hesabim" : "Giris Yap" },
               { href: "/blog", label: "Blog" },
               { href: "/iletisim", label: "Iletisim" },
             ].map((item) => (
