@@ -54,6 +54,10 @@ const PAYMENT_STATUS_MAP: Record<string, { label: string; color: string }> = {
 export default function OrderList({ orders }: Props) {
   const [filter, setFilter] = useState("ALL");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
+  const [batchProvider, setBatchProvider] = useState("");
+  const [batchLoading, setBatchLoading] = useState(false);
+  const [batchResults, setBatchResults] = useState<{ success: number; failed: number } | null>(null);
 
   const filteredOrders = filter === "ALL" ? orders : orders.filter((o) => o.status === filter);
 
@@ -71,6 +75,53 @@ export default function OrderList({ orders }: Props) {
       alert("Durum guncellenemedi");
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const toggleOrder = (id: string) => {
+    setSelectedOrders((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = (checked: boolean) => {
+    if (checked) {
+      const eligible = filteredOrders.filter((o) => ["CONFIRMED", "PROCESSING"].includes(o.status));
+      setSelectedOrders(new Set(eligible.map((o) => o.id)));
+    } else {
+      setSelectedOrders(new Set());
+    }
+  };
+
+  const handleBatchShipping = async () => {
+    if (!batchProvider || selectedOrders.size === 0) return;
+    if (!confirm(`${selectedOrders.size} siparis icin kargo olusturulacak. Devam?`)) return;
+
+    setBatchLoading(true);
+    setBatchResults(null);
+    try {
+      const res = await fetch("/api/shipping/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderIds: Array.from(selectedOrders),
+          provider: batchProvider,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setBatchResults({ success: data.successCount, failed: data.failedCount });
+        setTimeout(() => window.location.reload(), 2000);
+      } else {
+        alert(data.error || "Toplu kargo olusturma hatasi");
+      }
+    } catch {
+      alert("Bir hata olustu");
+    } finally {
+      setBatchLoading(false);
     }
   };
 
@@ -104,12 +155,54 @@ export default function OrderList({ orders }: Props) {
         ))}
       </div>
 
+      {/* Batch Shipping Bar */}
+      {selectedOrders.size > 0 && (
+        <div className="flex flex-wrap items-center gap-3 mb-4 p-3 bg-primary/5 rounded-lg border border-primary/20">
+          <span className="text-sm font-medium">{selectedOrders.size} siparis secili</span>
+          <select
+            value={batchProvider}
+            onChange={(e) => setBatchProvider(e.target.value)}
+            className="px-3 py-1.5 border border-border rounded-lg text-sm"
+          >
+            <option value="">Kargo Firmasi Sec</option>
+            <option value="yurtici">Yurtici Kargo</option>
+            <option value="aras">Aras Kargo</option>
+            <option value="mng">MNG Kargo</option>
+          </select>
+          <button
+            onClick={handleBatchShipping}
+            disabled={!batchProvider || batchLoading}
+            className="px-4 py-1.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
+          >
+            {batchLoading ? "Olusturuluyor..." : "Toplu Kargo Olustur"}
+          </button>
+          <button
+            onClick={() => setSelectedOrders(new Set())}
+            className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
+            Temizle
+          </button>
+          {batchResults && (
+            <span className="text-sm text-success font-medium">
+              {batchResults.success} basarili, {batchResults.failed} basarisiz
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Orders Table */}
       <div className="bg-white rounded-xl border border-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted">
               <tr>
+                <th className="text-left px-4 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    onChange={(e) => toggleAll(e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                </th>
                 <th className="text-left px-4 py-3 font-medium">Siparis No</th>
                 <th className="text-left px-4 py-3 font-medium">Musteri</th>
                 <th className="text-left px-4 py-3 font-medium">Urunler</th>
@@ -129,6 +222,15 @@ export default function OrderList({ orders }: Props) {
 
                 return (
                   <tr key={order.id} className="hover:bg-muted/50">
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedOrders.has(order.id)}
+                        onChange={() => toggleOrder(order.id)}
+                        disabled={!["CONFIRMED", "PROCESSING"].includes(order.status)}
+                        className="w-4 h-4 disabled:opacity-30"
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       <Link href={`/admin/siparisler/${order.id}`} className="font-medium text-primary hover:underline">
                         {order.orderNumber}

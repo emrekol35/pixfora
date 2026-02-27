@@ -3,6 +3,37 @@ import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { getShippingProvider } from "@/services/shipping";
 import { sendEmail, shippingNotificationEmail } from "@/lib/email";
+import { logActivity } from "@/lib/activity-log";
+import { createNotification } from "@/lib/notifications";
+
+// Gonderici bilgilerini Settings DB'den oku, fallback: env/hardcoded
+async function getSenderInfo() {
+  const senderSettings = await prisma.setting.findMany({
+    where: {
+      key: {
+        in: [
+          "shipping_sender_name",
+          "shipping_sender_phone",
+          "shipping_sender_city",
+          "shipping_sender_district",
+          "shipping_sender_address",
+        ],
+      },
+    },
+  });
+  const map: Record<string, string> = {};
+  senderSettings.forEach((s) => {
+    map[s.key] = s.value;
+  });
+
+  return {
+    name: map.shipping_sender_name || process.env.NEXT_PUBLIC_SITE_NAME || "Pixfora",
+    phone: map.shipping_sender_phone || "05000000000",
+    city: map.shipping_sender_city || "Istanbul",
+    district: map.shipping_sender_district || "Kadikoy",
+    address: map.shipping_sender_address || "Depo Adresi",
+  };
+}
 
 // POST - Kargo gonderimi olustur (admin)
 export async function POST(request: NextRequest) {
@@ -49,18 +80,12 @@ export async function POST(request: NextRequest) {
       totalDesi += (item.product.desi || 1) * item.quantity;
     }
 
-    const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Pixfora";
+    const sender = await getSenderInfo();
 
     const result = await provider.createShipment({
       orderId: order.id,
       orderNumber: order.orderNumber,
-      sender: {
-        name: siteName,
-        phone: "05000000000",
-        city: "Istanbul",
-        district: "Kadikoy",
-        address: "Depo Adresi",
-      },
+      sender,
       receiver: {
         name: `${order.shippingAddress.firstName} ${order.shippingAddress.lastName}`,
         phone: order.shippingAddress.phone,
@@ -79,15 +104,41 @@ export async function POST(request: NextRequest) {
     });
 
     if (result.success && result.trackingNumber) {
-      // Siparisi guncelle
-      await prisma.order.update({
-        where: { id: orderId },
-        data: {
-          trackingNumber: result.trackingNumber,
-          shippingCompany: providerCode,
-          status: "SHIPPED",
-        },
-      });
+      const shipmentNumber = `SHP-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+      // Transaction: Order guncelle + Shipment olustur
+      await prisma.$transaction([
+        prisma.order.update({
+          where: { id: orderId },
+          data: {
+            trackingNumber: result.trackingNumber,
+            shippingCompany: providerCode,
+            status: "SHIPPED",
+          },
+        }),
+        prisma.shipment.create({
+          data: {
+            shipmentNumber,
+            orderId,
+            provider: providerCode,
+            trackingNumber: result.trackingNumber,
+            barcode: result.barcode || null,
+            status: "CREATED",
+            type: "forward",
+            senderName: sender.name,
+            senderPhone: sender.phone,
+            senderCity: sender.city,
+            senderDistrict: sender.district,
+            senderAddress: sender.address,
+            receiverName: `${order.shippingAddress.firstName} ${order.shippingAddress.lastName}`,
+            receiverPhone: order.shippingAddress.phone,
+            receiverCity: order.shippingAddress.city,
+            receiverDistrict: order.shippingAddress.district,
+            receiverAddress: order.shippingAddress.address,
+            chargedCost: order.shippingCost,
+          },
+        }),
+      ]);
 
       // Musteri'ye mail gonder
       const email = order.user?.email || order.guestEmail;
@@ -100,10 +151,35 @@ export async function POST(request: NextRequest) {
         sendEmail({ to: email, ...emailData }).catch(console.error);
       }
 
+      // Bildirim
+      if (order.userId) {
+        createNotification({
+          userId: order.userId,
+          title: "Kargonuz Yola Cikti",
+          message: `${order.orderNumber} numarali siparisleriniz kargoya verildi. Takip No: ${result.trackingNumber}`,
+          type: "ORDER",
+        }).catch(console.error);
+      }
+
+      // Activity log
+      logActivity({
+        userId: session.user.id,
+        action: "create",
+        entity: "shipment",
+        entityId: orderId,
+        details: {
+          orderNumber: order.orderNumber,
+          provider: providerCode,
+          trackingNumber: result.trackingNumber,
+          shipmentNumber,
+        },
+      }).catch(console.error);
+
       return NextResponse.json({
         success: true,
         trackingNumber: result.trackingNumber,
         barcode: result.barcode,
+        shipmentNumber,
       });
     }
 

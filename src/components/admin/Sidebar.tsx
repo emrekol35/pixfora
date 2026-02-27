@@ -39,6 +39,11 @@ const menuItems = [
     ],
   },
   {
+    title: "Kargo",
+    href: "/admin/kargo",
+    icon: "🚚",
+  },
+  {
     title: "Musteriler",
     href: "/admin/musteriler",
     icon: "👥",

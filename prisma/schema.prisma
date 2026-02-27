@@ -400,8 +400,9 @@ model Order {
   user     User?       @relation(fields: [userId], references: [id])
   items    OrderItem[]
   payments Payment[]
-  invoice  Invoice?
-  returns  Return[]
+  invoice   Invoice?
+  returns   Return[]
+  shipments Shipment[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -871,4 +872,59 @@ model ReturnItem {
   orderItem OrderItem @relation(fields: [orderItemId], references: [id])
 
   @@map("return_items")
+}
+
+// ============================================================
+// KARGO YONETIMI
+// ============================================================
+
+enum ShipmentStatus {
+  CREATED
+  PICKED_UP
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  RETURNED
+  FAILED
+}
+
+model Shipment {
+  id              String         @id @default(cuid())
+  shipmentNumber  String         @unique @map("shipment_number")
+  orderId         String         @map("order_id")
+  provider        String
+  trackingNumber  String         @map("tracking_number")
+  barcode         String?
+  status          ShipmentStatus @default(CREATED)
+  type            String         @default("forward") // "forward" | "return"
+
+  senderName      String         @map("sender_name")
+  senderPhone     String         @map("sender_phone")
+  senderCity      String         @map("sender_city")
+  senderDistrict  String         @map("sender_district")
+  senderAddress   String         @map("sender_address") @db.Text
+
+  receiverName     String        @map("receiver_name")
+  receiverPhone    String        @map("receiver_phone")
+  receiverCity     String        @map("receiver_city")
+  receiverDistrict String        @map("receiver_district")
+  receiverAddress  String        @map("receiver_address") @db.Text
+
+  carrierCost     Float?         @map("carrier_cost")
+  chargedCost     Float?         @map("charged_cost")
+
+  events          Json?
+  lastPolledAt    DateTime?      @map("last_polled_at")
+
+  returnId        String?        @map("return_id")
+
+  order           Order          @relation(fields: [orderId], references: [id])
+
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  @@index([orderId])
+  @@index([status])
+  @@index([trackingNumber])
+  @@map("shipments")
 }

@@ -86,6 +86,36 @@ export default function AdminReturnDetail({ returnData }: Props) {
   const [adminNote, setAdminNote] = useState(returnData.adminNote || "");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [returnShippingProvider, setReturnShippingProvider] = useState("");
+  const [returnLabelLoading, setReturnLabelLoading] = useState(false);
+  const [returnTrackingNumber, setReturnTrackingNumber] = useState("");
+
+  const handleCreateReturnLabel = async () => {
+    if (!returnShippingProvider) return;
+    setReturnLabelLoading(true);
+    setMessage("");
+    try {
+      const res = await fetch("/api/shipping/return-label", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          returnId: returnData.id,
+          provider: returnShippingProvider,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setReturnTrackingNumber(data.trackingNumber);
+        setMessage("Iade kargo etiketi olusturuldu!");
+      } else {
+        setMessage(data.error || "Etiket olusturulamadi");
+      }
+    } catch {
+      setMessage("Hata olustu");
+    } finally {
+      setReturnLabelLoading(false);
+    }
+  };
 
   const handleAction = async (newStatus: string) => {
     if (newStatus === "REJECTED" && !adminNote.trim()) {
@@ -311,13 +341,42 @@ export default function AdminReturnDetail({ returnData }: Props) {
                 )}
 
                 {returnData.status === "APPROVED" && (
-                  <button
-                    onClick={() => handleAction("RECEIVED")}
-                    disabled={loading}
-                    className="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {loading ? "Isleniyor..." : "Teslim Alindi"}
-                  </button>
+                  <>
+                    <button
+                      onClick={() => handleAction("RECEIVED")}
+                      disabled={loading}
+                      className="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {loading ? "Isleniyor..." : "Teslim Alindi"}
+                    </button>
+
+                    {/* Iade Kargo Etiketi */}
+                    <div className="mt-3 pt-3 border-t border-border">
+                      <p className="text-xs text-muted-foreground mb-2">Iade Kargo Etiketi</p>
+                      <select
+                        value={returnShippingProvider}
+                        onChange={(e) => setReturnShippingProvider(e.target.value)}
+                        className="w-full px-3 py-2 border border-border rounded-lg text-sm mb-2"
+                      >
+                        <option value="">Kargo Firmasi Sec</option>
+                        <option value="yurtici">Yurtici Kargo</option>
+                        <option value="aras">Aras Kargo</option>
+                        <option value="mng">MNG Kargo</option>
+                      </select>
+                      <button
+                        onClick={handleCreateReturnLabel}
+                        disabled={!returnShippingProvider || returnLabelLoading}
+                        className="w-full py-2.5 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 disabled:opacity-50"
+                      >
+                        {returnLabelLoading ? "Olusturuluyor..." : "Iade Etiketi Olustur"}
+                      </button>
+                      {returnTrackingNumber && (
+                        <div className="mt-2 p-2 bg-muted rounded text-xs">
+                          <p>Takip No: <span className="font-mono font-bold">{returnTrackingNumber}</span></p>
+                        </div>
+                      )}
+                    </div>
+                  </>
                 )}
 
                 {returnData.status === "RECEIVED" && (

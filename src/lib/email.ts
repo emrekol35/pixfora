@@ -555,3 +555,38 @@ export function returnRefundedEmail(data: {
     </div>`,
   };
 }
+
+// Teslimat onay e-postasi
+export function deliveryConfirmationEmail(data: {
+  orderNumber: string;
+  deliveryDate: string;
+}) {
+  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Pixfora";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pixfora.com";
+
+  return {
+    subject: `${siteName} - Siparisleriniz Teslim Edildi (#${data.orderNumber})`,
+    html: `
+    <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
+      <div style="background:#2563eb;padding:24px;text-align:center">
+        <h1 style="color:#fff;margin:0;font-size:24px">${siteName}</h1>
+      </div>
+      <div style="padding:24px;background:#fff">
+        <h2 style="color:#16a34a;margin-top:0;text-align:center">Siparisleriniz Teslim Edildi!</h2>
+        <p>Siparis numaraniz: <strong>#${data.orderNumber}</strong></p>
+        <p>Teslim tarihi: <strong>${data.deliveryDate}</strong></p>
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin:16px 0;text-align:center">
+          <p style="margin:0;font-size:16px;color:#16a34a;font-weight:bold">Teslimat Basariyla Tamamlandi</p>
+        </div>
+        <p>Siparislerinizden memnun kaldiysiniz, urunlerimizi degerlendirerek diger musterilerimize yardimci olabilirsiniz.</p>
+        <div style="text-align:center;margin:24px 0">
+          <a href="${siteUrl}/hesabim/siparislerim" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">Siparislerimi Gor</a>
+        </div>
+        <p style="color:#888;font-size:13px">Herhangi bir sorun yasarsaniz, 14 gun icinde iade talebi olusturabilirsiniz.</p>
+      </div>
+      <div style="padding:16px;background:#f5f5f5;text-align:center;font-size:12px;color:#888">
+        <p>${siteName} | Bu e-posta otomatik olarak gonderilmistir.</p>
+      </div>
+    </div>`,
+  };
+}
