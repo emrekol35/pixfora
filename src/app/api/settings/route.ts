@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const token = await getAdminSession(request);
-    console.log("[Settings POST] token role:", token?.role);
+    console.log("[Settings POST] full token:", JSON.stringify(token));
     if (token?.role !== "ADMIN") {
       return NextResponse.json({ error: "Yetkisiz" }, { status: 403 });
     }
