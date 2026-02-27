@@ -147,6 +147,7 @@ export default function SettingsForm({ initialSettings }: Props) {
       const res = await fetch("/api/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ settings: allSettings }),
       });
 
