@@ -84,9 +84,8 @@ const SETTING_GROUPS: SettingGroup[] = [
       { key: "shipping_aras_password", label: "Aras Sifre", type: "password", placeholder: "" },
       { key: "shipping_aras_customer_code", label: "Aras Musteri Kodu", type: "text", placeholder: "" },
       { key: "shipping_mng_enabled", label: "MNG Kargo Aktif", type: "checkbox" },
-      { key: "shipping_mng_api_key", label: "MNG API Key", type: "text", placeholder: "" },
-      { key: "shipping_mng_api_secret", label: "MNG API Secret", type: "password", placeholder: "" },
       { key: "shipping_mng_customer_number", label: "MNG Musteri No", type: "text", placeholder: "" },
+      { key: "shipping_mng_password", label: "MNG Sifre", type: "password", placeholder: "" },
     ],
   },
   {
