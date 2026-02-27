@@ -14,8 +14,6 @@ export async function requireAdmin(request: NextRequest): Promise<boolean> {
       secret: process.env.AUTH_SECRET,
     });
 
-    console.log("[admin-auth] token:", token ? `id=${token.id}, email=${token.email}, role=${token.role}, sub=${token.sub}` : "NULL");
-
     if (!token) return false;
 
     // JWT'de role varsa dogrudan kontrol
@@ -27,23 +25,19 @@ export async function requireAdmin(request: NextRequest): Promise<boolean> {
         where: { email: token.email as string },
         select: { role: true },
       });
-      console.log("[admin-auth] DB lookup by email:", token.email, "=> role:", user?.role);
       return user?.role === "ADMIN";
     }
 
-    if (token.id) {
+    if (token.id || token.sub) {
       const user = await prisma.user.findUnique({
-        where: { id: token.id as string },
+        where: { id: (token.id || token.sub) as string },
         select: { role: true },
       });
-      console.log("[admin-auth] DB lookup by id:", token.id, "=> role:", user?.role);
       return user?.role === "ADMIN";
     }
 
-    console.log("[admin-auth] no email or id in token");
     return false;
-  } catch (error) {
-    console.error("[admin-auth] error:", error);
+  } catch {
     return false;
   }
 }

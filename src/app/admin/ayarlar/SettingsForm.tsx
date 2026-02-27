@@ -142,8 +142,6 @@ export default function SettingsForm({ initialSettings }: Props) {
         }))
       );
 
-      console.log("[Settings] Kaydedilen ayar sayisi:", allSettings.length);
-
       const res = await fetch("/api/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -151,19 +149,15 @@ export default function SettingsForm({ initialSettings }: Props) {
         body: JSON.stringify({ settings: allSettings }),
       });
 
-      console.log("[Settings] API response status:", res.status);
-
       if (res.ok) {
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
       } else {
         const data = await res.json();
-        console.error("[Settings] API error:", data);
         alert(data.error || "Kaydetme basarisiz.");
       }
-    } catch (err) {
-      console.error("[Settings] Save error:", err);
-      alert("Bir hata olustu: " + (err instanceof Error ? err.message : String(err)));
+    } catch {
+      alert("Bir hata olustu.");
     } finally {
       setLoading(false);
     }
