@@ -1,12 +1,21 @@
 import Link from "next/link";
+import Image from "next/image";
 import { prisma } from "@/lib/db";
+import { cacheGet, cacheSet } from "@/lib/redis";
 import { addRatingToProducts } from "@/lib/product-helpers";
 import HomeProducts from "@/components/storefront/HomeProducts";
 import RecentlyViewed from "@/components/storefront/RecentlyViewed";
 
 export const dynamic = "force-dynamic";
 
+const CACHE_TTL = 120;
+
 async function getHomeData() {
+  // Redis cache kontrolü
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const cached = await cacheGet<any>("home:data");
+  if (cached) return cached;
+
   const [featuredProducts, newProducts, categories, slides] = await Promise.all([
     prisma.product.findMany({
       where: { isActive: true, isFeatured: true },
@@ -45,12 +54,16 @@ async function getHomeData() {
     }),
   ]);
 
-  return {
+  const result = {
     featuredProducts: addRatingToProducts(featuredProducts),
     newProducts: addRatingToProducts(newProducts),
     categories,
     slides,
   };
+
+  await cacheSet("home:data", result, CACHE_TTL);
+
+  return result;
 }
 
 export default async function HomePage() {
@@ -109,7 +122,8 @@ export default async function HomePage() {
             </Link>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {categories.map((cat) => (
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {categories.map((cat: any) => (
               <Link
                 key={cat.id}
                 href={`/kategori/${cat.slug}`}
@@ -117,7 +131,7 @@ export default async function HomePage() {
               >
                 <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary/20 transition-colors">
                   {cat.image ? (
-                    <img src={cat.image} alt={cat.name} className="w-8 h-8 object-contain" />
+                    <Image src={cat.image} alt={cat.name} width={32} height={32} className="object-contain" />
                   ) : (
                     <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />

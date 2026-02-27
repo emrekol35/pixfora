@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { generateSlug } from "@/lib/utils";
+import { isValidUUID } from "@/lib/validation";
 
 export async function GET(
   _request: NextRequest,
@@ -8,6 +9,9 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    if (!isValidUUID(id)) {
+      return NextResponse.json({ error: "Gecersiz urun ID." }, { status: 400 });
+    }
     const product = await prisma.product.findUnique({
       where: { id },
       include: {

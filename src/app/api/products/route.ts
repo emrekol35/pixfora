@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { generateSlug } from "@/lib/utils";
+import { sanitizeString, sanitizeSearchQuery, validatePositiveNumber } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
-    const search = searchParams.get("search") || "";
+    const search = sanitizeSearchQuery(searchParams.get("search") || "");
     const categoryId = searchParams.get("categoryId");
     const brandId = searchParams.get("brandId");
     const isActive = searchParams.get("isActive");
@@ -89,14 +90,20 @@ export async function POST(request: NextRequest) {
       tags,
     } = body;
 
-    if (!name || price === undefined) {
+    if (!name?.trim()) {
       return NextResponse.json(
-        { error: "Urun adi ve fiyat zorunludur." },
+        { error: "Urun adi zorunludur." },
         { status: 400 }
       );
     }
 
-    let slug = generateSlug(name);
+    const priceCheck = validatePositiveNumber(price, "Fiyat");
+    if (!priceCheck.valid) {
+      return NextResponse.json({ error: priceCheck.error }, { status: 400 });
+    }
+
+    const cleanName = sanitizeString(name);
+    let slug = generateSlug(cleanName);
     const existing = await prisma.product.findUnique({ where: { slug } });
     if (existing) {
       slug = `${slug}-${Date.now().toString(36)}`;

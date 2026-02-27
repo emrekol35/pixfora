@@ -1,10 +1,17 @@
 "use client";
 
+import React, { useCallback, memo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useCartStore } from "@/store/cart";
 import { useWishlistStore } from "@/store/wishlist";
 import { useCompareStore } from "@/store/compare";
+
+// Sabit NumberFormat instance (her render'da yeniden oluşturulmaz)
+const priceFormatter = new Intl.NumberFormat("tr-TR", {
+  style: "currency",
+  currency: "TRY",
+});
 
 interface ProductCardProps {
   product: {
@@ -25,7 +32,7 @@ interface ProductCardProps {
   };
 }
 
-export default function ProductCard({ product }: ProductCardProps) {
+function ProductCardInner({ product }: ProductCardProps) {
   const addItem = useCartStore((s) => s.addItem);
   const toggleWishlist = useWishlistStore((s) => s.toggleWishlist);
   const isInWishlist = useWishlistStore((s) => s.isInWishlist(product.id));
@@ -38,23 +45,58 @@ export default function ProductCard({ product }: ProductCardProps) {
     ? Math.round(((product.comparePrice! - product.price) / product.comparePrice!) * 100)
     : 0;
 
-  const handleAddToCart = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (product.stock <= 0) return;
+  const handleAddToCart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (product.stock <= 0) return;
 
-    addItem({
-      id: product.id,
-      name: product.name,
-      slug: product.slug,
-      price: product.price,
-      comparePrice: product.comparePrice,
-      image: image?.url || null,
-      stock: product.stock,
-      minQty: product.minQty,
-      maxQty: product.maxQty,
-    });
-  };
+      addItem({
+        id: product.id,
+        name: product.name,
+        slug: product.slug,
+        price: product.price,
+        comparePrice: product.comparePrice,
+        image: image?.url || null,
+        stock: product.stock,
+        minQty: product.minQty,
+        maxQty: product.maxQty,
+      });
+    },
+    [addItem, product, image]
+  );
+
+  const handleToggleWishlist = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleWishlist(product.id);
+    },
+    [toggleWishlist, product.id]
+  );
+
+  const handleToggleCompare = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (isInCompare) {
+        removeFromCompare(product.id);
+      } else {
+        addToCompare({
+          id: product.id,
+          name: product.name,
+          slug: product.slug,
+          price: product.price,
+          comparePrice: product.comparePrice || null,
+          stock: product.stock,
+          image: image?.url || null,
+          category: product.category?.name || null,
+          brand: product.brand?.name || null,
+        });
+      }
+    },
+    [isInCompare, removeFromCompare, addToCompare, product, image]
+  );
 
   return (
     <Link
@@ -100,7 +142,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
         {/* Wishlist */}
         <button
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleWishlist(product.id); }}
+          onClick={handleToggleWishlist}
           className="absolute top-2 right-2 w-8 h-8 bg-white/80 backdrop-blur rounded-full flex items-center justify-center hover:bg-white transition-colors shadow-sm z-10"
         >
           <svg className={`w-4 h-4 ${isInWishlist ? "text-danger fill-danger" : "text-muted-foreground"}`} fill={isInWishlist ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
@@ -112,25 +154,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         <div className="absolute bottom-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
           {/* Compare */}
           <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (isInCompare) {
-                removeFromCompare(product.id);
-              } else {
-                addToCompare({
-                  id: product.id,
-                  name: product.name,
-                  slug: product.slug,
-                  price: product.price,
-                  comparePrice: product.comparePrice || null,
-                  stock: product.stock,
-                  image: image?.url || null,
-                  category: product.category?.name || null,
-                  brand: product.brand?.name || null,
-                });
-              }
-            }}
+            onClick={handleToggleCompare}
             className={`w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition-colors ${
               isInCompare ? "bg-primary text-white" : "bg-white/90 text-muted-foreground hover:bg-white hover:text-primary"
             }`}
@@ -174,11 +198,11 @@ export default function ProductCard({ product }: ProductCardProps) {
         ) : null}
         <div className="flex items-center gap-2">
           <span className="text-base font-bold text-primary">
-            {new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(product.price)}
+            {priceFormatter.format(product.price)}
           </span>
           {hasDiscount && (
             <span className="text-xs text-muted-foreground line-through">
-              {new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(product.comparePrice!)}
+              {priceFormatter.format(product.comparePrice!)}
             </span>
           )}
         </div>
@@ -186,3 +210,6 @@ export default function ProductCard({ product }: ProductCardProps) {
     </Link>
   );
 }
+
+const ProductCard = memo(ProductCardInner);
+export default ProductCard;

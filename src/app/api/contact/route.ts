@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import {
+  sanitizeString,
+  validateEmail,
+  validateName,
+  validateLength,
+} from "@/lib/validation";
 
 // POST - Iletisim formu gonder (public)
 export async function POST(request: NextRequest) {
@@ -8,20 +14,46 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { name, email, phone, subject, message } = body;
 
-    if (!name || !email || !subject || !message) {
-      return NextResponse.json(
-        { error: "Ad, e-posta, konu ve mesaj zorunludur" },
-        { status: 400 }
-      );
+    // Honeypot spam koruması — gizli alan dolu ise bot
+    if (body.website || body.url || body.honeypot) {
+      // Sessizce başarılı gibi dön (bot'a ipucu verme)
+      return NextResponse.json({ success: true }, { status: 201 });
     }
+
+    // Input doğrulama
+    const nameCheck = validateName(name);
+    if (!nameCheck.valid) {
+      return NextResponse.json({ error: nameCheck.error }, { status: 400 });
+    }
+
+    const emailCheck = validateEmail(email);
+    if (!emailCheck.valid) {
+      return NextResponse.json({ error: emailCheck.error }, { status: 400 });
+    }
+
+    const subjectCheck = validateLength(subject, "Konu", 2, 200);
+    if (!subjectCheck.valid) {
+      return NextResponse.json({ error: subjectCheck.error }, { status: 400 });
+    }
+
+    const messageCheck = validateLength(message, "Mesaj", 10, 5000);
+    if (!messageCheck.valid) {
+      return NextResponse.json({ error: messageCheck.error }, { status: 400 });
+    }
+
+    // Sanitizasyon
+    const cleanName = sanitizeString(name);
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanSubject = sanitizeString(subject);
+    const cleanMessage = sanitizeString(message);
 
     const contactMessage = await prisma.contactMessage.create({
       data: {
-        name,
-        email,
-        phone: phone || null,
-        subject,
-        message,
+        name: cleanName,
+        email: cleanEmail,
+        phone: phone?.trim() || null,
+        subject: cleanSubject,
+        message: cleanMessage,
       },
     });
 

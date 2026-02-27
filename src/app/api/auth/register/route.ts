@@ -1,21 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
 import { hash } from "bcryptjs";
 import { prisma } from "@/lib/db";
+import {
+  validateEmail,
+  validatePassword,
+  validateName,
+  validatePhone,
+  sanitizeString,
+} from "@/lib/validation";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { email, password, name, phone } = body;
 
-    if (!email || !password || !name) {
-      return NextResponse.json(
-        { error: "Email, sifre ve ad zorunludur." },
-        { status: 400 }
-      );
+    // Email doğrulama
+    const emailCheck = validateEmail(email);
+    if (!emailCheck.valid) {
+      return NextResponse.json({ error: emailCheck.error }, { status: 400 });
     }
 
+    // Şifre doğrulama
+    const passwordCheck = validatePassword(password);
+    if (!passwordCheck.valid) {
+      return NextResponse.json({ error: passwordCheck.error }, { status: 400 });
+    }
+
+    // İsim doğrulama
+    const nameCheck = validateName(name);
+    if (!nameCheck.valid) {
+      return NextResponse.json({ error: nameCheck.error }, { status: 400 });
+    }
+
+    // Telefon doğrulama (opsiyonel)
+    if (phone) {
+      const phoneCheck = validatePhone(phone);
+      if (!phoneCheck.valid) {
+        return NextResponse.json({ error: phoneCheck.error }, { status: 400 });
+      }
+    }
+
+    // Sanitizasyon
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanName = sanitizeString(name);
+
     const existingUser = await prisma.user.findUnique({
-      where: { email },
+      where: { email: cleanEmail },
     });
 
     if (existingUser) {
@@ -29,10 +59,10 @@ export async function POST(request: NextRequest) {
 
     const user = await prisma.user.create({
       data: {
-        email,
+        email: cleanEmail,
         password: hashedPassword,
-        name,
-        phone,
+        name: cleanName,
+        phone: phone?.trim() || null,
       },
     });
 
