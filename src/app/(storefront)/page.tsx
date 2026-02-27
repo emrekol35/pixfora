@@ -5,6 +5,8 @@ import { cacheGet, cacheSet } from "@/lib/redis";
 import { addRatingToProducts } from "@/lib/product-helpers";
 import HomeProducts from "@/components/storefront/HomeProducts";
 import RecentlyViewed from "@/components/storefront/RecentlyViewed";
+import PersonalizedRecommendations from "@/components/storefront/PersonalizedRecommendations";
+import { getTrending } from "@/services/recommendation";
 
 export const dynamic = "force-dynamic";
 
@@ -67,7 +69,11 @@ async function getHomeData() {
 }
 
 export default async function HomePage() {
-  const { featuredProducts, newProducts, categories, slides } = await getHomeData();
+  const [homeData, trendingProducts] = await Promise.all([
+    getHomeData(),
+    getTrending(8),
+  ]);
+  const { featuredProducts, newProducts, categories, slides } = homeData;
 
   return (
     <>
@@ -195,6 +201,22 @@ export default async function HomePage() {
           <HomeProducts products={newProducts} />
         </section>
       )}
+
+      {/* Trend Urunler */}
+      {trendingProducts.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 py-12">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl md:text-2xl font-bold">Trend Urunler 🔥</h2>
+            <Link href="/cok-satanlar" className="text-sm text-primary font-medium hover:underline">
+              Tumunu Gor →
+            </Link>
+          </div>
+          <HomeProducts products={trendingProducts} />
+        </section>
+      )}
+
+      {/* Kisisel Oneriler (giris yapmis kullanicilar icin) */}
+      <PersonalizedRecommendations />
 
       {/* Recently Viewed */}
       <RecentlyViewed />

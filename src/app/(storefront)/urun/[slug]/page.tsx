@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import type { Metadata } from "next";
 import ProductDetail from "@/components/storefront/ProductDetail";
 import Link from "next/link";
+import { getBoughtTogether, getSimilarProducts } from "@/services/recommendation";
 
 export const dynamic = "force-dynamic";
 
@@ -111,20 +112,18 @@ export default async function ProductPage({ params }: Props) {
     where: { productId: product.id },
   });
 
-  // Benzer urunler
-  const relatedProducts = await prisma.product.findMany({
-    where: {
-      isActive: true,
-      categoryId: product.categoryId,
-      id: { not: product.id },
-    },
-    include: {
-      images: { orderBy: { order: "asc" }, take: 1 },
-      category: { select: { name: true } },
-      brand: { select: { name: true } },
-    },
-    take: 4,
-  });
+  // Oneri sistemi: birlikte alinan + benzer urunler
+  const [boughtTogether, similarProducts] = await Promise.all([
+    getBoughtTogether(product.id, 4),
+    getSimilarProducts(
+      product.id,
+      product.categoryId,
+      product.brandId,
+      product.tags,
+      product.price,
+      8
+    ),
+  ]);
 
   // canReview kontrolu
   const session = await auth();
@@ -200,7 +199,8 @@ export default async function ProductPage({ params }: Props) {
           reviewCount: product._count.reviews,
           avgRating,
         }}
-        relatedProducts={relatedProducts}
+        similarProducts={similarProducts}
+        boughtTogether={boughtTogether}
         complementaryProducts={complementaryProducts}
         giftProducts={giftProducts}
         canReview={canReview}

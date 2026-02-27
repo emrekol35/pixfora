@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useCartStore } from "@/store/cart";
+import CartRecommendations from "./CartRecommendations";
 
 export default function CartPageClient() {
   const { items, removeItem, updateQuantity, getSubtotal, getItemPrice, clearCart } = useCartStore();
@@ -266,6 +267,9 @@ export default function CartPageClient() {
           </div>
         </div>
       </div>
+
+      {/* Sepet Onerileri */}
+      <CartRecommendations />
     </div>
   );
 }

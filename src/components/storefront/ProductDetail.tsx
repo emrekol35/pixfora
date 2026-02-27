@@ -84,13 +84,14 @@ interface GiftProduct {
 
 interface Props {
   product: ProductData;
-  relatedProducts: RelatedProduct[];
+  similarProducts: RelatedProduct[];
+  boughtTogether?: RelatedProduct[];
   complementaryProducts?: RelatedProduct[];
   giftProducts?: GiftProduct[];
   canReview?: boolean;
 }
 
-export default function ProductDetail({ product, relatedProducts, complementaryProducts, giftProducts, canReview }: Props) {
+export default function ProductDetail({ product, similarProducts, boughtTogether, complementaryProducts, giftProducts, canReview }: Props) {
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [quantity, setQuantity] = useState(product.minQty);
@@ -766,24 +767,38 @@ export default function ProductDetail({ product, relatedProducts, complementaryP
         </div>
       </div>
 
-      {/* Complementary Products */}
-      {complementaryProducts && complementaryProducts.length > 0 && (
-        <div className="mt-12">
-          <h2 className="text-xl font-bold mb-6">Birlikte Sik Alinan Urunler</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {complementaryProducts.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
+      {/* Birlikte Sik Alinan Urunler (admin complementary + veri-tabanli bought-together) */}
+      {(() => {
+        // Admin'in elle girdigi + veri-tabanli onerileri birlestir, tekrarlari cikar
+        const allBought = [
+          ...(complementaryProducts || []),
+          ...(boughtTogether || []),
+        ];
+        const uniqueIds = new Set<string>();
+        const uniqueBought = allBought.filter((p) => {
+          if (uniqueIds.has(p.id) || p.id === product.id) return false;
+          uniqueIds.add(p.id);
+          return true;
+        });
+        if (uniqueBought.length === 0) return null;
+        return (
+          <div className="mt-12">
+            <h2 className="text-xl font-bold mb-6">Birlikte Sik Alinan Urunler</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {uniqueBought.slice(0, 4).map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
-      {/* Related Products */}
-      {relatedProducts.length > 0 && (
+      {/* Benzer Urunler (gelismis oneri sistemi) */}
+      {similarProducts.length > 0 && (
         <div className="mt-12">
           <h2 className="text-xl font-bold mb-6">Benzer Urunler</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {relatedProducts.map((p) => (
+            {similarProducts.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}
           </div>

@@ -590,3 +590,71 @@ export function deliveryConfirmationEmail(data: {
     </div>`,
   };
 }
+
+// ============================================================
+// ONERI E-POSTASI
+// ============================================================
+export function recommendationEmail(data: {
+  userName: string;
+  products: {
+    name: string;
+    price: number;
+    image: string | null;
+    slug: string;
+  }[];
+}) {
+  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Pixfora";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pixfora.com";
+
+  const formatPrice = (price: number) =>
+    new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(price);
+
+  const productCards = data.products
+    .map(
+      (p) => `
+      <td style="width:50%;padding:8px;vertical-align:top">
+        <a href="${siteUrl}/urun/${p.slug}" style="text-decoration:none;color:#333;display:block;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
+          ${
+            p.image
+              ? `<img src="${p.image}" alt="${p.name}" style="width:100%;height:160px;object-fit:cover" />`
+              : `<div style="width:100%;height:160px;background:#f3f4f6"></div>`
+          }
+          <div style="padding:12px">
+            <p style="margin:0;font-size:13px;font-weight:600;line-height:1.3">${p.name}</p>
+            <p style="margin:8px 0 0;font-size:15px;font-weight:bold;color:#2563eb">${formatPrice(p.price)}</p>
+          </div>
+        </a>
+      </td>`
+    )
+    .reduce((rows: string[], card, i) => {
+      if (i % 2 === 0) rows.push(`<tr>${card}`);
+      else rows[rows.length - 1] += `${card}</tr>`;
+      if (i === data.products.length - 1 && i % 2 === 0) rows[rows.length - 1] += `<td style="width:50%;padding:8px"></td></tr>`;
+      return rows;
+    }, [])
+    .join("");
+
+  return {
+    subject: `${siteName} - Size Ozel Urun Onerileri`,
+    html: `
+    <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
+      <div style="background:#2563eb;padding:24px;text-align:center">
+        <h1 style="color:#fff;margin:0;font-size:24px">${siteName}</h1>
+      </div>
+      <div style="padding:24px;background:#fff">
+        <h2 style="margin-top:0;text-align:center;color:#1f2937">Size Ozel Secilmis Urunler</h2>
+        <p>Merhaba <strong>${data.userName}</strong>,</p>
+        <p>Alisveris gecmisinize gore sectigimiz urunleri gormek ister misiniz?</p>
+        <table style="width:100%;border-collapse:collapse;margin:16px 0">
+          ${productCards}
+        </table>
+        <div style="text-align:center;margin:24px 0">
+          <a href="${siteUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">Tum Urunleri Kesfet</a>
+        </div>
+      </div>
+      <div style="padding:16px;background:#f5f5f5;text-align:center;font-size:12px;color:#888">
+        <p>${siteName} | Bu e-posta otomatik olarak gonderilmistir.</p>
+      </div>
+    </div>`,
+  };
+}
