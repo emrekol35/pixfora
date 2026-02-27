@@ -37,6 +37,18 @@ const reportLinks = [
     description: "Musteri segmentasyonu, trendler ve degerli musteriler",
     icon: "👥",
   },
+  {
+    href: "/admin/raporlar/kargo",
+    title: "Kargo Performansi",
+    description: "Kargo firmalari, teslim oranlari ve sehir bazli analiz",
+    icon: "🚚",
+  },
+  {
+    href: "/admin/raporlar/iadeler",
+    title: "Iade Analizi",
+    description: "Iade oranlari, sebep analizi ve iade surecleri",
+    icon: "↩️",
+  },
 ];
 
 const KPI_ICONS = ["💰", "📦", "📊", "👤", "🛍️", "⏳"];
@@ -59,6 +71,8 @@ export default function ReportDashboard() {
     topCategory: "-",
     pendingReviews: 0,
     pendingOrders: 0,
+    pendingShipments: 0,
+    pendingReturns: 0,
   };
 
   if (isLoading) {
@@ -104,7 +118,7 @@ export default function ReportDashboard() {
       )}
 
       {/* Hizli Bilgiler */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground mb-1">
             En Cok Satan Urun
@@ -128,6 +142,18 @@ export default function ReportDashboard() {
             Bekleyen Siparis
           </p>
           <p className="text-sm font-semibold">{quickStats.pendingOrders}</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4">
+          <p className="text-xs text-muted-foreground mb-1">
+            Bekleyen Kargo
+          </p>
+          <p className="text-sm font-semibold">{quickStats.pendingShipments}</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4">
+          <p className="text-xs text-muted-foreground mb-1">
+            Bekleyen Iade
+          </p>
+          <p className="text-sm font-semibold">{quickStats.pendingReturns}</p>
         </div>
       </div>
 

@@ -12,10 +12,26 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get("limit") || "20");
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
+
+    // Tarih filtresi (siparis uzerinden)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const itemWhere: any = {};
+    if (startDate || endDate) {
+      itemWhere.order = { createdAt: {} };
+      if (startDate) {
+        itemWhere.order.createdAt.gte = new Date(startDate);
+      }
+      if (endDate) {
+        itemWhere.order.createdAt.lte = new Date(endDate + "T23:59:59.999Z");
+      }
+    }
 
     // Urun bazinda gruplama
     const groupedItems = await prisma.orderItem.groupBy({
       by: ["productId"],
+      ...(Object.keys(itemWhere).length > 0 ? { where: itemWhere } : {}),
       _sum: { quantity: true, price: true, total: true },
       orderBy: { _sum: { quantity: "desc" } },
       take: limit,

@@ -46,6 +46,10 @@ export async function GET() {
       currentPeriodOrders,
       // Onceki 30 gun gunluk gelir
       previousPeriodOrders,
+      // Bekleyen kargolar
+      pendingShipments,
+      // Bekleyen iadeler
+      pendingReturns,
     ] = await Promise.all([
       // Bu ay siparis sayisi
       prisma.order.count({
@@ -120,6 +124,14 @@ export async function GET() {
           createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo },
         },
         select: { createdAt: true, total: true },
+      }),
+      // Bekleyen kargolar
+      prisma.shipment.count({
+        where: { status: { in: ["CREATED", "PICKED_UP"] } },
+      }),
+      // Bekleyen iadeler
+      prisma.return.count({
+        where: { status: "PENDING" },
       }),
     ]);
 
@@ -232,6 +244,8 @@ export async function GET() {
       topCategory: topCategoryName,
       pendingReviews,
       pendingOrders,
+      pendingShipments,
+      pendingReturns,
     };
 
     return NextResponse.json({

@@ -12,10 +12,27 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get("limit") || "20");
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
 
     const now = new Date();
-    const ninetyDaysAgo = new Date(now);
-    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+    // Tarih filtresi (siparis ve kayit uzerinden)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const orderDateWhere: any = { userId: { not: null } };
+    if (startDate || endDate) {
+      orderDateWhere.createdAt = {};
+      if (startDate) orderDateWhere.createdAt.gte = new Date(startDate);
+      if (endDate) orderDateWhere.createdAt.lte = new Date(endDate + "T23:59:59.999Z");
+    }
+
+    // Kayit trendi icin tarih araligi
+    const trendStart = startDate
+      ? new Date(startDate)
+      : new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+    const trendEnd = endDate
+      ? new Date(endDate + "T23:59:59.999Z")
+      : now;
 
     const [
       totalUsers,
@@ -28,7 +45,7 @@ export async function GET(request: NextRequest) {
 
       // Siparis veren kullanici sayisi
       prisma.order.findMany({
-        where: { userId: { not: null } },
+        where: orderDateWhere,
         select: { userId: true },
         distinct: ["userId"],
       }),
@@ -40,14 +57,14 @@ export async function GET(request: NextRequest) {
         _sum: { total: true },
         orderBy: { _sum: { total: "desc" } },
         take: limit,
-        where: { userId: { not: null } },
+        where: orderDateWhere,
       }),
 
-      // Son 90 gun kayit trendi
+      // Kayit trendi (tarih araligina gore)
       prisma.user.findMany({
         where: {
           role: "CUSTOMER",
-          createdAt: { gte: ninetyDaysAgo },
+          createdAt: { gte: trendStart, lte: trendEnd },
         },
         select: { createdAt: true },
         orderBy: { createdAt: "asc" },

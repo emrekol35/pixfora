@@ -99,6 +99,8 @@ const menuItems = [
       { title: "Satis Raporu", href: "/admin/raporlar/satis" },
       { title: "Urun Performansi", href: "/admin/raporlar/urunler" },
       { title: "Musteri Analizi", href: "/admin/raporlar/musteriler" },
+      { title: "Kargo Performansi", href: "/admin/raporlar/kargo" },
+      { title: "Iade Analizi", href: "/admin/raporlar/iadeler" },
     ],
   },
   {

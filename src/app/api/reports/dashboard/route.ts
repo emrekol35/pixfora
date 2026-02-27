@@ -28,6 +28,8 @@ export async function GET() {
       newCustomersThisMonth,
       newCustomersLastMonth,
       last30DaysOrders,
+      pendingShipments,
+      pendingReturns,
     ] = await Promise.all([
       prisma.product.count({ where: { isActive: true } }),
       prisma.order.count(),
@@ -80,6 +82,14 @@ export async function GET() {
         select: { createdAt: true, total: true },
         orderBy: { createdAt: "asc" },
       }),
+      // Bekleyen kargolar
+      prisma.shipment.count({
+        where: { status: { in: ["CREATED", "PICKED_UP"] } },
+      }),
+      // Bekleyen iadeler
+      prisma.return.count({
+        where: { status: "PENDING" },
+      }),
     ]);
 
     // 30 gunluk gelir trendi
@@ -122,6 +132,8 @@ export async function GET() {
         previousMonthOrders,
         newCustomersThisMonth,
         newCustomersLastMonth,
+        pendingShipments,
+        pendingReturns,
       },
       recentOrders: recentOrders.map((o) => ({
         id: o.id,

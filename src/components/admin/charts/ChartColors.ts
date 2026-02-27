@@ -44,3 +44,41 @@ export const PAYMENT_LABELS: Record<string, string> = {
   BANK_TRANSFER: "Havale/EFT",
   CASH_ON_DELIVERY: "Kapida Odeme",
 };
+
+export const SHIPMENT_STATUS_COLORS: Record<string, string> = {
+  CREATED: "#f59e0b",
+  PICKED_UP: "#3b82f6",
+  IN_TRANSIT: "#8b5cf6",
+  OUT_FOR_DELIVERY: "#06b6d4",
+  DELIVERED: "#22c55e",
+  RETURNED: "#f97316",
+  FAILED: "#ef4444",
+};
+
+export const SHIPMENT_STATUS_LABELS: Record<string, string> = {
+  CREATED: "Olusturuldu",
+  PICKED_UP: "Alindi",
+  IN_TRANSIT: "Yolda",
+  OUT_FOR_DELIVERY: "Dagitimda",
+  DELIVERED: "Teslim Edildi",
+  RETURNED: "Iade Edildi",
+  FAILED: "Basarisiz",
+};
+
+export const RETURN_STATUS_COLORS: Record<string, string> = {
+  PENDING: "#f59e0b",
+  APPROVED: "#3b82f6",
+  REJECTED: "#ef4444",
+  RECEIVED: "#8b5cf6",
+  REFUNDED: "#22c55e",
+  CANCELLED: "#6b7280",
+};
+
+export const RETURN_STATUS_LABELS: Record<string, string> = {
+  PENDING: "Beklemede",
+  APPROVED: "Onaylandi",
+  REJECTED: "Reddedildi",
+  RECEIVED: "Teslim Alindi",
+  REFUNDED: "Iade Edildi",
+  CANCELLED: "Iptal",
+};

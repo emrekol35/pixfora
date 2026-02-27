@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import dynamic from "next/dynamic";
 import { useCustomerReport } from "@/hooks/useReportData";
 import StatCard from "@/components/admin/StatCard";
+import { ReportDateRange, ExportCSVButton } from "@/components/admin/reports";
 import { formatCurrency } from "@/lib/utils";
 
 const RevenueLineChart = dynamic(
@@ -27,8 +29,26 @@ interface Customer {
   avgOrder: number;
 }
 
+function getDefaultDates() {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - 90);
+  return {
+    startDate: start.toISOString().split("T")[0],
+    endDate: end.toISOString().split("T")[0],
+  };
+}
+
 export default function CustomerAnalytics() {
-  const { data, isLoading } = useCustomerReport({ limit: 30 });
+  const defaults = getDefaultDates();
+  const [startDate, setStartDate] = useState(defaults.startDate);
+  const [endDate, setEndDate] = useState(defaults.endDate);
+
+  const { data, isLoading, refetch } = useCustomerReport({
+    limit: 30,
+    startDate,
+    endDate,
+  });
 
   const stats = data?.stats || {
     totalUsers: 0,
@@ -56,152 +76,187 @@ export default function CustomerAnalytics() {
     },
   ];
 
-  if (isLoading) {
-    return (
-      <div className="text-center py-12 text-muted-foreground">
-        Yukleniyor...
-      </div>
-    );
-  }
+  // CSV verileri
+  const csvHeaders = [
+    "#",
+    "Musteri",
+    "E-posta",
+    "Siparis",
+    "Ort. Siparis (TL)",
+    "Toplam Harcama (TL)",
+  ];
+  const csvRows = customers.map((c, i) => [
+    i + 1,
+    c.name || "Isimsiz",
+    c.email,
+    c.orderCount,
+    c.avgOrder.toFixed(2),
+    c.totalSpent.toFixed(2),
+  ]);
 
   return (
     <div className="space-y-6">
-      {/* Ozet Kartlari */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <StatCard
-          label="Toplam Kayitli Musteri"
-          value={stats.totalUsers.toLocaleString("tr-TR")}
-          icon={<span className="text-lg">👥</span>}
-          color="bg-blue-500/10 text-blue-600"
-        />
-        <StatCard
-          label="Siparis Veren %"
-          value={`${stats.orderPercentage}%`}
-          icon={<span className="text-lg">🛒</span>}
-          color="bg-green-500/10 text-green-600"
-        />
-        <StatCard
-          label="Tekrar Eden %"
-          value={`${stats.repeatPercentage}%`}
-          icon={<span className="text-lg">🔄</span>}
-          color="bg-purple-500/10 text-purple-600"
-        />
-        <StatCard
-          label="Yuksek Degerli"
-          value={stats.highValueCustomers.toLocaleString("tr-TR")}
-          icon={<span className="text-lg">💎</span>}
-          color="bg-orange-500/10 text-orange-600"
-        />
-      </div>
+      {/* Tarih Filtresi */}
+      <ReportDateRange
+        startDate={startDate}
+        endDate={endDate}
+        onStartDateChange={setStartDate}
+        onEndDateChange={setEndDate}
+        onApply={() => refetch()}
+        isLoading={isLoading}
+      />
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Kayit Trendi */}
-        {registrationTrend.length > 0 && (
-          <div className="bg-card border border-border rounded-xl p-6">
-            <h2 className="text-lg font-semibold mb-4">
-              Kayit Trendi (Son 90 Gun)
-            </h2>
-            <RevenueLineChart
-              data={registrationTrend}
-              height={280}
-              showOrders={false}
-            />
-          </div>
-        )}
-
-        {/* Yeni vs Tekrar Pie */}
-        {stats.usersWithOrders > 0 && (
-          <div className="bg-card border border-border rounded-xl p-6">
-            <h2 className="text-lg font-semibold mb-4">
-              Yeni vs Tekrar Eden Musteriler
-            </h2>
-            <StatusPieChart
-              data={newVsRepeatData}
-              height={280}
-              innerRadius={40}
-              outerRadius={90}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Siparis Frekans Dagilimi */}
-      {orderFrequency.length > 0 && (
-        <div className="bg-card border border-border rounded-xl p-6">
-          <h2 className="text-lg font-semibold mb-4">
-            Siparis Frekans Dagilimi
-          </h2>
-          <BarChartHorizontal
-            data={orderFrequency}
-            height={250}
-            layout="vertical"
-          />
+      {isLoading && (
+        <div className="text-center py-12 text-muted-foreground">
+          Yukleniyor...
         </div>
       )}
 
-      {/* Top Musteriler Tablosu */}
-      {customers.length > 0 && (
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <div className="p-6 border-b border-border">
-            <h2 className="text-lg font-semibold">
-              En Degerli Musteriler ({customers.length})
-            </h2>
+      {!isLoading && (
+        <>
+          {/* Ozet Kartlari */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <StatCard
+              label="Toplam Kayitli Musteri"
+              value={stats.totalUsers.toLocaleString("tr-TR")}
+              icon={<span className="text-lg">👥</span>}
+              color="bg-blue-500/10 text-blue-600"
+            />
+            <StatCard
+              label="Siparis Veren %"
+              value={`${stats.orderPercentage}%`}
+              icon={<span className="text-lg">🛒</span>}
+              color="bg-green-500/10 text-green-600"
+            />
+            <StatCard
+              label="Tekrar Eden %"
+              value={`${stats.repeatPercentage}%`}
+              icon={<span className="text-lg">🔄</span>}
+              color="bg-purple-500/10 text-purple-600"
+            />
+            <StatCard
+              label="Yuksek Degerli"
+              value={stats.highValueCustomers.toLocaleString("tr-TR")}
+              icon={<span className="text-lg">💎</span>}
+              color="bg-orange-500/10 text-orange-600"
+            />
           </div>
-          <div className="overflow-x-auto max-h-[500px]">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-muted z-10">
-                <tr className="border-b border-border">
-                  <th className="text-left px-6 py-3 font-medium text-muted-foreground w-12">
-                    #
-                  </th>
-                  <th className="text-left px-6 py-3 font-medium text-muted-foreground">
-                    Musteri
-                  </th>
-                  <th className="text-left px-6 py-3 font-medium text-muted-foreground">
-                    E-posta
-                  </th>
-                  <th className="text-right px-6 py-3 font-medium text-muted-foreground">
-                    Siparis
-                  </th>
-                  <th className="text-right px-6 py-3 font-medium text-muted-foreground">
-                    Ort. Siparis
-                  </th>
-                  <th className="text-right px-6 py-3 font-medium text-muted-foreground">
-                    Toplam Harcama
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {customers.map((customer, index) => (
-                  <tr
-                    key={customer.id || index}
-                    className="border-b border-border hover:bg-muted/50 transition-colors"
-                  >
-                    <td className="px-6 py-3 text-muted-foreground">
-                      {index + 1}
-                    </td>
-                    <td className="px-6 py-3 font-medium">
-                      {customer.name || "Isimsiz"}
-                    </td>
-                    <td className="px-6 py-3 text-muted-foreground">
-                      {customer.email}
-                    </td>
-                    <td className="px-6 py-3 text-right">
-                      {customer.orderCount}
-                    </td>
-                    <td className="px-6 py-3 text-right">
-                      {formatCurrency(customer.avgOrder)} TL
-                    </td>
-                    <td className="px-6 py-3 text-right font-medium">
-                      {formatCurrency(customer.totalSpent)} TL
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+          {/* Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Kayit Trendi */}
+            {registrationTrend.length > 0 && (
+              <div className="bg-card border border-border rounded-xl p-6">
+                <h2 className="text-lg font-semibold mb-4">
+                  Kayit Trendi
+                </h2>
+                <RevenueLineChart
+                  data={registrationTrend}
+                  height={280}
+                  showOrders={false}
+                />
+              </div>
+            )}
+
+            {/* Yeni vs Tekrar Pie */}
+            {stats.usersWithOrders > 0 && (
+              <div className="bg-card border border-border rounded-xl p-6">
+                <h2 className="text-lg font-semibold mb-4">
+                  Yeni vs Tekrar Eden Musteriler
+                </h2>
+                <StatusPieChart
+                  data={newVsRepeatData}
+                  height={280}
+                  innerRadius={40}
+                  outerRadius={90}
+                />
+              </div>
+            )}
           </div>
-        </div>
+
+          {/* Siparis Frekans Dagilimi */}
+          {orderFrequency.length > 0 && (
+            <div className="bg-card border border-border rounded-xl p-6">
+              <h2 className="text-lg font-semibold mb-4">
+                Siparis Frekans Dagilimi
+              </h2>
+              <BarChartHorizontal
+                data={orderFrequency}
+                height={250}
+                layout="vertical"
+              />
+            </div>
+          )}
+
+          {/* Top Musteriler Tablosu */}
+          {customers.length > 0 && (
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+              <div className="p-6 border-b border-border flex items-center justify-between">
+                <h2 className="text-lg font-semibold">
+                  En Degerli Musteriler ({customers.length})
+                </h2>
+                <ExportCSVButton
+                  headers={csvHeaders}
+                  rows={csvRows}
+                  filename={`musteri-raporu-${startDate}-${endDate}.csv`}
+                />
+              </div>
+              <div className="overflow-x-auto max-h-[500px]">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-muted z-10">
+                    <tr className="border-b border-border">
+                      <th className="text-left px-6 py-3 font-medium text-muted-foreground w-12">
+                        #
+                      </th>
+                      <th className="text-left px-6 py-3 font-medium text-muted-foreground">
+                        Musteri
+                      </th>
+                      <th className="text-left px-6 py-3 font-medium text-muted-foreground">
+                        E-posta
+                      </th>
+                      <th className="text-right px-6 py-3 font-medium text-muted-foreground">
+                        Siparis
+                      </th>
+                      <th className="text-right px-6 py-3 font-medium text-muted-foreground">
+                        Ort. Siparis
+                      </th>
+                      <th className="text-right px-6 py-3 font-medium text-muted-foreground">
+                        Toplam Harcama
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {customers.map((customer, index) => (
+                      <tr
+                        key={customer.id || index}
+                        className="border-b border-border hover:bg-muted/50 transition-colors"
+                      >
+                        <td className="px-6 py-3 text-muted-foreground">
+                          {index + 1}
+                        </td>
+                        <td className="px-6 py-3 font-medium">
+                          {customer.name || "Isimsiz"}
+                        </td>
+                        <td className="px-6 py-3 text-muted-foreground">
+                          {customer.email}
+                        </td>
+                        <td className="px-6 py-3 text-right">
+                          {customer.orderCount}
+                        </td>
+                        <td className="px-6 py-3 text-right">
+                          {formatCurrency(customer.avgOrder)} TL
+                        </td>
+                        <td className="px-6 py-3 text-right font-medium">
+                          {formatCurrency(customer.totalSpent)} TL
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
