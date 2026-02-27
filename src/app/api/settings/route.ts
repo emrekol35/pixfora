@@ -1,11 +1,55 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAdmin } from "@/lib/admin-auth";
+import { getToken } from "next-auth/jwt";
+
+async function getAdminCheck(request: NextRequest): Promise<{ isAdmin: boolean; debug: string }> {
+  try {
+    const token = await getToken({
+      req: request,
+      secret: process.env.AUTH_SECRET,
+    });
+
+    if (!token) {
+      const cookieHeader = request.headers.get("cookie") || "";
+      const cookieNames = cookieHeader.split(";").map(c => c.trim().split("=")[0]).filter(Boolean);
+      return { isAdmin: false, debug: `token=null, cookies=[${cookieNames.join(",")}]` };
+    }
+
+    // JWT'de role varsa dogrudan kontrol
+    if (token.role === "ADMIN") {
+      return { isAdmin: true, debug: "role_from_jwt" };
+    }
+
+    // JWT'de role yoksa DB'den kontrol
+    if (token.email) {
+      const user = await prisma.user.findUnique({
+        where: { email: token.email as string },
+        select: { role: true },
+      });
+      if (user?.role === "ADMIN") return { isAdmin: true, debug: "role_from_db_email" };
+      return { isAdmin: false, debug: `email=${token.email}, db_role=${user?.role || "NOT_FOUND"}` };
+    }
+
+    if (token.id || token.sub) {
+      const userId = (token.id || token.sub) as string;
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+      });
+      if (user?.role === "ADMIN") return { isAdmin: true, debug: "role_from_db_id" };
+      return { isAdmin: false, debug: `id=${userId}, db_role=${user?.role || "NOT_FOUND"}` };
+    }
+
+    return { isAdmin: false, debug: `token_keys=[${Object.keys(token).join(",")}]` };
+  } catch (error) {
+    return { isAdmin: false, debug: `error: ${error instanceof Error ? error.message : String(error)}` };
+  }
+}
 
 // GET - Ayarlari listele (admin)
 export async function GET(request: NextRequest) {
   try {
-    const isAdmin = await requireAdmin(request);
+    const { isAdmin } = await getAdminCheck(request);
     if (!isAdmin) {
       return NextResponse.json({ error: "Yetkisiz" }, { status: 403 });
     }
@@ -31,9 +75,12 @@ export async function GET(request: NextRequest) {
 // POST - Ayarlari toplu kaydet (admin)
 export async function POST(request: NextRequest) {
   try {
-    const isAdmin = await requireAdmin(request);
+    const { isAdmin, debug } = await getAdminCheck(request);
     if (!isAdmin) {
-      return NextResponse.json({ error: "Yetkisiz" }, { status: 403 });
+      return NextResponse.json(
+        { error: `Yetkisiz [${debug}]` },
+        { status: 403, headers: { "Cache-Control": "no-store" } }
+      );
     }
 
     const body = await request.json();
