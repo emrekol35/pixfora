@@ -109,14 +109,18 @@ export async function POST(request: NextRequest) {
       slug = `${slug}-${Date.now().toString(36)}`;
     }
 
+    // Bos stringleri null'a cevir (unique constraint ihlali onlenir)
+    const cleanSku = typeof sku === "string" && sku.trim() ? sku.trim() : null;
+    const cleanBarcode = typeof barcode === "string" && barcode.trim() ? barcode.trim() : null;
+
     const product = await prisma.product.create({
       data: {
         name,
         slug,
         description,
         shortDesc,
-        sku,
-        barcode,
+        sku: cleanSku,
+        barcode: cleanBarcode,
         price: parseFloat(price),
         comparePrice: comparePrice ? parseFloat(comparePrice) : null,
         costPrice: costPrice ? parseFloat(costPrice) : null,
@@ -173,10 +177,10 @@ export async function POST(request: NextRequest) {
                   stock?: number;
                   options: Record<string, string>;
                 }) => ({
-                  sku: v.sku,
-                  barcode: v.barcode,
-                  price: v.price,
-                  stock: v.stock || 0,
+                  sku: typeof v.sku === "string" && v.sku.trim() ? v.sku.trim() : null,
+                  barcode: typeof v.barcode === "string" && v.barcode.trim() ? v.barcode.trim() : null,
+                  price: v.price ? parseFloat(String(v.price)) : null,
+                  stock: parseInt(String(v.stock)) || 0,
                   options: v.options,
                 })
               ),
@@ -201,6 +205,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(product, { status: 201 });
   } catch (error) {
     console.error("Product create error:", error);
+    // Prisma unique constraint hatasi (P2002)
+    if (error && typeof error === "object" && "code" in error) {
+      const prismaError = error as { code: string; meta?: { target?: string[] } };
+      if (prismaError.code === "P2002") {
+        const field = prismaError.meta?.target?.[0] || "alan";
+        const fieldNames: Record<string, string> = {
+          sku: "SKU",
+          slug: "URL",
+          barcode: "Barkod",
+        };
+        return NextResponse.json(
+          { error: `${fieldNames[field] || field} degeri zaten kullanimda. Farkli bir deger girin.` },
+          { status: 400 }
+        );
+      }
+    }
     return NextResponse.json(
       { error: "Urun olusturulurken hata olustu." },
       { status: 500 }
