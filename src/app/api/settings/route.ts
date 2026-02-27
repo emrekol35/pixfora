@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
+    console.log("[Settings POST] session role:", session?.user?.role);
     if (session?.user?.role !== "ADMIN") {
       return NextResponse.json({ error: "Yetkisiz" }, { status: 403 });
     }
@@ -43,8 +44,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Ayarlar dizisi gerekli" }, { status: 400 });
     }
 
+    console.log("[Settings POST] Kayit sayisi:", settings.length);
+
+    // Bos olmayan ayarlari filtrele — sadece deger girilmis olanlari kaydet
+    const validSettings = settings.filter(
+      (s: { key: string; value: string }) => s.value !== undefined && s.value !== null
+    );
+
     await prisma.$transaction(
-      settings.map((s: { key: string; value: string; group: string }) =>
+      validSettings.map((s: { key: string; value: string; group: string }) =>
         prisma.setting.upsert({
           where: { key: s.key },
           update: { value: s.value, group: s.group },
@@ -53,6 +61,7 @@ export async function POST(request: NextRequest) {
       )
     );
 
+    console.log("[Settings POST] Basariyla kaydedildi:", validSettings.length);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Settings save error:", error);
