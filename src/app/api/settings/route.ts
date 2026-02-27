@@ -31,8 +31,12 @@ export async function GET(request: NextRequest) {
 // POST - Ayarlari toplu kaydet (admin)
 export async function POST(request: NextRequest) {
   try {
+    const cookieHeader = request.headers.get("cookie") || "";
+    const hasSessionToken = cookieHeader.includes("authjs.session-token") || cookieHeader.includes("__Secure-authjs.session-token");
+    console.log("[Settings POST] cookie exists:", hasSessionToken, "| cookie keys:", cookieHeader.split(";").map(c => c.trim().split("=")[0]).filter(Boolean).join(", "));
+
     const session = await auth();
-    console.log("[Settings POST] session role:", session?.user?.role);
+    console.log("[Settings POST] session:", JSON.stringify(session?.user));
     if (session?.user?.role !== "ADMIN") {
       return NextResponse.json({ error: "Yetkisiz" }, { status: 403 });
     }
