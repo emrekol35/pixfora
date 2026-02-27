@@ -403,3 +403,155 @@ export function abandonedCartEmail(user: {
     </div>`,
   };
 }
+
+// ============================================================
+// IADE E-POSTALARI
+// ============================================================
+
+// Iade Talebi Alindi
+export function returnRequestEmail(data: {
+  orderNumber: string;
+  returnNumber: string;
+  refundAmount: number;
+  items: { name: string; quantity: number; price: number }[];
+}) {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pixfora.com";
+  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Pixfora";
+  const formatPrice = (p: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(p);
+
+  const itemsHtml = data.items
+    .map((i) => `<tr><td style="padding:8px;border-bottom:1px solid #eee">${i.name}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:center">${i.quantity}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:right">${formatPrice(i.price * i.quantity)}</td></tr>`)
+    .join("");
+
+  return {
+    subject: `${siteName} - Iade Talebiniz Alindi (#${data.returnNumber})`,
+    html: `
+    <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
+      <div style="background:#2563eb;padding:24px;text-align:center">
+        <h1 style="color:#fff;margin:0;font-size:24px">${siteName}</h1>
+      </div>
+      <div style="padding:24px;background:#fff">
+        <h2 style="color:#2563eb;margin-top:0">Iade Talebiniz Alindi</h2>
+        <p>Iade numaraniz: <strong>#${data.returnNumber}</strong></p>
+        <p>Siparis numarasi: <strong>#${data.orderNumber}</strong></p>
+        <table style="width:100%;border-collapse:collapse;margin:16px 0">
+          <thead><tr style="background:#f5f5f5"><th style="padding:8px;text-align:left">Urun</th><th style="padding:8px;text-align:center">Adet</th><th style="padding:8px;text-align:right">Tutar</th></tr></thead>
+          <tbody>${itemsHtml}</tbody>
+          <tfoot><tr><td colspan="2" style="padding:8px;font-weight:bold;text-align:right">Iade Tutari:</td><td style="padding:8px;font-weight:bold;text-align:right;color:#2563eb">${formatPrice(data.refundAmount)}</td></tr></tfoot>
+        </table>
+        <p>Talebiniz en kisa surede degerlendirilecektir.</p>
+        <div style="text-align:center;margin:24px 0">
+          <a href="${siteUrl}/hesabim/iadelerim" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">Iadelerimi Takip Et</a>
+        </div>
+      </div>
+      <div style="padding:16px;background:#f5f5f5;text-align:center;font-size:12px;color:#888">
+        <p>${siteName} | Bu e-posta otomatik olarak gonderilmistir.</p>
+      </div>
+    </div>`,
+  };
+}
+
+// Iade Onaylandi
+export function returnApprovedEmail(data: {
+  orderNumber: string;
+  returnNumber: string;
+  adminNote?: string | null;
+}) {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pixfora.com";
+  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Pixfora";
+
+  return {
+    subject: `${siteName} - Iade Talebiniz Onaylandi (#${data.returnNumber})`,
+    html: `
+    <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
+      <div style="background:#2563eb;padding:24px;text-align:center">
+        <h1 style="color:#fff;margin:0;font-size:24px">${siteName}</h1>
+      </div>
+      <div style="padding:24px;background:#fff">
+        <h2 style="color:#16a34a;margin-top:0;text-align:center">Iade Talebiniz Onaylandi!</h2>
+        <p>Iade numaraniz: <strong>#${data.returnNumber}</strong></p>
+        <p>Siparis numarasi: <strong>#${data.orderNumber}</strong></p>
+        ${data.adminNote ? `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin:16px 0"><p style="margin:0"><strong>Magaza Notu:</strong> ${data.adminNote}</p></div>` : ""}
+        <p>Lutfen iade edilecek urunu kargoyla gonderiniz. Urun teslim alindiginda iade islemi tamamlanacaktir.</p>
+        <div style="text-align:center;margin:24px 0">
+          <a href="${siteUrl}/hesabim/iadelerim" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">Iade Detayi</a>
+        </div>
+      </div>
+      <div style="padding:16px;background:#f5f5f5;text-align:center;font-size:12px;color:#888">
+        <p>${siteName} | Bu e-posta otomatik olarak gonderilmistir.</p>
+      </div>
+    </div>`,
+  };
+}
+
+// Iade Reddedildi
+export function returnRejectedEmail(data: {
+  orderNumber: string;
+  returnNumber: string;
+  reason: string;
+}) {
+  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Pixfora";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pixfora.com";
+
+  return {
+    subject: `${siteName} - Iade Talebiniz Reddedildi (#${data.returnNumber})`,
+    html: `
+    <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
+      <div style="background:#2563eb;padding:24px;text-align:center">
+        <h1 style="color:#fff;margin:0;font-size:24px">${siteName}</h1>
+      </div>
+      <div style="padding:24px;background:#fff">
+        <h2 style="color:#dc2626;margin-top:0;text-align:center">Iade Talebiniz Reddedildi</h2>
+        <p>Iade numaraniz: <strong>#${data.returnNumber}</strong></p>
+        <p>Siparis numarasi: <strong>#${data.orderNumber}</strong></p>
+        <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px;margin:16px 0">
+          <p style="margin:0"><strong>Red Nedeni:</strong> ${data.reason}</p>
+        </div>
+        <p>Sorulariniz icin bizimle iletisime gecebilirsiniz.</p>
+        <div style="text-align:center;margin:24px 0">
+          <a href="${siteUrl}/iletisim" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">Iletisim</a>
+        </div>
+      </div>
+      <div style="padding:16px;background:#f5f5f5;text-align:center;font-size:12px;color:#888">
+        <p>${siteName} | Bu e-posta otomatik olarak gonderilmistir.</p>
+      </div>
+    </div>`,
+  };
+}
+
+// Iade Tamamlandi (Para Iade Edildi)
+export function returnRefundedEmail(data: {
+  orderNumber: string;
+  returnNumber: string;
+  amount: number;
+}) {
+  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Pixfora";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pixfora.com";
+  const formatPrice = (p: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(p);
+
+  return {
+    subject: `${siteName} - Iade Tutariniz Yatirildi (#${data.returnNumber})`,
+    html: `
+    <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
+      <div style="background:#2563eb;padding:24px;text-align:center">
+        <h1 style="color:#fff;margin:0;font-size:24px">${siteName}</h1>
+      </div>
+      <div style="padding:24px;background:#fff">
+        <h2 style="color:#16a34a;margin-top:0;text-align:center">Iade Islemi Tamamlandi!</h2>
+        <p>Iade numaraniz: <strong>#${data.returnNumber}</strong></p>
+        <p>Siparis numarasi: <strong>#${data.orderNumber}</strong></p>
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin:16px 0;text-align:center">
+          <p style="margin:0;font-size:13px;color:#666">Iade Tutari</p>
+          <p style="margin:8px 0 0;font-size:24px;font-weight:bold;color:#16a34a">${formatPrice(data.amount)}</p>
+        </div>
+        <p>Iade tutari orijinal odeme yontinenize yatirilmistir. Hesabiniza yansimasi 3-10 is gunu surebilir.</p>
+        <div style="text-align:center;margin:24px 0">
+          <a href="${siteUrl}/hesabim/iadelerim" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">Iade Detayi</a>
+        </div>
+      </div>
+      <div style="padding:16px;background:#f5f5f5;text-align:center;font-size:12px;color:#888">
+        <p>${siteName} | Bu e-posta otomatik olarak gonderilmistir.</p>
+      </div>
+    </div>`,
+  };
+}

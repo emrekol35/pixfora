@@ -28,10 +28,17 @@ export default async function OrderDetailPage({
           },
         },
       },
+      returns: {
+        where: { status: { notIn: ["CANCELLED", "REJECTED"] } },
+        select: { id: true },
+        take: 1,
+      },
     },
   });
 
   if (!order || order.userId !== session!.user!.id) notFound();
+
+  const activeReturn = order.returns[0] || null;
 
   const serializedOrder = {
     id: order.id,
@@ -65,5 +72,11 @@ export default async function OrderDetailPage({
     })),
   };
 
-  return <OrderDetailView order={serializedOrder} />;
+  return (
+    <OrderDetailView
+      order={serializedOrder}
+      hasActiveReturn={!!activeReturn}
+      activeReturnId={activeReturn?.id}
+    />
+  );
 }

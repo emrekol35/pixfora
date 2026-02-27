@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { refundPayment } from "@/services/payment/iyzico";
 
 // POST - iyzico iade
+// orderId veya paymentId kabul eder (geriye uyumluluk)
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
@@ -12,16 +13,30 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { paymentId, amount } = body;
+    const { orderId, paymentId, amount } = body;
 
-    if (!paymentId || !amount) {
-      return NextResponse.json({ error: "Payment ID ve tutar gerekli" }, { status: 400 });
+    if ((!orderId && !paymentId) || !amount) {
+      return NextResponse.json({ error: "Siparis/Odeme ID ve tutar gerekli" }, { status: 400 });
     }
 
-    const payment = await prisma.payment.findUnique({
-      where: { id: paymentId },
-      include: { order: true },
-    });
+    // orderId veya paymentId ile odeme bul
+    let payment;
+    if (orderId) {
+      // orderId ile — kredi karti + odenmis payment'i bul
+      payment = await prisma.payment.findFirst({
+        where: {
+          orderId,
+          method: "CREDIT_CARD",
+          status: "PAID",
+        },
+        include: { order: true },
+      });
+    } else {
+      payment = await prisma.payment.findUnique({
+        where: { id: paymentId },
+        include: { order: true },
+      });
+    }
 
     if (!payment) {
       return NextResponse.json({ error: "Odeme bulunamadi" }, { status: 404 });
@@ -42,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     if (result.success) {
       await prisma.payment.update({
-        where: { id: paymentId },
+        where: { id: payment.id },
         data: { status: "REFUNDED" },
       });
       await prisma.order.update({

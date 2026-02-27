@@ -34,6 +34,7 @@ model User {
 
   addresses          Address[]
   orders             Order[]
+  returns            Return[]
   reviews            Review[]
   cartItems          CartItem[]
   notifications      Notification[]
@@ -400,6 +401,7 @@ model Order {
   items    OrderItem[]
   payments Payment[]
   invoice  Invoice?
+  returns  Return[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -422,9 +424,10 @@ model OrderItem {
   total     Float
   options   Json?
 
-  order   Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product Product         @relation(fields: [productId], references: [id])
-  variant ProductVariant? @relation(fields: [variantId], references: [id])
+  order       Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product     Product         @relation(fields: [productId], references: [id])
+  variant     ProductVariant? @relation(fields: [variantId], references: [id])
+  returnItems ReturnItem[]
 
   @@map("order_items")
 }
@@ -817,4 +820,55 @@ model ProductQuestion {
   @@index([productId])
   @@index([isPublished])
   @@map("product_questions")
+}
+
+// ============================================================
+// IADE YONETIMI
+// ============================================================
+
+enum ReturnStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  RECEIVED
+  REFUNDED
+  CANCELLED
+}
+
+model Return {
+  id           String       @id @default(cuid())
+  returnNumber String       @unique @map("return_number")
+  orderId      String       @map("order_id")
+  userId       String       @map("user_id")
+  status       ReturnStatus @default(PENDING)
+  reason       String
+  note         String?      @db.Text
+  adminNote    String?      @map("admin_note") @db.Text
+  refundAmount Float        @map("refund_amount")
+  refundMethod String?      @map("refund_method") // "original" | "store_credit"
+
+  order Order @relation(fields: [orderId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+  items ReturnItem[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([orderId])
+  @@index([userId])
+  @@index([status])
+  @@map("returns")
+}
+
+model ReturnItem {
+  id          String  @id @default(cuid())
+  returnId    String  @map("return_id")
+  orderItemId String  @map("order_item_id")
+  quantity    Int
+  reason      String?
+
+  return_   Return    @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id])
+
+  @@map("return_items")
 }

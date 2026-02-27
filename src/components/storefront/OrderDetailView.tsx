@@ -117,7 +117,7 @@ function formatDate(dateStr: string): string {
   }).format(new Date(dateStr));
 }
 
-export default function OrderDetailView({ order }: { order: Order }) {
+export default function OrderDetailView({ order, hasActiveReturn, activeReturnId }: { order: Order; hasActiveReturn?: boolean; activeReturnId?: string }) {
   const isCancelled = order.status === "CANCELLED" || order.status === "REFUNDED";
   const currentStepIndex = STEP_ORDER[order.status] ?? -1;
   const [trackingEvents, setTrackingEvents] = useState<TrackingEvent[]>([]);
@@ -383,6 +383,39 @@ export default function OrderDetailView({ order }: { order: Order }) {
           </div>
         </div>
       </div>
+
+      {/* Iade Talebi */}
+      {order.status === "DELIVERED" && (
+        <div className="bg-card border border-border rounded-xl p-5 mb-6">
+          {hasActiveReturn ? (
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">Iade Talebiniz Mevcut</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Bu siparis icin aktif bir iade talebi bulunuyor.</p>
+              </div>
+              <Link
+                href={`/hesabim/iadelerim/${activeReturnId}`}
+                className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90"
+              >
+                Iade Detayi
+              </Link>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">Iade Talebi Olustur</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Teslim tarihinden itibaren 14 gun icinde iade talebi olusturabilirsiniz.</p>
+              </div>
+              <Link
+                href={`/hesabim/siparislerim/${order.id}/iade`}
+                className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90"
+              >
+                Iade Talebi
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Order Summary */}
       <div className="bg-card border border-border rounded-xl p-5">

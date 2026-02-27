@@ -26,6 +26,9 @@ export default async function AdminOrderDetailPage({ params }: Props) {
       billingAddress: true,
       payments: true,
       coupon: true,
+      returns: {
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
 
@@ -57,6 +60,13 @@ export default async function AdminOrderDetailPage({ params }: Props) {
               value: order.coupon.value,
             }
           : null,
+        returns: order.returns.map((r) => ({
+          id: r.id,
+          returnNumber: r.returnNumber,
+          status: r.status,
+          refundAmount: r.refundAmount,
+          createdAt: r.createdAt.toISOString(),
+        })),
       }}
     />
   );

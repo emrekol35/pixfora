@@ -60,8 +60,33 @@ interface Props {
       type: string;
       value: number;
     } | null;
+    returns?: {
+      id: string;
+      returnNumber: string;
+      status: string;
+      refundAmount: number;
+      createdAt: string;
+    }[];
   };
 }
+
+const RETURN_STATUS_LABELS: Record<string, string> = {
+  PENDING: "Beklemede",
+  APPROVED: "Onaylandi",
+  REJECTED: "Reddedildi",
+  RECEIVED: "Teslim Alindi",
+  REFUNDED: "Iade Edildi",
+  CANCELLED: "Iptal Edildi",
+};
+
+const RETURN_STATUS_BADGE: Record<string, string> = {
+  PENDING: "text-warning",
+  APPROVED: "text-primary",
+  REJECTED: "text-danger",
+  RECEIVED: "text-blue-600",
+  REFUNDED: "text-success",
+  CANCELLED: "text-muted-foreground",
+};
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: "Beklemede",
@@ -371,6 +396,37 @@ export default function OrderDetail({ order }: Props) {
             <div className="bg-white rounded-xl border border-border p-6">
               <h2 className="font-bold mb-2">Siparis Notu</h2>
               <p className="text-sm text-muted-foreground">{order.note}</p>
+            </div>
+          )}
+
+          {/* Returns */}
+          {order.returns && order.returns.length > 0 && (
+            <div className="bg-white rounded-xl border border-border p-6">
+              <h2 className="font-bold mb-4">Iade Talepleri</h2>
+              <div className="space-y-3">
+                {order.returns.map((r) => (
+                  <div key={r.id} className="flex items-center justify-between p-3 bg-muted rounded-lg text-sm">
+                    <div>
+                      <p className="font-medium">{r.returnNumber}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(r.createdAt).toLocaleDateString("tr-TR")}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`font-medium ${RETURN_STATUS_BADGE[r.status] || "text-muted-foreground"}`}>
+                        {RETURN_STATUS_LABELS[r.status] || r.status}
+                      </span>
+                      <span className="font-bold">{formatPrice(r.refundAmount)}</span>
+                      <Link
+                        href={`/admin/iadeler/${r.id}`}
+                        className="text-primary hover:underline font-medium"
+                      >
+                        Detay
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

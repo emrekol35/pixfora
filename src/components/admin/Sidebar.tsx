@@ -33,6 +33,10 @@ const menuItems = [
     title: "Siparisler",
     href: "/admin/siparisler",
     icon: "🛒",
+    children: [
+      { title: "Tum Siparisler", href: "/admin/siparisler" },
+      { title: "Iadeler", href: "/admin/iadeler" },
+    ],
   },
   {
     title: "Musteriler",
