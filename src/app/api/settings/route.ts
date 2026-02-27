@@ -1,13 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-auth";
+import { getToken } from "next-auth/jwt";
 
 // GET - Ayarlari listele (admin)
 export async function GET(request: NextRequest) {
   try {
     const isAdmin = await requireAdmin(request);
     if (!isAdmin) {
-      return NextResponse.json({ error: "Yetkisiz" }, { status: 403 });
+      // Debug bilgisi
+      const token = await getToken({ req: request, secret: process.env.AUTH_SECRET });
+      const cookieNames = Array.from(request.cookies.getAll()).map((c) => c.name);
+      console.log("[SETTINGS GET] Yetkisiz - token:", !!token, "email:", token?.email, "role:", token?.role, "cookies:", cookieNames.join(","));
+      return NextResponse.json(
+        { error: "Yetkisiz", debug: { hasToken: !!token, email: token?.email || null, role: token?.role || null, cookies: cookieNames } },
+        { status: 403 }
+      );
     }
 
     const { searchParams } = new URL(request.url);
@@ -33,7 +41,14 @@ export async function POST(request: NextRequest) {
   try {
     const isAdmin = await requireAdmin(request);
     if (!isAdmin) {
-      return NextResponse.json({ error: "Yetkisiz" }, { status: 403 });
+      // Debug bilgisi
+      const token = await getToken({ req: request, secret: process.env.AUTH_SECRET });
+      const cookieNames = Array.from(request.cookies.getAll()).map((c) => c.name);
+      console.log("[SETTINGS POST] Yetkisiz - token:", !!token, "email:", token?.email, "role:", token?.role, "cookies:", cookieNames.join(","));
+      return NextResponse.json(
+        { error: "Yetkisiz", debug: { hasToken: !!token, email: token?.email || null, role: token?.role || null, cookies: cookieNames } },
+        { status: 403 }
+      );
     }
 
     const body = await request.json();

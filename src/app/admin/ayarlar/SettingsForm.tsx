@@ -154,7 +154,12 @@ export default function SettingsForm({ initialSettings }: Props) {
         setTimeout(() => setSaved(false), 3000);
       } else {
         const data = await res.json();
-        alert(data.error || "Kaydetme basarisiz.");
+        if (data.debug) {
+          const d = data.debug;
+          alert(`Yetkisiz erisim.\n\nOturum: ${d.hasToken ? "VAR" : "YOK"}\nE-posta: ${d.email || "-"}\nRol: ${d.role || "-"}\nCookie: ${d.cookies?.join(", ") || "yok"}\n\nLutfen once /giris sayfasindan giris yapin ve ardindan tarayicinizi yenileyin (Ctrl+Shift+R).`);
+        } else {
+          alert(data.error || "Kaydetme basarisiz.");
+        }
       }
     } catch {
       alert("Bir hata olustu.");
