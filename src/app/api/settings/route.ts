@@ -1,12 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { getToken } from "next-auth/jwt";
+
+async function getAdminSession(request: NextRequest) {
+  try {
+    const token = await getToken({
+      req: request,
+      secret: process.env.AUTH_SECRET,
+    });
+    return token;
+  } catch (error) {
+    console.error("[Settings] Token decode error:", error);
+    return null;
+  }
+}
 
 // GET - Ayarlari listele (admin)
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (session?.user?.role !== "ADMIN") {
+    const token = await getAdminSession(request);
+    if (token?.role !== "ADMIN") {
       return NextResponse.json({ error: "Yetkisiz" }, { status: 403 });
     }
 
@@ -31,13 +44,9 @@ export async function GET(request: NextRequest) {
 // POST - Ayarlari toplu kaydet (admin)
 export async function POST(request: NextRequest) {
   try {
-    const cookieHeader = request.headers.get("cookie") || "";
-    const hasSessionToken = cookieHeader.includes("authjs.session-token") || cookieHeader.includes("__Secure-authjs.session-token");
-    console.log("[Settings POST] cookie exists:", hasSessionToken, "| cookie keys:", cookieHeader.split(";").map(c => c.trim().split("=")[0]).filter(Boolean).join(", "));
-
-    const session = await auth();
-    console.log("[Settings POST] session:", JSON.stringify(session?.user));
-    if (session?.user?.role !== "ADMIN") {
+    const token = await getAdminSession(request);
+    console.log("[Settings POST] token role:", token?.role);
+    if (token?.role !== "ADMIN") {
       return NextResponse.json({ error: "Yetkisiz" }, { status: 403 });
     }
 
