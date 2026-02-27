@@ -2,13 +2,16 @@
 
 import Link from "next/link";
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useCartStore } from "@/store/cart";
 import { useWishlistStore } from "@/store/wishlist";
-import { useSearchStore, SearchResult } from "@/store/search";
+import { useSearchStore } from "@/store/search";
 import NotificationBell from "@/components/storefront/NotificationBell";
+import SearchDropdown from "@/components/storefront/SearchDropdown";
 
 export default function Header() {
+  const router = useRouter();
   const { data: session } = useSession();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -16,7 +19,13 @@ export default function Header() {
   const openCart = useCartStore((s) => s.openCart);
   const wishlistCount = useWishlistStore((s) => s.getCount());
 
-  const { query, setQuery, results, setResults, isLoading, setLoading, isOpen, openSearch, closeSearch } = useSearchStore();
+  const {
+    query, setQuery,
+    suggestions, setSuggestions,
+    isLoading, setLoading,
+    isOpen, openSearch, closeSearch,
+    recentSearches, addRecentSearch,
+  } = useSearchStore();
   const searchRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout>(undefined);
 
@@ -40,7 +49,11 @@ export default function Header() {
       if (debounceRef.current) clearTimeout(debounceRef.current);
 
       if (value.length < 2) {
-        setResults([]);
+        setSuggestions(null);
+        // Son aramalar varsa dropdown'u aç
+        if (value.length === 0 && recentSearches.length > 0) {
+          openSearch();
+        }
         return;
       }
 
@@ -49,18 +62,38 @@ export default function Header() {
 
       debounceRef.current = setTimeout(async () => {
         try {
-          const res = await fetch(`/api/search?q=${encodeURIComponent(value)}&limit=6`);
+          const res = await fetch(`/api/search/suggestions?q=${encodeURIComponent(value)}`);
           const data = await res.json();
-          setResults(data.products || []);
+          setSuggestions(data);
         } catch {
-          setResults([]);
+          setSuggestions(null);
         } finally {
           setLoading(false);
         }
       }, 300);
     },
-    [setQuery, setResults, setLoading, openSearch]
+    [setQuery, setSuggestions, setLoading, openSearch, recentSearches.length]
   );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" && query.length >= 2) {
+        e.preventDefault();
+        addRecentSearch(query);
+        closeSearch();
+        router.push(`/arama?q=${encodeURIComponent(query)}`);
+      }
+    },
+    [query, addRecentSearch, closeSearch, router]
+  );
+
+  const handleFocus = useCallback(() => {
+    if (query.length >= 2) {
+      openSearch();
+    } else if (recentSearches.length > 0) {
+      openSearch();
+    }
+  }, [query, recentSearches.length, openSearch]);
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-border">
@@ -96,7 +129,8 @@ export default function Header() {
                 className="w-full pl-10 pr-4 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 value={query}
                 onChange={(e) => handleSearch(e.target.value)}
-                onFocus={() => query.length >= 2 && openSearch()}
+                onFocus={handleFocus}
+                onKeyDown={handleKeyDown}
               />
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -104,51 +138,14 @@ export default function Header() {
             </div>
 
             {/* Search Dropdown */}
-            {isOpen && query.length >= 2 && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-border rounded-lg shadow-lg overflow-hidden z-50">
-                {isLoading ? (
-                  <div className="p-4 text-center text-sm text-muted-foreground">
-                    Araniyor...
-                  </div>
-                ) : results.length > 0 ? (
-                  <>
-                    {results.map((item: SearchResult) => (
-                      <Link
-                        key={item.id}
-                        href={`/urun/${item.slug}`}
-                        className="flex items-center gap-3 p-3 hover:bg-muted transition-colors"
-                        onClick={() => closeSearch()}
-                      >
-                        <div className="w-10 h-10 bg-muted rounded shrink-0 overflow-hidden">
-                          {item.image && (
-                            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{item.name}</p>
-                          {item.category && (
-                            <p className="text-xs text-muted-foreground">{item.category}</p>
-                          )}
-                        </div>
-                        <span className="text-sm font-bold text-primary shrink-0">
-                          {new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(item.price)}
-                        </span>
-                      </Link>
-                    ))}
-                    <Link
-                      href={`/arama?q=${encodeURIComponent(query)}`}
-                      className="block p-3 text-center text-sm text-primary font-medium hover:bg-muted border-t border-border"
-                      onClick={() => closeSearch()}
-                    >
-                      Tum sonuclari gor →
-                    </Link>
-                  </>
-                ) : (
-                  <div className="p-4 text-center text-sm text-muted-foreground">
-                    Sonuc bulunamadi
-                  </div>
-                )}
-              </div>
+            {isOpen && (
+              <SearchDropdown
+                query={query}
+                suggestions={suggestions}
+                isLoading={isLoading}
+                recentSearches={recentSearches}
+                onClose={closeSearch}
+              />
             )}
           </div>
 

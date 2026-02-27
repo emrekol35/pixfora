@@ -1,44 +1,68 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { cacheGet, cacheSet } from "@/lib/redis";
+import {
+  parseSearchParams,
+  buildBaseSearchWhere,
+  buildFilteredSearchWhere,
+  buildSearchOrderBy,
+  resolveCategorySlugs,
+  resolveBrandSlugs,
+  computeFacets,
+} from "@/lib/search-helpers";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const q = searchParams.get("q") || "";
-    const limit = parseInt(searchParams.get("limit") || "20");
-    const page = parseInt(searchParams.get("page") || "1");
-    const skip = (page - 1) * limit;
+    const sp: Record<string, string | undefined> = {};
+    searchParams.forEach((value, key) => {
+      sp[key] = value;
+    });
 
-    if (q.length < 2) {
-      return NextResponse.json({ products: [], total: 0 });
+    const filters = parseSearchParams(sp);
+
+    if (filters.q.length < 2) {
+      return NextResponse.json({ products: [], total: 0, page: 1, totalPages: 0, facets: null });
     }
 
-    const where = {
-      isActive: true,
-      OR: [
-        { name: { contains: q, mode: "insensitive" as const } },
-        { description: { contains: q, mode: "insensitive" as const } },
-        { sku: { contains: q, mode: "insensitive" as const } },
-        { tags: { some: { tag: { contains: q, mode: "insensitive" as const } } } },
-        { brand: { name: { contains: q, mode: "insensitive" as const } } },
-        { category: { name: { contains: q, mode: "insensitive" as const } } },
-      ],
-    };
+    const skip = (filters.page - 1) * filters.limit;
 
-    const [products, total] = await Promise.all([
+    // Slug'ları ID'lere çevir
+    const [categoryIds, brandIds] = await Promise.all([
+      resolveCategorySlugs(filters.categories),
+      resolveBrandSlugs(filters.brands),
+    ]);
+
+    // Base where (facetler için) ve Filtered where (sonuçlar için)
+    const baseWhere = buildBaseSearchWhere(filters.q);
+    const filteredWhere = buildFilteredSearchWhere(baseWhere, categoryIds, brandIds, filters);
+    const orderBy = buildSearchOrderBy(filters.sort);
+
+    // Facet cache kontrolü
+    const facetCacheKey = `search:facets:${filters.q.toLowerCase()}`;
+    let facets = await cacheGet<Awaited<ReturnType<typeof computeFacets>>>(facetCacheKey);
+
+    // Paralel sorgular: products + total + facets (gerekirse)
+    const [products, total, computedFacets] = await Promise.all([
       prisma.product.findMany({
-        where,
+        where: filteredWhere,
         include: {
           images: { orderBy: { order: "asc" }, take: 1 },
           category: { select: { name: true, slug: true } },
           brand: { select: { name: true } },
         },
-        orderBy: [{ isFeatured: "desc" }, { name: "asc" }],
-        take: limit,
+        orderBy,
+        take: filters.limit,
         skip,
       }),
-      prisma.product.count({ where }),
+      prisma.product.count({ where: filteredWhere }),
+      facets ? null : computeFacets(baseWhere),
     ]);
+
+    if (!facets && computedFacets) {
+      facets = computedFacets;
+      await cacheSet(facetCacheKey, facets, 60);
+    }
 
     const mapped = products.map((p) => ({
       id: p.id,
@@ -55,8 +79,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       products: mapped,
       total,
-      page,
-      totalPages: Math.ceil(total / limit),
+      page: filters.page,
+      totalPages: Math.ceil(total / filters.limit),
+      facets,
     });
   } catch (error) {
     console.error("Search error:", error);

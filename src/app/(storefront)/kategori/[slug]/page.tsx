@@ -47,22 +47,38 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   const sort = (sp.siralama as string) || "newest";
   const minPrice = sp.min ? parseFloat(sp.min as string) : undefined;
   const maxPrice = sp.max ? parseFloat(sp.max as string) : undefined;
-  const brandSlug = sp.marka as string | undefined;
+  const inStockOnly = sp.stok === "1";
+
+  // Çoklu marka desteği (virgülle ayrılmış)
+  const brandSlugs = sp.marka
+    ? String(sp.marka).split(",").filter(Boolean)
+    : [];
 
   // Kategori ve alt kategorilerin ID'lerini topla
   const categoryIds = [category.id, ...category.children.map((c) => c.id)];
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const where: any = {
+  // Marka slug'larını ID'lere çevir
+  let brandIds: string[] = [];
+  if (brandSlugs.length > 0) {
+    const resolvedBrands = await prisma.brand.findMany({
+      where: { slug: { in: brandSlugs } },
+      select: { id: true },
+    });
+    brandIds = resolvedBrands.map((b) => b.id);
+  }
+
+  // Base where (facet hesabı için - filtreler hariç)
+  const baseWhere = {
     isActive: true,
     categoryId: { in: categoryIds },
   };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const where: any = { ...baseWhere };
   if (minPrice) where.price = { ...where.price, gte: minPrice };
   if (maxPrice) where.price = { ...where.price, lte: maxPrice };
-  if (brandSlug) {
-    const brand = await prisma.brand.findUnique({ where: { slug: brandSlug } });
-    if (brand) where.brandId = brand.id;
-  }
+  if (brandIds.length > 0) where.brandId = { in: brandIds };
+  if (inStockOnly) where.stock = { gt: 0 };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let orderBy: any = { createdAt: "desc" };
@@ -71,7 +87,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   else if (sort === "name") orderBy = { name: "asc" };
   else if (sort === "popular") orderBy = { isFeatured: "desc" };
 
-  const [products, total, brands] = await Promise.all([
+  const [products, total, brands, brandFacets, inStockCount] = await Promise.all([
     prisma.product.findMany({
       where,
       include: {
@@ -85,6 +101,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       skip,
     }),
     prisma.product.count({ where }),
+    // Tüm markalar (bu kategorideki)
     prisma.brand.findMany({
       where: {
         isActive: true,
@@ -92,12 +109,34 @@ export default async function CategoryPage({ params, searchParams }: Props) {
           some: { isActive: true, categoryId: { in: categoryIds } },
         },
       },
-      select: { name: true, slug: true },
+      select: { id: true, name: true, slug: true },
       orderBy: { name: "asc" },
+    }),
+    // Marka bazlı ürün sayıları (facet)
+    prisma.product.groupBy({
+      by: ["brandId"],
+      where: { ...baseWhere, brandId: { not: null } },
+      _count: { id: true },
+    }),
+    // Stokta olan ürün sayısı
+    prisma.product.count({
+      where: { ...baseWhere, stock: { gt: 0 } },
     }),
   ]);
 
   const totalPages = Math.ceil(total / limit);
+
+  // Brand count map oluştur
+  const brandCountMap = new Map(
+    brandFacets.map((g) => [g.brandId, g._count.id])
+  );
+
+  // brands'e count ekle
+  const brandsWithCount = brands.map((b) => ({
+    name: b.name,
+    slug: b.slug,
+    count: brandCountMap.get(b.id) || 0,
+  }));
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -147,15 +186,17 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       {/* Content */}
       <CategoryProducts
         products={addRatingToProducts(products)}
-        brands={brands}
+        brands={brandsWithCount}
         total={total}
         page={page}
         totalPages={totalPages}
         currentSort={sort}
         categorySlug={slug}
-        currentBrand={brandSlug}
+        currentBrands={brandSlugs}
         minPrice={minPrice}
         maxPrice={maxPrice}
+        currentInStock={inStockOnly}
+        inStockCount={inStockCount}
       />
     </div>
   );
