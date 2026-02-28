@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useCartStore } from "@/store/cart";
 
 type Step = "address" | "shipping" | "payment" | "confirm";
@@ -814,7 +815,7 @@ export default function CheckoutClient() {
                   const price = getItemPrice(item);
                   return (
                     <div key={item.id} className="flex items-center gap-3 text-sm">
-                      <div className="w-12 h-12 bg-muted rounded overflow-hidden shrink-0">{item.product.image && <img src={item.product.image} alt="" className="w-full h-full object-cover" />}</div>
+                      <div className="w-12 h-12 bg-muted rounded overflow-hidden shrink-0 relative">{item.product.image && <Image src={item.product.image} alt={item.product.name} fill className="object-cover" sizes="48px" />}</div>
                       <div className="flex-1 min-w-0"><p className="truncate">{item.product.name}</p><p className="text-xs text-muted-foreground">{item.quantity} adet</p></div>
                       <span className="font-medium">{formatPrice(price * item.quantity)}</span>
                     </div>
@@ -839,7 +840,7 @@ export default function CheckoutClient() {
                 const price = getItemPrice(item);
                 return (
                   <div key={item.id} className="flex gap-2 text-sm">
-                    <div className="w-10 h-10 bg-muted rounded shrink-0 overflow-hidden">{item.product.image && <img src={item.product.image} alt="" className="w-full h-full object-cover" />}</div>
+                    <div className="w-10 h-10 bg-muted rounded shrink-0 overflow-hidden relative">{item.product.image && <Image src={item.product.image} alt={item.product.name} fill className="object-cover" sizes="40px" />}</div>
                     <div className="flex-1 min-w-0"><p className="truncate text-xs">{item.product.name}</p><p className="text-xs text-muted-foreground">{item.quantity}x {formatPrice(price)}</p></div>
                   </div>
                 );

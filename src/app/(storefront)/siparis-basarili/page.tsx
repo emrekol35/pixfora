@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Siparis Basarili",
+  robots: { index: false, follow: false },
 };
 
 interface Props {

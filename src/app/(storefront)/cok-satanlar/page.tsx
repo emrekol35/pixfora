@@ -9,6 +9,7 @@ import HomeProducts from "@/components/storefront/HomeProducts";
 export const metadata: Metadata = {
   title: "Cok Satanlar",
   description: "En cok satan urunlerimiz",
+  alternates: { canonical: "/cok-satanlar" },
 };
 
 interface Props {

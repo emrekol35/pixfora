@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Iletisim | Pixfora",
   description: "Bizimle iletisime gecin",
+  alternates: { canonical: "/iletisim" },
 };
 
 export default function ContactPage() {

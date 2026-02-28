@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useCartStore, CartVariant } from "@/store/cart";
+import { SHIMMER_PLACEHOLDER } from "@/lib/image-utils";
 import { useRecentlyViewedStore } from "@/store/recently-viewed";
 import ProductCard from "./ProductCard";
 
@@ -269,6 +270,8 @@ export default function ProductDetail({ product, similarProducts, boughtTogether
                 fill
                 sizes="(max-width: 768px) 100vw, 50vw"
                 className="object-contain"
+                placeholder="blur"
+                blurDataURL={SHIMMER_PLACEHOLDER}
                 priority
               />
             ) : (

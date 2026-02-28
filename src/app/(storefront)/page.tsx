@@ -7,6 +7,8 @@ import HomeProducts from "@/components/storefront/HomeProducts";
 import RecentlyViewed from "@/components/storefront/RecentlyViewed";
 import PersonalizedRecommendations from "@/components/storefront/PersonalizedRecommendations";
 import { getTrending } from "@/services/recommendation";
+import JsonLd from "@/components/seo/JsonLd";
+import { getOrganizationSchema, getWebSiteSchema } from "@/lib/structured-data";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +79,9 @@ export default async function HomePage() {
 
   return (
     <>
+      <JsonLd data={getOrganizationSchema()} />
+      <JsonLd data={getWebSiteSchema()} />
+
       {/* Hero / Slider */}
       {slides.length > 0 ? (
         <section className="relative bg-gradient-to-r from-primary to-primary-dark text-white overflow-hidden">

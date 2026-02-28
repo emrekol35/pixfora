@@ -10,6 +10,7 @@ import HomeProducts from "@/components/storefront/HomeProducts";
 export const metadata: Metadata = {
   title: "Firsatlar",
   description: "Indirimli urunler ve ozel firsatlar",
+  alternates: { canonical: "/firsatlar" },
 };
 
 interface Props {

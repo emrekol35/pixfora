@@ -23,6 +23,8 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const sp = await searchParams;
   return {
     title: sp.q ? `"${sp.q}" icin arama sonuclari` : "Arama",
+    description: "Pixfora urun arama",
+    robots: { index: false, follow: false },
   };
 }
 

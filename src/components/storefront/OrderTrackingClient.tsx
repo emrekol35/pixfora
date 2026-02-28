@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 
 interface TrackingEvent {
   date: string;
@@ -253,8 +254,8 @@ export default function OrderTrackingClient() {
             <div className="space-y-3 mb-4">
               {order.items.map((item, idx) => (
                 <div key={idx} className="flex items-center gap-3 text-sm">
-                  <div className="w-12 h-12 bg-muted rounded overflow-hidden shrink-0">
-                    {item.image && <img src={item.image} alt="" className="w-full h-full object-cover" />}
+                  <div className="w-12 h-12 bg-muted rounded overflow-hidden shrink-0 relative">
+                    {item.image && <Image src={item.image} alt={item.name} fill className="object-cover" sizes="48px" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="truncate">{item.name}</p>

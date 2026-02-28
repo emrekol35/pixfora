@@ -7,6 +7,8 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Kayit Ol | Pixfora",
+  description: "Pixfora'ya uye olun",
+  robots: { index: false, follow: false },
 };
 
 export default async function RegisterPage() {

@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Kategoriler",
   description: "Tum urun kategorilerini kesfet",
+  alternates: { canonical: "/kategori" },
 };
 
 export default async function CategoriesPage() {

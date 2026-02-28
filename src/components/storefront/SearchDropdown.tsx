@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useSearchStore } from "@/store/search";
 import type { SearchSuggestions } from "@/store/search";
@@ -193,9 +194,9 @@ export default function SearchDropdown({
               className="flex items-center gap-3 px-3 py-2 hover:bg-muted transition-colors"
               onClick={onClose}
             >
-              <div className="w-10 h-10 bg-muted rounded shrink-0 overflow-hidden">
+              <div className="w-10 h-10 bg-muted rounded shrink-0 overflow-hidden relative">
                 {product.image && (
-                  <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                  <Image src={product.image} alt={product.name} fill className="object-cover" sizes="40px" />
                 )}
               </div>
               <div className="flex-1 min-w-0">

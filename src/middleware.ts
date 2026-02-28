@@ -1,5 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// In-memory redirect cache
+let redirectCache: Map<string, { toPath: string; type: number }> | null = null;
+let redirectCacheTime = 0;
+const REDIRECT_CACHE_TTL = 300_000; // 5 dakika
+
+async function getRedirects(
+  request: NextRequest
+): Promise<Map<string, { toPath: string; type: number }>> {
+  const now = Date.now();
+  if (redirectCache && now - redirectCacheTime < REDIRECT_CACHE_TTL) {
+    return redirectCache;
+  }
+
+  try {
+    const baseUrl = request.nextUrl.origin;
+    const res = await fetch(`${baseUrl}/api/internal/redirects`);
+    if (res.ok) {
+      const data = await res.json();
+      redirectCache = new Map(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        data.map((r: any) => [r.fromPath, { toPath: r.toPath, type: r.type }])
+      );
+      redirectCacheTime = now;
+    }
+  } catch {
+    // API hazir degilse devam et
+  }
+
+  return redirectCache || new Map();
+}
+
 // In-memory rate limiter
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 
@@ -73,12 +104,27 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
   return response;
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const ip =
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     request.headers.get("x-real-ip") ||
     "unknown";
+
+  // SEO: DB redirect kontrolu (API ve static haric)
+  if (
+    !pathname.startsWith("/api/") &&
+    !pathname.startsWith("/_next/") &&
+    !pathname.startsWith("/uploads/")
+  ) {
+    const redirects = await getRedirects(request);
+    const redirect = redirects.get(pathname);
+    if (redirect) {
+      const url = request.nextUrl.clone();
+      url.pathname = redirect.toPath;
+      return NextResponse.redirect(url, redirect.type === 302 ? 302 : 301);
+    }
+  }
 
   // API rate limiting
   if (pathname.startsWith("/api/")) {

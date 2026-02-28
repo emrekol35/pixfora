@@ -3,6 +3,7 @@
 import React, { useCallback, memo } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { SHIMMER_PLACEHOLDER } from "@/lib/image-utils";
 import { useCartStore } from "@/store/cart";
 import { useWishlistStore } from "@/store/wishlist";
 import { useCompareStore } from "@/store/compare";
@@ -111,6 +112,8 @@ function ProductCardInner({ product }: ProductCardProps) {
             alt={image.alt || product.name}
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
+            placeholder="blur"
+            blurDataURL={SHIMMER_PLACEHOLDER}
             className="object-cover group-hover:scale-105 transition-transform duration-500"
           />
         ) : (

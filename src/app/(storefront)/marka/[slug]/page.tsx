@@ -1,8 +1,11 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import type { Metadata } from "next";
 import HomeProducts from "@/components/storefront/HomeProducts";
+import JsonLd from "@/components/seo/JsonLd";
+import { getBreadcrumbSchema } from "@/lib/structured-data";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +21,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: brand.seoTitle || brand.name,
     description: brand.seoDescription || `${brand.name} markasindan urunler`,
+    alternates: { canonical: `/marka/${slug}` },
   };
 }
 
@@ -48,8 +52,17 @@ export default async function BrandPage({ params, searchParams }: Props) {
 
   const totalPages = Math.ceil(total / limit);
 
+  const BASE_URL = process.env.AUTH_URL || "https://pixfora.com";
+  const breadcrumbItems = [
+    { name: "Anasayfa", url: BASE_URL },
+    { name: "Markalar", url: `${BASE_URL}/markalar` },
+    { name: brand.name, url: `${BASE_URL}/marka/${slug}` },
+  ];
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
+      <JsonLd data={getBreadcrumbSchema(breadcrumbItems)} />
+
       <nav className="text-sm mb-6">
         <ol className="flex items-center gap-2 text-muted-foreground">
           <li><Link href="/" className="hover:text-primary">Anasayfa</Link></li>
@@ -62,7 +75,7 @@ export default async function BrandPage({ params, searchParams }: Props) {
 
       <div className="flex items-center gap-4 mb-8">
         {brand.logo && (
-          <img src={brand.logo} alt={brand.name} className="w-16 h-16 object-contain" />
+          <Image src={brand.logo} alt={brand.name} width={64} height={64} className="object-contain" />
         )}
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">{brand.name}</h1>

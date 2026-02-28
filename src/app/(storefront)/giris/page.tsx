@@ -7,6 +7,8 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Giris Yap | Pixfora",
+  description: "Pixfora hesabiniza giris yapin",
+  robots: { index: false, follow: false },
 };
 
 export default async function LoginPage() {

@@ -23,6 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: page.seoTitle || page.title,
     description: page.seoDescription || undefined,
+    alternates: { canonical: `/sayfa/${slug}` },
   };
 }
 

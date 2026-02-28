@@ -4,6 +4,8 @@ import CheckoutClient from "@/components/storefront/CheckoutClient";
 
 export const metadata: Metadata = {
   title: "Odeme",
+  description: "Siparisinizi tamamlayin",
+  robots: { index: false, follow: false },
 };
 
 export default function CheckoutPage() {

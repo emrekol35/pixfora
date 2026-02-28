@@ -1,13 +1,24 @@
+import dynamic from "next/dynamic";
 import Header from "@/components/storefront/Header";
 import Footer from "@/components/storefront/Footer";
-import CartDrawer from "@/components/storefront/CartDrawer";
 import WishlistInit from "@/components/storefront/WishlistInit";
 import CartSyncProvider from "@/components/storefront/CartSyncProvider";
-import CompareBar from "@/components/storefront/CompareBar";
 import Providers from "@/components/storefront/Providers";
-import MobileBottomNav from "@/components/storefront/MobileBottomNav";
-import PWAInstallPrompt from "@/components/shared/PWAInstallPrompt";
 import OfflineIndicator from "@/components/shared/OfflineIndicator";
+
+// Lazy load: client JS bundle'i ayri chunk olarak yuklenir (code splitting)
+const CartDrawer = dynamic(
+  () => import("@/components/storefront/CartDrawer")
+);
+const CompareBar = dynamic(
+  () => import("@/components/storefront/CompareBar")
+);
+const MobileBottomNav = dynamic(
+  () => import("@/components/storefront/MobileBottomNav")
+);
+const PWAInstallPrompt = dynamic(
+  () => import("@/components/shared/PWAInstallPrompt")
+);
 
 export default function StorefrontLayout({
   children,

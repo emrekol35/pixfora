@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db";
 import { addRatingToProducts } from "@/lib/product-helpers";
 import type { Metadata } from "next";
 import CategoryProducts from "@/components/storefront/CategoryProducts";
+import JsonLd from "@/components/seo/JsonLd";
+import { getBreadcrumbSchema } from "@/lib/structured-data";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +21,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: category.seoTitle || category.name,
     description: category.seoDescription || `${category.name} kategorisindeki urunler`,
+    alternates: { canonical: `/kategori/${slug}` },
   };
 }
 
@@ -138,8 +141,20 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     count: brandCountMap.get(b.id) || 0,
   }));
 
+  const BASE_URL = process.env.AUTH_URL || "https://pixfora.com";
+  const breadcrumbItems = [
+    { name: "Anasayfa", url: BASE_URL },
+    { name: "Kategoriler", url: `${BASE_URL}/kategori` },
+    ...(category.parent
+      ? [{ name: category.parent.name, url: `${BASE_URL}/kategori/${category.parent.slug}` }]
+      : []),
+    { name: category.name, url: `${BASE_URL}/kategori/${slug}` },
+  ];
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
+      <JsonLd data={getBreadcrumbSchema(breadcrumbItems)} />
+
       {/* Breadcrumb */}
       <nav className="text-sm mb-6">
         <ol className="flex items-center gap-2 text-muted-foreground flex-wrap">

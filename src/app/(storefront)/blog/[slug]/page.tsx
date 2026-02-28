@@ -5,6 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { prisma } from "@/lib/db";
 import type { Metadata } from "next";
+import JsonLd from "@/components/seo/JsonLd";
+import { getBlogPostingSchema, getBreadcrumbSchema } from "@/lib/structured-data";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -26,6 +28,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: post.seoTitle || post.title,
     description: post.seoDescription || post.excerpt || undefined,
+    alternates: { canonical: `/blog/${slug}` },
+    openGraph: {
+      title: post.seoTitle || post.title,
+      description: post.seoDescription || post.excerpt || undefined,
+      type: "article",
+      publishedTime: post.createdAt.toISOString(),
+      ...(post.image && { images: [{ url: post.image, alt: post.title }] }),
+    },
   };
 }
 
@@ -37,8 +47,21 @@ export default async function BlogPostPage({ params }: Props) {
     notFound();
   }
 
+  const BASE_URL = process.env.AUTH_URL || "https://pixfora.com";
+  const breadcrumbItems = [
+    { name: "Anasayfa", url: BASE_URL },
+    { name: "Blog", url: `${BASE_URL}/blog` },
+    ...(post.category
+      ? [{ name: post.category.name, url: `${BASE_URL}/blog` }]
+      : []),
+    { name: post.title, url: `${BASE_URL}/blog/${slug}` },
+  ];
+
   return (
     <article className="max-w-4xl mx-auto px-4 py-12">
+      <JsonLd data={getBlogPostingSchema(post)} />
+      <JsonLd data={getBreadcrumbSchema(breadcrumbItems)} />
+
       <div className="mb-6">
         <Link href="/blog" className="text-sm text-primary hover:underline">
           ← Blog&apos;a Don

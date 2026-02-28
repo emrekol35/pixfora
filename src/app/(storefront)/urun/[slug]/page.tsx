@@ -5,6 +5,8 @@ import type { Metadata } from "next";
 import ProductDetail from "@/components/storefront/ProductDetail";
 import Link from "next/link";
 import { getBoughtTogether, getSimilarProducts } from "@/services/recommendation";
+import JsonLd from "@/components/seo/JsonLd";
+import { getProductSchema, getBreadcrumbSchema } from "@/lib/structured-data";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +36,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title,
     description,
+    alternates: { canonical: `/urun/${slug}` },
     openGraph: {
       title,
       description,
@@ -148,8 +151,44 @@ export default async function ProductPage({ params }: Props) {
     options: v.options as Record<string, string>,
   }));
 
+  const BASE_URL = process.env.AUTH_URL || "https://pixfora.com";
+
+  // JSON-LD: Product schema
+  const productSchemaData = getProductSchema({
+    name: product.name,
+    slug: product.slug,
+    description: product.description,
+    price: product.price,
+    comparePrice: product.comparePrice,
+    stock: product.stock,
+    sku: product.sku,
+    images: product.images.map((img) => ({ url: img.url, alt: img.alt })),
+    brand: product.brand,
+    category: product.category,
+    avgRating,
+    reviewCount: product._count.reviews,
+    reviews: product.reviews.map((r) => ({
+      rating: r.rating,
+      comment: r.comment,
+      createdAt: r.createdAt,
+      user: r.user,
+    })),
+  });
+
+  // JSON-LD: Breadcrumb schema
+  const breadcrumbItems = [
+    { name: "Anasayfa", url: BASE_URL },
+    ...(product.category
+      ? [{ name: product.category.name, url: `${BASE_URL}/kategori/${product.category.slug}` }]
+      : []),
+    { name: product.name, url: `${BASE_URL}/urun/${product.slug}` },
+  ];
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
+      <JsonLd data={productSchemaData} />
+      <JsonLd data={getBreadcrumbSchema(breadcrumbItems)} />
+
       {/* Breadcrumb */}
       <nav className="text-sm mb-6">
         <ol className="flex items-center gap-2 text-muted-foreground flex-wrap">

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { prisma } from "@/lib/db";
 import type { Metadata } from "next";
 
@@ -7,6 +8,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Markalar",
   description: "Tum markalari kesfet",
+  alternates: { canonical: "/markalar" },
 };
 
 export default async function BrandsPage() {
@@ -38,10 +40,12 @@ export default async function BrandsPage() {
             className="group flex flex-col items-center p-6 rounded-xl border border-border hover:border-primary hover:shadow-md transition-all"
           >
             {brand.logo ? (
-              <img
+              <Image
                 src={brand.logo}
                 alt={brand.name}
-                className="w-16 h-16 object-contain mb-3"
+                width={64}
+                height={64}
+                className="object-contain mb-3"
               />
             ) : (
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-3">

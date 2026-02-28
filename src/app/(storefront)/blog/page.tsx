@@ -8,6 +8,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Blog | Pixfora",
   description: "En son blog yazilari ve haberler",
+  alternates: { canonical: "/blog" },
 };
 
 async function getPosts() {
