@@ -115,6 +115,8 @@ export default function SettingsForm({ initialSettings }: Props) {
   const [settings, setSettings] = useState<Record<string, string>>(initialSettings);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [mngStatus, setMngStatus] = useState<{ connected: boolean; message: string } | null>(null);
+  const [mngTesting, setMngTesting] = useState(false);
 
   function getValue(key: string): string {
     return settings[key] || "";
@@ -127,6 +129,35 @@ export default function SettingsForm({ initialSettings }: Props) {
 
   function isChecked(key: string): boolean {
     return settings[key] === "true" || settings[key] === "1";
+  }
+
+  async function testMngConnection() {
+    setMngTesting(true);
+    setMngStatus(null);
+
+    try {
+      const customerNumber = getValue("shipping_mng_customer_number");
+      const password = getValue("shipping_mng_password");
+
+      if (!customerNumber || !password) {
+        setMngStatus({ connected: false, message: "Musteri No ve Sifre alanlari bos olamaz." });
+        return;
+      }
+
+      const res = await fetch("/api/settings/test-mng", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ customerNumber, password }),
+      });
+
+      const data = await res.json();
+      setMngStatus({ connected: data.connected, message: data.message });
+    } catch {
+      setMngStatus({ connected: false, message: "Baglanti testi sirasinda bir hata olustu." });
+    } finally {
+      setMngTesting(false);
+    }
   }
 
   async function handleSave() {
@@ -208,6 +239,53 @@ export default function SettingsForm({ initialSettings }: Props) {
               </div>
             ))}
           </div>
+
+          {/* MNG Kargo Baglanti Testi */}
+          {group.key === "shipping_carriers" && (
+            <div className="mt-4 pt-4 border-t border-border">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={testMngConnection}
+                  disabled={mngTesting}
+                  className="px-4 py-2 bg-gray-700 text-white text-sm rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  {mngTesting ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Test Ediliyor...
+                    </>
+                  ) : (
+                    "MNG Kargo Baglanti Testi"
+                  )}
+                </button>
+
+                {mngStatus && (
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${
+                      mngStatus.connected
+                        ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                        : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                    }`}
+                  >
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        mngStatus.connected ? "bg-green-500" : "bg-red-500"
+                      }`}
+                    />
+                    {mngStatus.connected ? "Bagli" : "Bagli Degil"}
+                  </span>
+                )}
+              </div>
+              {mngStatus && (
+                <p className={`mt-2 text-sm ${mngStatus.connected ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                  {mngStatus.message}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       ))}
 
