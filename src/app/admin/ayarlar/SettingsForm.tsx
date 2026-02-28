@@ -83,7 +83,9 @@ const SETTING_GROUPS: SettingGroup[] = [
       { key: "shipping_aras_username", label: "Aras Kullanici Adi", type: "text", placeholder: "" },
       { key: "shipping_aras_password", label: "Aras Sifre", type: "password", placeholder: "" },
       { key: "shipping_aras_customer_code", label: "Aras Musteri Kodu", type: "text", placeholder: "" },
-      { key: "shipping_mng_enabled", label: "MNG Kargo Aktif", type: "checkbox" },
+      { key: "shipping_mng_enabled", label: "MNG Kargo (DHL eCommerce) Aktif", type: "checkbox" },
+      { key: "shipping_mng_client_id", label: "MNG API Client ID (X-IBM-Client-Id)", type: "text", placeholder: "API portalindan alinan Client ID" },
+      { key: "shipping_mng_client_secret", label: "MNG API Client Secret (X-IBM-Client-Secret)", type: "password", placeholder: "API portalindan alinan Client Secret" },
       { key: "shipping_mng_customer_number", label: "MNG Musteri No", type: "text", placeholder: "" },
       { key: "shipping_mng_password", label: "MNG Sifre", type: "password", placeholder: "" },
     ],
@@ -136,11 +138,13 @@ export default function SettingsForm({ initialSettings }: Props) {
     setMngStatus(null);
 
     try {
+      const clientId = getValue("shipping_mng_client_id");
+      const clientSecret = getValue("shipping_mng_client_secret");
       const customerNumber = getValue("shipping_mng_customer_number");
       const password = getValue("shipping_mng_password");
 
-      if (!customerNumber || !password) {
-        setMngStatus({ connected: false, message: "Musteri No ve Sifre alanlari bos olamaz." });
+      if (!clientId || !clientSecret || !customerNumber || !password) {
+        setMngStatus({ connected: false, message: "Client ID, Client Secret, Musteri No ve Sifre alanlari bos olamaz." });
         return;
       }
 
@@ -148,7 +152,7 @@ export default function SettingsForm({ initialSettings }: Props) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ customerNumber, password }),
+        body: JSON.stringify({ clientId, clientSecret, customerNumber, password }),
       });
 
       const data = await res.json();

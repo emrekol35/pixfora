@@ -7,18 +7,32 @@ import type {
 } from "./types";
 import { prisma } from "@/lib/db";
 
+// MNG Kargo (DHL eCommerce Turkey) API
+// API Portal: https://apizone.mngkargo.com.tr
+// IBM API Connect tabanli - X-IBM-Client-Id ve X-IBM-Client-Secret header gerektirir
 const API_URL =
-  process.env.MNG_API_URL || "https://api.mngkargo.com.tr/mngapi/api";
+  process.env.MNG_API_URL || "https://apizone.mngkargo.com.tr/mngapi/api";
 
 // ---- DB'den credential oku, env var fallback ----
-async function getCredentials(): Promise<{
+interface MngCredentials {
+  clientId: string;
+  clientSecret: string;
   customerNumber: string;
   password: string;
-}> {
+}
+
+async function getCredentials(): Promise<MngCredentials> {
   try {
     const settings = await prisma.setting.findMany({
       where: {
-        key: { in: ["shipping_mng_customer_number", "shipping_mng_password"] },
+        key: {
+          in: [
+            "shipping_mng_client_id",
+            "shipping_mng_client_secret",
+            "shipping_mng_customer_number",
+            "shipping_mng_password",
+          ],
+        },
       },
     });
     const map: Record<string, string> = {};
@@ -26,6 +40,10 @@ async function getCredentials(): Promise<{
       map[s.key] = s.value;
     });
     return {
+      clientId:
+        map.shipping_mng_client_id || process.env.MNG_CLIENT_ID || "",
+      clientSecret:
+        map.shipping_mng_client_secret || process.env.MNG_CLIENT_SECRET || "",
       customerNumber:
         map.shipping_mng_customer_number ||
         process.env.MNG_CUSTOMER_NUMBER ||
@@ -35,6 +53,8 @@ async function getCredentials(): Promise<{
     };
   } catch {
     return {
+      clientId: process.env.MNG_CLIENT_ID || "",
+      clientSecret: process.env.MNG_CLIENT_SECRET || "",
       customerNumber: process.env.MNG_CUSTOMER_NUMBER || "",
       password: process.env.MNG_PASSWORD || "",
     };
@@ -56,7 +76,11 @@ async function getToken(): Promise<string> {
   try {
     const res = await fetch(`${API_URL}/token`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-IBM-Client-Id": creds.clientId,
+        "X-IBM-Client-Secret": creds.clientSecret,
+      },
       body: JSON.stringify({
         customerNumber: creds.customerNumber,
         password: creds.password,
@@ -66,12 +90,23 @@ async function getToken(): Promise<string> {
 
     const data = (await res.json()) as Record<string, unknown>;
 
-    if (!res.ok || !data.token) {
-      console.error("MNG token hatasi:", data);
-      throw new Error((data.message as string) || "Token alinamadi");
+    if (!res.ok) {
+      console.error("MNG token hatasi:", res.status, data);
+      throw new Error(
+        (data.message as string) ||
+          (data.errorMessage as string) ||
+          `Token alinamadi (HTTP ${res.status})`
+      );
     }
 
-    cachedToken = data.token as string;
+    // Response: { jwt, refreshToken, jwtExpireDate, refreshTokenExpireDate }
+    const jwt = (data.jwt || data.token) as string;
+    if (!jwt) {
+      console.error("MNG token response:", data);
+      throw new Error("Token alinamadi - JWT bos");
+    }
+
+    cachedToken = jwt;
     // Token'i 55 dakika gecerli say (genelde 1 saat)
     tokenExpiry = Date.now() + 55 * 60 * 1000;
     return cachedToken;
@@ -89,12 +124,15 @@ async function callApi(
   method: "POST" | "GET" = "POST"
 ): Promise<Record<string, unknown>> {
   try {
+    const creds = await getCredentials();
     const token = await getToken();
 
     const options: RequestInit = {
       method,
       headers: {
         "Content-Type": "application/json",
+        "X-IBM-Client-Id": creds.clientId,
+        "X-IBM-Client-Secret": creds.clientSecret,
         Authorization: `Bearer ${token}`,
       },
     };
@@ -114,6 +152,8 @@ async function callApi(
         ...options,
         headers: {
           "Content-Type": "application/json",
+          "X-IBM-Client-Id": creds.clientId,
+          "X-IBM-Client-Secret": creds.clientSecret,
           Authorization: `Bearer ${newToken}`,
         },
       });
@@ -153,7 +193,7 @@ export const mngKargo: ShippingProvider = {
   async createShipment(req: ShipmentRequest): Promise<ShipmentResult> {
     const creds = await getCredentials();
 
-    if (!creds.customerNumber || !creds.password) {
+    if (!creds.customerNumber || !creds.password || !creds.clientId) {
       // Test modu — credential yoksa mock tracking uret
       const trackingNumber = `MNG${Date.now()}${Math.random()
         .toString(36)
@@ -218,7 +258,7 @@ export const mngKargo: ShippingProvider = {
   async getTracking(trackingNumber: string): Promise<TrackingResult> {
     const creds = await getCredentials();
 
-    if (!creds.customerNumber || !creds.password) {
+    if (!creds.customerNumber || !creds.password || !creds.clientId) {
       // Test modu
       return {
         success: true,
