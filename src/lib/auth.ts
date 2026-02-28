@@ -12,10 +12,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: { label: "Sifre", type: "password" },
       },
       async authorize(credentials) {
-        console.log("[AUTH] Login attempt:", credentials?.email);
-
         if (!credentials?.email || !credentials?.password) {
-          console.log("[AUTH] Missing email or password");
           return null;
         }
 
@@ -24,12 +21,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         });
 
         if (!user || !user.password) {
-          console.log("[AUTH] User not found for email:", credentials.email);
           return null;
         }
 
         if (user.isBlacklisted) {
-          console.log("[AUTH] User blacklisted:", user.email);
           throw new Error("Hesabiniz engellenmistir.");
         }
 
@@ -37,8 +32,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           credentials.password as string,
           user.password
         );
-
-        console.log("[AUTH] Password valid:", isValid, "for user:", user.email, "role:", user.role);
 
         if (!isValid) {
           return null;

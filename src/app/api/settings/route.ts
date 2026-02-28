@@ -1,27 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-auth";
-import { auth } from "@/lib/auth";
 
 // GET - Ayarlari listele (admin)
 export async function GET() {
   try {
     const isAdmin = await requireAdmin();
     if (!isAdmin) {
-      // Debug bilgisi
-      const session = await auth();
-      console.log("[SETTINGS GET] Yetkisiz - session:", !!session, "email:", session?.user?.email, "role:", (session?.user as { role?: string })?.role);
-      return NextResponse.json(
-        {
-          error: "Yetkisiz",
-          debug: {
-            hasSession: !!session,
-            email: session?.user?.email || null,
-            role: (session?.user as { role?: string })?.role || null,
-          },
-        },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Yetkisiz" }, { status: 403 });
     }
 
     const settings = await prisma.setting.findMany({ orderBy: { key: "asc" } });
@@ -38,20 +24,7 @@ export async function POST(request: NextRequest) {
   try {
     const isAdmin = await requireAdmin();
     if (!isAdmin) {
-      // Debug bilgisi
-      const session = await auth();
-      console.log("[SETTINGS POST] Yetkisiz - session:", !!session, "email:", session?.user?.email, "role:", (session?.user as { role?: string })?.role);
-      return NextResponse.json(
-        {
-          error: "Yetkisiz",
-          debug: {
-            hasSession: !!session,
-            email: session?.user?.email || null,
-            role: (session?.user as { role?: string })?.role || null,
-          },
-        },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Yetkisiz" }, { status: 403 });
     }
 
     const body = await request.json();
