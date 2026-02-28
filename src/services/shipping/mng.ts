@@ -11,7 +11,7 @@ import { prisma } from "@/lib/db";
 // API Portal: https://apizone.mngkargo.com.tr
 // IBM API Connect tabanli - X-IBM-Client-Id ve X-IBM-Client-Secret header gerektirir
 const API_URL =
-  process.env.MNG_API_URL || "https://apizone.mngkargo.com.tr/mngapi/api";
+  process.env.MNG_API_URL || "https://api.mngkargo.com.tr/mngapi/api";
 
 // ---- DB'den credential oku, env var fallback ----
 interface MngCredentials {

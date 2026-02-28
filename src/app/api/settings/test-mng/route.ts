@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
 
     const API_URL =
       process.env.MNG_API_URL ||
-      "https://apizone.mngkargo.com.tr/mngapi/api";
+      "https://api.mngkargo.com.tr/mngapi/api";
 
     const res = await fetch(`${API_URL}/token`, {
       method: "POST",
