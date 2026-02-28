@@ -87,45 +87,69 @@ export default function NewsletterList({
         </div>
       ) : (
         <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-muted">
-                <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">
-                  E-posta
-                </th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">
-                  Abone Tarihi
-                </th>
-                <th className="text-right px-4 py-3 text-sm font-medium text-muted-foreground">
-                  Islemler
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((s) => (
-                <tr
-                  key={s.id}
-                  className="border-t border-border hover:bg-muted transition-colors"
-                >
-                  <td className="px-4 py-3 text-sm text-foreground">
-                    {s.email}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">
-                    {new Date(s.createdAt).toLocaleDateString("tr-TR")}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => handleDelete(s.email)}
-                      disabled={deleting === s.email}
-                      className="text-sm text-red-600 hover:text-red-800 disabled:opacity-50"
-                    >
-                      {deleting === s.email ? "Siliniyor..." : "Sil"}
-                    </button>
-                  </td>
+          {/* Desktop Table */}
+          <div className="hidden md:block">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-muted">
+                  <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">
+                    E-posta
+                  </th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">
+                    Abone Tarihi
+                  </th>
+                  <th className="text-right px-4 py-3 text-sm font-medium text-muted-foreground">
+                    Islemler
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.map((s) => (
+                  <tr
+                    key={s.id}
+                    className="border-t border-border hover:bg-muted transition-colors"
+                  >
+                    <td className="px-4 py-3 text-sm text-foreground">
+                      {s.email}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                      {new Date(s.createdAt).toLocaleDateString("tr-TR")}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => handleDelete(s.email)}
+                        disabled={deleting === s.email}
+                        className="text-sm text-red-600 hover:text-red-800 disabled:opacity-50"
+                      >
+                        {deleting === s.email ? "Siliniyor..." : "Sil"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="md:hidden divide-y divide-border">
+            {filtered.map((s) => (
+              <div key={s.id} className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium truncate">{s.email}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(s.createdAt).toLocaleDateString("tr-TR")}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleDelete(s.email)}
+                  disabled={deleting === s.email}
+                  className="text-xs text-red-600 hover:text-red-800 disabled:opacity-50 shrink-0 ml-2"
+                >
+                  {deleting === s.email ? "..." : "Sil"}
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

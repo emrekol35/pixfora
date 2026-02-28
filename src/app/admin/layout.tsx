@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import Sidebar from "@/components/admin/Sidebar";
-import AdminHeader from "@/components/admin/Header";
 import AdminQueryProvider from "@/components/admin/AdminQueryProvider";
+import AdminLayoutClient from "./AdminLayoutClient";
 
 export const metadata = {
   title: "Admin Paneli",
@@ -24,14 +23,8 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <AdminHeader />
-        <main className="flex-1 p-6 bg-muted/30">
-          <AdminQueryProvider>{children}</AdminQueryProvider>
-        </main>
-      </div>
-    </div>
+    <AdminLayoutClient>
+      <AdminQueryProvider>{children}</AdminQueryProvider>
+    </AdminLayoutClient>
   );
 }

@@ -85,6 +85,70 @@ function CategoryRow({
   );
 }
 
+function CategoryMobileCard({
+  category,
+  depth = 0,
+}: {
+  category: Category;
+  depth?: number;
+}) {
+  const router = useRouter();
+
+  async function handleDelete() {
+    if (!confirm(`"${category.name}" kategorisini silmek istediginize emin misiniz?`)) {
+      return;
+    }
+    const res = await fetch(`/api/categories/${category.id}`, { method: "DELETE" });
+    if (res.ok) {
+      router.refresh();
+    } else {
+      const data = await res.json();
+      alert(data.error || "Silme islemi basarisiz.");
+    }
+  }
+
+  return (
+    <>
+      <div className="p-4 space-y-2" style={{ paddingLeft: `${16 + depth * 16}px` }}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {depth > 0 && <span className="text-muted-foreground text-xs">└</span>}
+            <p className="font-medium text-sm">{category.name}</p>
+            <span
+              className={`inline-block w-2 h-2 rounded-full ${
+                category.isActive ? "bg-success" : "bg-danger"
+              }`}
+            />
+          </div>
+          <span className="text-xs text-muted-foreground">
+            {category._count?.products ?? 0} urun
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">{category.slug}</span>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/admin/kategoriler/${category.id}`}
+              className="px-3 py-1.5 text-xs bg-muted rounded-lg hover:bg-muted/80 transition-colors"
+            >
+              Duzenle
+            </Link>
+            <button
+              onClick={handleDelete}
+              className="px-3 py-1.5 text-xs bg-danger/10 text-danger rounded-lg hover:bg-danger/20 transition-colors"
+            >
+              Sil
+            </button>
+          </div>
+        </div>
+      </div>
+      {category.children?.map((child) => (
+        <CategoryMobileCard key={child.id} category={child} depth={depth + 1} />
+      ))}
+    </>
+  );
+}
+
 export default function CategoryList({
   categories,
 }: {
@@ -106,32 +170,42 @@ export default function CategoryList({
 
   return (
     <div className="bg-card rounded-xl border border-border overflow-hidden">
-      <table className="w-full">
-        <thead className="bg-muted/50">
-          <tr>
-            <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-              Kategori Adi
-            </th>
-            <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-              Slug
-            </th>
-            <th className="px-4 py-3 text-center text-sm font-medium text-muted-foreground">
-              Durum
-            </th>
-            <th className="px-4 py-3 text-center text-sm font-medium text-muted-foreground">
-              Urun Sayisi
-            </th>
-            <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">
-              Islemler
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {categories.map((category) => (
-            <CategoryRow key={category.id} category={category} />
-          ))}
-        </tbody>
-      </table>
+      {/* Desktop Table */}
+      <div className="hidden md:block">
+        <table className="w-full">
+          <thead className="bg-muted/50">
+            <tr>
+              <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                Kategori Adi
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                Slug
+              </th>
+              <th className="px-4 py-3 text-center text-sm font-medium text-muted-foreground">
+                Durum
+              </th>
+              <th className="px-4 py-3 text-center text-sm font-medium text-muted-foreground">
+                Urun Sayisi
+              </th>
+              <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">
+                Islemler
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {categories.map((category) => (
+              <CategoryRow key={category.id} category={category} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile Cards */}
+      <div className="md:hidden divide-y divide-border">
+        {categories.map((category) => (
+          <CategoryMobileCard key={category.id} category={category} />
+        ))}
+      </div>
     </div>
   );
 }

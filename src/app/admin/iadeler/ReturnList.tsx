@@ -89,9 +89,10 @@ export default function ReturnList({ returns }: { returns: ReturnItem[] }) {
         })}
       </div>
 
-      {/* Table */}
+      {/* Table & Cards */}
       <div className="bg-white rounded-xl border border-border overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-border bg-muted/50">
@@ -155,6 +156,49 @@ export default function ReturnList({ returns }: { returns: ReturnItem[] }) {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Cards */}
+        <div className="md:hidden divide-y divide-border">
+          {filtered.length === 0 ? (
+            <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+              Bu durumda iade talebi bulunamadi
+            </div>
+          ) : (
+            filtered.map((r) => (
+              <div key={r.id} className="p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold">{r.returnNumber}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(r.createdAt).toLocaleDateString("tr-TR")}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">{r.customerName}</p>
+                    <p className="text-xs text-muted-foreground">Siparis #{r.orderNumber}</p>
+                  </div>
+                  <span className="text-sm font-bold">{formatPrice(r.refundAmount)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_BADGE[r.status] || "bg-muted"}`}>
+                      {STATUS_LABELS[r.status] || r.status}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {REASON_LABELS[r.reason] || r.reason}
+                    </span>
+                  </div>
+                  <Link
+                    href={`/admin/iadeler/${r.id}`}
+                    className="text-sm text-primary hover:underline font-medium"
+                  >
+                    Detay
+                  </Link>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

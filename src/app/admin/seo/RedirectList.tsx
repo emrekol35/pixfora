@@ -44,59 +44,104 @@ export default function RedirectList({ redirects }: { redirects: Redirect[] }) {
 
   return (
     <div className="bg-card rounded-xl border border-border overflow-hidden">
-      <table className="w-full">
-        <thead className="bg-muted/50">
-          <tr>
-            <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Kaynak Yol</th>
-            <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Hedef Yol</th>
-            <th className="px-4 py-3 text-center text-sm font-medium text-muted-foreground">Tip</th>
-            <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Tarih</th>
-            <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">Islemler</th>
-          </tr>
-        </thead>
-        <tbody>
-          {redirects.map((redirect) => (
-            <tr key={redirect.id} className="border-b border-border hover:bg-muted/50">
-              <td className="px-4 py-3">
-                <span className="font-mono text-sm">{redirect.fromPath}</span>
-              </td>
-              <td className="px-4 py-3">
-                <span className="font-mono text-sm">{redirect.toPath}</span>
-              </td>
-              <td className="px-4 py-3 text-center">
-                <span
-                  className={`inline-block px-2 py-0.5 text-xs rounded-full font-medium ${
-                    redirect.type === 301
-                      ? "bg-success/10 text-success"
-                      : "bg-warning/10 text-warning"
-                  }`}
-                >
-                  {redirect.type}
-                </span>
-              </td>
-              <td className="px-4 py-3 text-sm text-muted-foreground">
-                {new Date(redirect.createdAt).toLocaleDateString("tr-TR")}
-              </td>
-              <td className="px-4 py-3 text-right">
-                <div className="flex items-center justify-end gap-2">
-                  <Link
-                    href={`/admin/seo/${redirect.id}`}
-                    className="px-3 py-1 text-sm bg-muted rounded hover:bg-muted/80 transition-colors"
-                  >
-                    Duzenle
-                  </Link>
-                  <button
-                    onClick={() => handleDelete(redirect)}
-                    className="px-3 py-1 text-sm bg-danger/10 text-danger rounded hover:bg-danger/20 transition-colors"
-                  >
-                    Sil
-                  </button>
-                </div>
-              </td>
+      {/* Desktop Table */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-muted/50">
+            <tr>
+              <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Kaynak Yol</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Hedef Yol</th>
+              <th className="px-4 py-3 text-center text-sm font-medium text-muted-foreground">Tip</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Tarih</th>
+              <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">Islemler</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {redirects.map((redirect) => (
+              <tr key={redirect.id} className="border-b border-border hover:bg-muted/50">
+                <td className="px-4 py-3">
+                  <span className="font-mono text-sm">{redirect.fromPath}</span>
+                </td>
+                <td className="px-4 py-3">
+                  <span className="font-mono text-sm">{redirect.toPath}</span>
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <span
+                    className={`inline-block px-2 py-0.5 text-xs rounded-full font-medium ${
+                      redirect.type === 301
+                        ? "bg-success/10 text-success"
+                        : "bg-warning/10 text-warning"
+                    }`}
+                  >
+                    {redirect.type}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-sm text-muted-foreground">
+                  {new Date(redirect.createdAt).toLocaleDateString("tr-TR")}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    <Link
+                      href={`/admin/seo/${redirect.id}`}
+                      className="px-3 py-1 text-sm bg-muted rounded hover:bg-muted/80 transition-colors"
+                    >
+                      Duzenle
+                    </Link>
+                    <button
+                      onClick={() => handleDelete(redirect)}
+                      className="px-3 py-1 text-sm bg-danger/10 text-danger rounded hover:bg-danger/20 transition-colors"
+                    >
+                      Sil
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile Cards */}
+      <div className="md:hidden divide-y divide-border">
+        {redirects.map((redirect) => (
+          <div key={redirect.id} className="p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span
+                className={`px-2 py-0.5 text-xs rounded-full font-medium ${
+                  redirect.type === 301
+                    ? "bg-success/10 text-success"
+                    : "bg-warning/10 text-warning"
+                }`}
+              >
+                {redirect.type}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {new Date(redirect.createdAt).toLocaleDateString("tr-TR")}
+              </span>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Kaynak:</p>
+              <p className="font-mono text-sm truncate">{redirect.fromPath}</p>
+              <p className="text-xs text-muted-foreground">Hedef:</p>
+              <p className="font-mono text-sm truncate">{redirect.toPath}</p>
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <Link
+                href={`/admin/seo/${redirect.id}`}
+                className="flex-1 text-center px-3 py-1.5 text-xs bg-muted rounded-lg hover:bg-muted/80 transition-colors"
+              >
+                Duzenle
+              </Link>
+              <button
+                onClick={() => handleDelete(redirect)}
+                className="px-3 py-1.5 text-xs bg-danger/10 text-danger rounded-lg hover:bg-danger/20 transition-colors"
+              >
+                Sil
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

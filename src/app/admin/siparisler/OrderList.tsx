@@ -190,9 +190,10 @@ export default function OrderList({ orders }: Props) {
         </div>
       )}
 
-      {/* Orders Table */}
+      {/* Orders Table & Cards */}
       <div className="bg-white rounded-xl border border-border overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted">
               <tr>
@@ -285,6 +286,76 @@ export default function OrderList({ orders }: Props) {
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Cards */}
+        <div className="md:hidden divide-y divide-border">
+          {filteredOrders.map((order) => {
+            const status = STATUS_MAP[order.status] || { label: order.status, color: "bg-muted" };
+            const payStatus = PAYMENT_STATUS_MAP[order.paymentStatus] || { label: order.paymentStatus, color: "" };
+            const customerName = order.user?.name || order.guestName || "-";
+
+            return (
+              <div key={order.id} className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {["CONFIRMED", "PROCESSING"].includes(order.status) && (
+                      <input
+                        type="checkbox"
+                        checked={selectedOrders.has(order.id)}
+                        onChange={() => toggleOrder(order.id)}
+                        className="w-4 h-4"
+                      />
+                    )}
+                    <Link
+                      href={`/admin/siparisler/${order.id}`}
+                      className="font-semibold text-primary hover:underline text-sm"
+                    >
+                      {order.orderNumber}
+                    </Link>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(order.createdAt).toLocaleDateString("tr-TR")}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">{customerName}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {order.items.length} urun
+                    </p>
+                  </div>
+                  <p className="text-base font-bold">{formatPrice(order.total)}</p>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${status.color}`}>
+                      {status.label}
+                    </span>
+                    <span className={`text-xs font-medium ${payStatus.color}`}>
+                      {payStatus.label}
+                    </span>
+                  </div>
+                  <select
+                    value={order.status}
+                    onChange={(e) => updateStatus(order.id, e.target.value)}
+                    disabled={updatingId === order.id}
+                    className="text-xs border border-border rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="PENDING">Beklemede</option>
+                    <option value="CONFIRMED">Onaylandi</option>
+                    <option value="PROCESSING">Hazirlaniyor</option>
+                    <option value="SHIPPED">Kargoda</option>
+                    <option value="DELIVERED">Teslim</option>
+                    <option value="CANCELLED">Iptal</option>
+                    <option value="REFUNDED">Iade</option>
+                  </select>
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         {filteredOrders.length === 0 && (

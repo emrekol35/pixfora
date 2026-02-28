@@ -62,49 +62,85 @@ export default function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
 
   return (
     <div className="bg-card rounded-xl border border-border overflow-hidden">
-      <table className="w-full">
-        <thead className="bg-muted/50">
-          <tr>
-            <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Kampanya Adi</th>
-            <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Tip</th>
-            <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Deger</th>
-            <th className="px-4 py-3 text-center text-sm font-medium text-muted-foreground">Durum</th>
-            <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Gecerlilik</th>
-            <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">Islemler</th>
-          </tr>
-        </thead>
-        <tbody>
-          {campaigns.map((campaign) => (
-            <tr key={campaign.id} className="border-b border-border hover:bg-muted/50">
-              <td className="px-4 py-3 font-medium">{campaign.name}</td>
-              <td className="px-4 py-3 text-sm">{TYPE_LABELS[campaign.type] || campaign.type}</td>
-              <td className="px-4 py-3 text-sm">{formatValue(campaign.type, campaign.value)}</td>
-              <td className="px-4 py-3 text-center">
-                <span className={`inline-block w-2 h-2 rounded-full ${campaign.isActive ? "bg-success" : "bg-danger"}`} />
-              </td>
-              <td className="px-4 py-3 text-sm text-muted-foreground">
-                {formatDate(campaign.startsAt)} - {formatDate(campaign.expiresAt)}
-              </td>
-              <td className="px-4 py-3 text-right">
-                <div className="flex items-center justify-end gap-2">
-                  <Link
-                    href={`/admin/indirimler/kampanyalar/${campaign.id}`}
-                    className="px-3 py-1 text-sm bg-muted rounded hover:bg-muted/80 transition-colors"
-                  >
-                    Duzenle
-                  </Link>
-                  <button
-                    onClick={() => handleDelete(campaign)}
-                    className="px-3 py-1 text-sm bg-danger/10 text-danger rounded hover:bg-danger/20 transition-colors"
-                  >
-                    Sil
-                  </button>
-                </div>
-              </td>
+      {/* Desktop Table */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-muted/50">
+            <tr>
+              <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Kampanya Adi</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Tip</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Deger</th>
+              <th className="px-4 py-3 text-center text-sm font-medium text-muted-foreground">Durum</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Gecerlilik</th>
+              <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">Islemler</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {campaigns.map((campaign) => (
+              <tr key={campaign.id} className="border-b border-border hover:bg-muted/50">
+                <td className="px-4 py-3 font-medium">{campaign.name}</td>
+                <td className="px-4 py-3 text-sm">{TYPE_LABELS[campaign.type] || campaign.type}</td>
+                <td className="px-4 py-3 text-sm">{formatValue(campaign.type, campaign.value)}</td>
+                <td className="px-4 py-3 text-center">
+                  <span className={`inline-block w-2 h-2 rounded-full ${campaign.isActive ? "bg-success" : "bg-danger"}`} />
+                </td>
+                <td className="px-4 py-3 text-sm text-muted-foreground">
+                  {formatDate(campaign.startsAt)} - {formatDate(campaign.expiresAt)}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    <Link
+                      href={`/admin/indirimler/kampanyalar/${campaign.id}`}
+                      className="px-3 py-1 text-sm bg-muted rounded hover:bg-muted/80 transition-colors"
+                    >
+                      Duzenle
+                    </Link>
+                    <button
+                      onClick={() => handleDelete(campaign)}
+                      className="px-3 py-1 text-sm bg-danger/10 text-danger rounded hover:bg-danger/20 transition-colors"
+                    >
+                      Sil
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile Cards */}
+      <div className="md:hidden divide-y divide-border">
+        {campaigns.map((campaign) => (
+          <div key={campaign.id} className="p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <p className="font-medium text-sm">{campaign.name}</p>
+                <span className={`inline-block w-2 h-2 rounded-full ${campaign.isActive ? "bg-success" : "bg-danger"}`} />
+              </div>
+              <span className="text-sm font-semibold">{formatValue(campaign.type, campaign.value)}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>{TYPE_LABELS[campaign.type] || campaign.type}</span>
+              <span>{formatDate(campaign.startsAt)} - {formatDate(campaign.expiresAt)}</span>
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <Link
+                href={`/admin/indirimler/kampanyalar/${campaign.id}`}
+                className="flex-1 text-center px-3 py-1.5 text-xs bg-muted rounded-lg hover:bg-muted/80 transition-colors"
+              >
+                Duzenle
+              </Link>
+              <button
+                onClick={() => handleDelete(campaign)}
+                className="px-3 py-1.5 text-xs bg-danger/10 text-danger rounded-lg hover:bg-danger/20 transition-colors"
+              >
+                Sil
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

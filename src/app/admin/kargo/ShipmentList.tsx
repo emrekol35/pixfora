@@ -95,9 +95,10 @@ export default function ShipmentList({ shipments }: Props) {
         ))}
       </div>
 
-      {/* Table */}
+      {/* Table & Cards */}
       <div className="bg-white rounded-xl border border-border overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted">
               <tr>
@@ -166,6 +167,51 @@ export default function ShipmentList({ shipments }: Props) {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Cards */}
+        <div className="md:hidden divide-y divide-border">
+          {filtered.map((s) => (
+            <div key={s.id} className="p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={`/admin/kargo/${s.id}`}
+                    className="font-semibold text-primary hover:underline text-sm font-mono"
+                  >
+                    {s.shipmentNumber}
+                  </Link>
+                  {s.type === "return" && (
+                    <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">
+                      IADE
+                    </span>
+                  )}
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(s.createdAt).toLocaleDateString("tr-TR")}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">{s.order.customerName}</p>
+                  <p className="text-xs text-muted-foreground">Siparis {s.order.orderNumber}</p>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {PROVIDER_NAMES[s.provider] || s.provider}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span
+                  className={`px-2 py-0.5 rounded text-xs font-medium ${
+                    STATUS_COLORS[s.status] || "bg-muted"
+                  }`}
+                >
+                  {STATUS_LABELS[s.status] || s.status}
+                </span>
+                <span className="font-mono text-xs text-muted-foreground">{s.trackingNumber}</span>
+              </div>
+            </div>
+          ))}
         </div>
 
         {filtered.length === 0 && (

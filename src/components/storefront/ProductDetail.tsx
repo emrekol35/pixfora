@@ -530,10 +530,10 @@ export default function ProductDetail({ product, similarProducts, boughtTogether
 
       {/* Tabs: Description & Reviews */}
       <div className="mt-12">
-        <div className="flex border-b border-border">
+        <div className="flex border-b border-border overflow-x-auto scrollbar-hide">
           <button
             onClick={() => setActiveTab("desc")}
-            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+            className={`px-4 sm:px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
               activeTab === "desc"
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"
@@ -543,7 +543,7 @@ export default function ProductDetail({ product, similarProducts, boughtTogether
           </button>
           <button
             onClick={() => setActiveTab("reviews")}
-            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+            className={`px-4 sm:px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
               activeTab === "reviews"
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"
@@ -553,7 +553,7 @@ export default function ProductDetail({ product, similarProducts, boughtTogether
           </button>
           <button
             onClick={() => setActiveTab("qa")}
-            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+            className={`px-4 sm:px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
               activeTab === "qa"
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"

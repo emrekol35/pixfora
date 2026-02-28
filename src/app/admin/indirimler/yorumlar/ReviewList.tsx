@@ -91,77 +91,137 @@ export default function ReviewList({ reviews }: { reviews: Review[] }) {
         </div>
       ) : (
         <div className="bg-card rounded-xl border border-border overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Urun</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Musteri</th>
-                <th className="px-4 py-3 text-center text-sm font-medium text-muted-foreground">Puan</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Yorum</th>
-                <th className="px-4 py-3 text-center text-sm font-medium text-muted-foreground">Durum</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Tarih</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">Islemler</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredReviews.map((review) => (
-                <tr key={review.id} className="border-b border-border hover:bg-muted/50">
-                  <td className="px-4 py-3 text-sm font-medium max-w-[200px] truncate">
-                    {review.product.name}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="text-sm">{review.user.name || "-"}</div>
-                    <div className="text-xs text-muted-foreground">{review.user.email}</div>
-                  </td>
-                  <td className="px-4 py-3 text-center">
+          {/* Desktop Table */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Urun</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Musteri</th>
+                  <th className="px-4 py-3 text-center text-sm font-medium text-muted-foreground">Puan</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Yorum</th>
+                  <th className="px-4 py-3 text-center text-sm font-medium text-muted-foreground">Durum</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Tarih</th>
+                  <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">Islemler</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredReviews.map((review) => (
+                  <tr key={review.id} className="border-b border-border hover:bg-muted/50">
+                    <td className="px-4 py-3 text-sm font-medium max-w-[200px] truncate">
+                      {review.product.name}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-sm">{review.user.name || "-"}</div>
+                      <div className="text-xs text-muted-foreground">{review.user.email}</div>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <Stars rating={review.rating} />
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground max-w-[250px] truncate">
+                      {review.comment || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs ${
+                          review.isApproved
+                            ? "bg-success/10 text-success"
+                            : "bg-warning/10 text-warning"
+                        }`}
+                      >
+                        {review.isApproved ? "Onaylandi" : "Beklemede"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                      {new Date(review.createdAt).toLocaleDateString("tr-TR")}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        {!review.isApproved ? (
+                          <button
+                            onClick={() => handleApprove(review.id, true)}
+                            className="px-3 py-1 text-xs bg-success/10 text-success rounded hover:bg-success/20 transition-colors"
+                          >
+                            Onayla
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleApprove(review.id, false)}
+                            className="px-3 py-1 text-xs bg-warning/10 text-warning rounded hover:bg-warning/20 transition-colors"
+                          >
+                            Kaldir
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDelete(review.id)}
+                          className="px-3 py-1 text-xs bg-danger/10 text-danger rounded hover:bg-danger/20 transition-colors"
+                        >
+                          Sil
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="md:hidden divide-y divide-border">
+            {filteredReviews.map((review) => (
+              <div key={review.id} className="p-4 space-y-2">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{review.product.name}</p>
+                    <p className="text-xs text-muted-foreground">{review.user.name || review.user.email}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 ml-2">
                     <Stars rating={review.rating} />
-                  </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground max-w-[250px] truncate">
-                    {review.comment || "-"}
-                  </td>
-                  <td className="px-4 py-3 text-center">
                     <span
-                      className={`px-2 py-1 rounded-full text-xs ${
+                      className={`px-1.5 py-0.5 rounded-full text-[10px] ${
                         review.isApproved
                           ? "bg-success/10 text-success"
                           : "bg-warning/10 text-warning"
                       }`}
                     >
-                      {review.isApproved ? "Onaylandi" : "Beklemede"}
+                      {review.isApproved ? "Onay" : "Bekle"}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                  </div>
+                </div>
+                {review.comment && (
+                  <p className="text-xs text-muted-foreground line-clamp-2">{review.comment}</p>
+                )}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">
                     {new Date(review.createdAt).toLocaleDateString("tr-TR")}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      {!review.isApproved ? (
-                        <button
-                          onClick={() => handleApprove(review.id, true)}
-                          className="px-3 py-1 text-xs bg-success/10 text-success rounded hover:bg-success/20 transition-colors"
-                        >
-                          Onayla
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleApprove(review.id, false)}
-                          className="px-3 py-1 text-xs bg-warning/10 text-warning rounded hover:bg-warning/20 transition-colors"
-                        >
-                          Kaldir
-                        </button>
-                      )}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    {!review.isApproved ? (
                       <button
-                        onClick={() => handleDelete(review.id)}
-                        className="px-3 py-1 text-xs bg-danger/10 text-danger rounded hover:bg-danger/20 transition-colors"
+                        onClick={() => handleApprove(review.id, true)}
+                        className="px-3 py-1.5 text-xs bg-success/10 text-success rounded-lg hover:bg-success/20 transition-colors"
                       >
-                        Sil
+                        Onayla
                       </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    ) : (
+                      <button
+                        onClick={() => handleApprove(review.id, false)}
+                        className="px-3 py-1.5 text-xs bg-warning/10 text-warning rounded-lg hover:bg-warning/20 transition-colors"
+                      >
+                        Kaldir
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDelete(review.id)}
+                      className="px-3 py-1.5 text-xs bg-danger/10 text-danger rounded-lg hover:bg-danger/20 transition-colors"
+                    >
+                      Sil
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
