@@ -54,13 +54,21 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Detayli hata mesaji
+    const errorParts: string[] = [];
+    if (data.httpCode) errorParts.push(`HTTP ${data.httpCode}`);
+    if (data.httpMessage) errorParts.push(data.httpMessage as string);
+    if (data.moreInformation) errorParts.push(data.moreInformation as string);
+    if (data.message) errorParts.push(data.message as string);
+    if (data.errorMessage) errorParts.push(data.errorMessage as string);
+
+    const errorMsg = errorParts.length > 0
+      ? errorParts.join(" - ")
+      : `Baglanti basarisiz (HTTP ${res.status})`;
+
     return NextResponse.json({
       connected: false,
-      message:
-        (data.message as string) ||
-        (data.errorMessage as string) ||
-        (data.httpMessage as string) ||
-        `Baglanti basarisiz (HTTP ${res.status})`,
+      message: errorMsg,
     });
   } catch (error) {
     return NextResponse.json({
