@@ -1,43 +1,43 @@
-import { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
 /**
  * API route'larinda admin yetkisi kontrolu.
- * Once JWT token'dan role kontrol eder,
- * bulamazsa DB'den kullanici rolunu dogrular (eski oturumlar icin fallback).
+ * auth() ile oturum bilgisini alir, role kontrolu yapar.
+ * Role yoksa DB'den fallback kontrol eder.
  */
-export async function requireAdmin(request: NextRequest): Promise<boolean> {
+export async function requireAdmin(): Promise<boolean> {
   try {
-    const token = await getToken({
-      req: request,
-      secret: process.env.AUTH_SECRET,
-    });
+    const session = await auth();
 
-    if (!token) return false;
+    if (!session?.user) return false;
 
-    // JWT'de role varsa dogrudan kontrol
-    if (token.role === "ADMIN") return true;
+    // Session'da role varsa dogrudan kontrol
+    const role = (session.user as { role?: string }).role;
+    if (role === "ADMIN") return true;
 
-    // JWT'de role yoksa DB'den kontrol (eski oturumlar icin fallback)
-    if (token.email) {
+    // Role yoksa DB'den kontrol (eski oturumlar icin fallback)
+    const email = session.user.email;
+    if (email) {
       const user = await prisma.user.findUnique({
-        where: { email: token.email as string },
+        where: { email },
         select: { role: true },
       });
       return user?.role === "ADMIN";
     }
 
-    if (token.id || token.sub) {
+    const userId = session.user.id;
+    if (userId) {
       const user = await prisma.user.findUnique({
-        where: { id: (token.id || token.sub) as string },
+        where: { id: userId },
         select: { role: true },
       });
       return user?.role === "ADMIN";
     }
 
     return false;
-  } catch {
+  } catch (e) {
+    console.error("[requireAdmin] Error:", e);
     return false;
   }
 }

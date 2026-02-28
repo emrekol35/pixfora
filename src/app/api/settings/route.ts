@@ -1,33 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-auth";
-import { getToken } from "next-auth/jwt";
+import { auth } from "@/lib/auth";
 
 // GET - Ayarlari listele (admin)
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const isAdmin = await requireAdmin(request);
+    const isAdmin = await requireAdmin();
     if (!isAdmin) {
       // Debug bilgisi
-      const token = await getToken({ req: request, secret: process.env.AUTH_SECRET });
-      const cookieNames = Array.from(request.cookies.getAll()).map((c) => c.name);
-      console.log("[SETTINGS GET] Yetkisiz - token:", !!token, "email:", token?.email, "role:", token?.role, "cookies:", cookieNames.join(","));
+      const session = await auth();
+      console.log("[SETTINGS GET] Yetkisiz - session:", !!session, "email:", session?.user?.email, "role:", (session?.user as { role?: string })?.role);
       return NextResponse.json(
-        { error: "Yetkisiz", debug: { hasToken: !!token, email: token?.email || null, role: token?.role || null, cookies: cookieNames } },
+        {
+          error: "Yetkisiz",
+          debug: {
+            hasSession: !!session,
+            email: session?.user?.email || null,
+            role: (session?.user as { role?: string })?.role || null,
+          },
+        },
         { status: 403 }
       );
     }
 
-    const { searchParams } = new URL(request.url);
-    const group = searchParams.get("group");
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const where: any = {};
-    if (group) {
-      where.group = group;
-    }
-
-    const settings = await prisma.setting.findMany({ where, orderBy: { key: "asc" } });
+    const settings = await prisma.setting.findMany({ orderBy: { key: "asc" } });
 
     return NextResponse.json({ settings });
   } catch (error) {
@@ -39,14 +36,20 @@ export async function GET(request: NextRequest) {
 // POST - Ayarlari toplu kaydet (admin)
 export async function POST(request: NextRequest) {
   try {
-    const isAdmin = await requireAdmin(request);
+    const isAdmin = await requireAdmin();
     if (!isAdmin) {
       // Debug bilgisi
-      const token = await getToken({ req: request, secret: process.env.AUTH_SECRET });
-      const cookieNames = Array.from(request.cookies.getAll()).map((c) => c.name);
-      console.log("[SETTINGS POST] Yetkisiz - token:", !!token, "email:", token?.email, "role:", token?.role, "cookies:", cookieNames.join(","));
+      const session = await auth();
+      console.log("[SETTINGS POST] Yetkisiz - session:", !!session, "email:", session?.user?.email, "role:", (session?.user as { role?: string })?.role);
       return NextResponse.json(
-        { error: "Yetkisiz", debug: { hasToken: !!token, email: token?.email || null, role: token?.role || null, cookies: cookieNames } },
+        {
+          error: "Yetkisiz",
+          debug: {
+            hasSession: !!session,
+            email: session?.user?.email || null,
+            role: (session?.user as { role?: string })?.role || null,
+          },
+        },
         { status: 403 }
       );
     }

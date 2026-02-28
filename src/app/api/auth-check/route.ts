@@ -1,38 +1,29 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
+import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 // Debug endpoint: Tarayicida /api/auth-check adresini ziyaret ederek
 // oturum durumunu kontrol edebilirsiniz.
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const token = await getToken({
-      req: request,
-      secret: process.env.AUTH_SECRET,
-    });
+    const session = await auth();
 
-    const cookieNames = Array.from(request.cookies.getAll()).map((c) => c.name);
-
-    if (!token) {
+    if (!session?.user) {
       return NextResponse.json({
         authenticated: false,
         message: "Oturum bulunamadi. Lutfen /giris sayfasindan giris yapin.",
-        cookies: cookieNames,
-        hasSessionCookie: cookieNames.some((c) => c.includes("session-token")),
       });
     }
 
     return NextResponse.json({
       authenticated: true,
       user: {
-        email: token.email,
-        name: token.name,
-        role: token.role || "role yok (eski oturum)",
-        id: token.sub,
+        email: session.user.email,
+        name: session.user.name,
+        role: (session.user as { role?: string }).role || "role yok",
+        id: session.user.id,
       },
-      cookies: cookieNames,
-      hasSessionCookie: true,
     });
   } catch (error) {
     return NextResponse.json(
