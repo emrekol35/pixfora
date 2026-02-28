@@ -39,6 +39,9 @@ export default async function AutomationPage() {
     },
   });
 
+  // Push abone sayisi
+  const pushSubscriberCount = await prisma.pushSubscription.count();
+
   return (
     <div className="space-y-6">
       <div>
@@ -55,6 +58,7 @@ export default async function AutomationPage() {
         lastStockAlertAt={settingsMap.last_stock_alert_at || null}
         lowStockCount={lowStockCount}
         abandonedCartUserCount={abandonedCartUsers.length}
+        pushSubscriberCount={pushSubscriberCount}
       />
     </div>
   );

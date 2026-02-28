@@ -119,6 +119,11 @@ const menuItems = [
     icon: "📧",
   },
   {
+    title: "Push Bildirimler",
+    href: "/admin/bildirimler",
+    icon: "🔔",
+  },
+  {
     title: "Sorular",
     href: "/admin/sorular",
     icon: "❓",

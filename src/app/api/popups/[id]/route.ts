@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { cacheDelete } from "@/lib/redis";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -37,6 +38,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       },
     });
 
+    await cacheDelete("popups:active");
+
     return NextResponse.json({ popup });
   } catch (error) {
     console.error("Popup update error:", error);
@@ -51,6 +54,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     const { id } = await params;
     await prisma.popup.delete({ where: { id } });
+    await cacheDelete("popups:active");
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Popup delete error:", error);

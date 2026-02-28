@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { cacheDelete } from "@/lib/redis";
 
 // GET - Duyurulari listele (public: aktif olanlari, admin: hepsini)
 export async function GET(request: NextRequest) {
@@ -48,6 +49,9 @@ export async function POST(request: NextRequest) {
         type: type || "bar",
       },
     });
+
+    // Cache invalidation
+    await cacheDelete("announcements:active:bar");
 
     return NextResponse.json({ announcement }, { status: 201 });
   } catch (error) {

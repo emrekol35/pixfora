@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { cacheDelete } from "@/lib/redis";
 
 // GET - Tek duyuru getir
 export async function GET(
@@ -53,6 +54,9 @@ export async function PUT(
       },
     });
 
+    // Cache invalidation
+    await cacheDelete("announcements:active:bar");
+
     return NextResponse.json({ announcement });
   } catch (error) {
     console.error("Announcement update error:", error);
@@ -73,6 +77,9 @@ export async function DELETE(
 
     const { id } = await params;
     await prisma.announcement.delete({ where: { id } });
+
+    // Cache invalidation
+    await cacheDelete("announcements:active:bar");
 
     return NextResponse.json({ success: true });
   } catch (error) {

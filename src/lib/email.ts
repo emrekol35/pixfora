@@ -658,3 +658,36 @@ export function recommendationEmail(data: {
     </div>`,
   };
 }
+
+// Newsletter Onay Maili
+export function newsletterConfirmationEmail(email: string, token: string) {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pixfora.com";
+  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Pixfora";
+
+  return {
+    subject: `${siteName} - E-Bulten Aboneliginizi Onaylayin`,
+    html: `<div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;background:#fff;border:1px solid #e5e5e5;border-radius:12px;overflow:hidden">
+      <div style="background:#2563eb;padding:24px;text-align:center">
+        <h1 style="margin:0;color:#fff;font-size:24px">${siteName}</h1>
+      </div>
+      <div style="padding:32px 24px">
+        <h2 style="margin-top:0;color:#1f2937;text-align:center">E-Bulten Aboneligi</h2>
+        <p style="color:#4b5563;font-size:14px;line-height:1.6">
+          Merhaba,<br/><br/>
+          ${siteName} e-bultenine abone oldugunuz icin tesekkur ederiz! Aboneliginizi onaylamak icin asagidaki butona tiklayin.
+        </p>
+        <div style="text-align:center;margin:32px 0">
+          <a href="${siteUrl}/bulten/onayla?token=${token}" style="display:inline-block;background:#2563eb;color:#fff;padding:14px 40px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">
+            Aboneligi Onayla
+          </a>
+        </div>
+        <p style="color:#9ca3af;font-size:12px;text-align:center">
+          Bu e-postayi siz talep etmediyseniz, gormezden gelebilirsiniz.
+        </p>
+      </div>
+      <div style="padding:16px;background:#f5f5f5;text-align:center;font-size:12px;color:#888">
+        <p>${siteName} | <a href="${siteUrl}/bulten/abonelikten-cik?email=${encodeURIComponent(email)}" style="color:#888">Abonelikten cik</a></p>
+      </div>
+    </div>`,
+  };
+}

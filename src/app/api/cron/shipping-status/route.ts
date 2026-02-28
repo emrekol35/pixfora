@@ -137,6 +137,8 @@ export async function GET(request: NextRequest) {
               title: "Siparisleriniz Teslim Edildi",
               message: `${shipment.order.orderNumber} numarali siparisleriniz teslim edildi.`,
               type: "ORDER",
+              pushUrl: `/hesabim/siparislerim/${shipment.order.id}`,
+              pushCategory: "orders",
             }).catch(console.error);
           }
 

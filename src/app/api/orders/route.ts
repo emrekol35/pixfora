@@ -278,6 +278,8 @@ export async function POST(request: NextRequest) {
         type: "order",
         title: "Siparisiniz Alindi",
         message: `#${order.orderNumber} numarali siparisiniz basariyla olusturuldu.`,
+        pushUrl: `/hesabim/siparislerim/${order.id}`,
+        pushCategory: "orders",
       }).catch(console.error);
     }
 

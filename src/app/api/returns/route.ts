@@ -119,6 +119,7 @@ export async function POST(request: NextRequest) {
         type: "return",
         title: "Yeni Iade Talebi",
         message: `#${returnNumber} numarali iade talebi olusturuldu. Siparis: #${order.orderNumber}`,
+        pushUrl: `/admin/iadeler`,
       }).catch(console.error);
     }
 

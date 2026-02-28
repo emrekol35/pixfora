@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 interface Subscriber {
   id: string;
   email: string;
+  isConfirmed: boolean;
   createdAt: string;
+  confirmedAt: string | null;
 }
 
 export default function NewsletterList({
@@ -96,6 +98,9 @@ export default function NewsletterList({
                     E-posta
                   </th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">
+                    Durum
+                  </th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">
                     Abone Tarihi
                   </th>
                   <th className="text-right px-4 py-3 text-sm font-medium text-muted-foreground">
@@ -111,6 +116,17 @@ export default function NewsletterList({
                   >
                     <td className="px-4 py-3 text-sm text-foreground">
                       {s.email}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {s.isConfirmed ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success">
+                          Onaylandi
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-warning/10 text-warning">
+                          Bekliyor
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
                       {new Date(s.createdAt).toLocaleDateString("tr-TR")}

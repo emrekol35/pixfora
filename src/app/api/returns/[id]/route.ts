@@ -241,6 +241,8 @@ export async function PUT(
         type: "return",
         title: msg.title,
         message: msg.message,
+        pushUrl: `/hesabim/iadelerim`,
+        pushCategory: "orders",
       }).catch(console.error);
     }
 

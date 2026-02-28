@@ -37,7 +37,7 @@ export default function Footer() {
             </div>
             {subscribed ? (
               <p className="text-success text-sm font-medium">
-                Basariyla abone oldunuz!
+                Onay e-postasi gonderildi. Lutfen e-postanizi kontrol edin.
               </p>
             ) : (
               <form onSubmit={handleNewsletter} className="flex gap-2 w-full md:w-auto">

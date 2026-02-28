@@ -111,6 +111,8 @@ export async function PUT(
           type: "order",
           title: `Siparis ${statusLabel}`,
           message: notifMessage,
+          pushUrl: `/hesabim/siparislerim/${order.id}`,
+          pushCategory: "orders",
         }).catch(console.error);
       }
 

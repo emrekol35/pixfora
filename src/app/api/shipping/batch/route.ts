@@ -173,6 +173,8 @@ export async function POST(request: NextRequest) {
               title: "Kargonuz Yola Cikti",
               message: `${order.orderNumber} numarali siparisleriniz kargoya verildi.`,
               type: "ORDER",
+              pushUrl: `/hesabim/siparislerim/${order.id}`,
+              pushCategory: "orders",
             }).catch(console.error);
           }
 

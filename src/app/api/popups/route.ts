@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { cacheDelete } from "@/lib/redis";
 
 export async function GET() {
   try {
@@ -32,6 +33,8 @@ export async function POST(request: NextRequest) {
         delay: delay ? parseInt(delay) : 0,
       },
     });
+
+    await cacheDelete("popups:active");
 
     return NextResponse.json({ popup }, { status: 201 });
   } catch (error) {

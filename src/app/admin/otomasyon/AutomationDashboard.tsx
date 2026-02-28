@@ -10,6 +10,7 @@ interface Props {
   lastStockAlertAt: string | null;
   lowStockCount: number;
   abandonedCartUserCount: number;
+  pushSubscriberCount?: number;
 }
 
 export default function AutomationDashboard({
@@ -19,6 +20,7 @@ export default function AutomationDashboard({
   lastStockAlertAt,
   lowStockCount,
   abandonedCartUserCount,
+  pushSubscriberCount = 0,
 }: Props) {
   const [stockAlertLoading, setStockAlertLoading] = useState(false);
   const [stockAlertResult, setStockAlertResult] = useState<string | null>(null);
@@ -202,7 +204,34 @@ export default function AutomationDashboard({
             <p className="text-muted-foreground text-xs mb-1"># Her 6 saatte bir - Terk edilen sepet</p>
             <p>0 */6 * * * curl -s -H &quot;Authorization: Bearer $CRON_SECRET&quot; https://YOUR_DOMAIN/api/cron/abandoned-carts</p>
           </div>
+          <div className="bg-muted rounded-lg p-3 font-mono text-sm overflow-x-auto">
+            <p className="text-muted-foreground text-xs mb-1"># Haftada bir - Push subscription temizligi</p>
+            <p>0 3 * * 1 curl -s -X POST -H &quot;Authorization: Bearer $CRON_SECRET&quot; https://YOUR_DOMAIN/api/cron/push-cleanup</p>
+          </div>
         </div>
+      </div>
+
+      {/* Push Bildirimleri */}
+      <div className="bg-card border border-border rounded-xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🔔</span>
+            <div>
+              <h2 className="font-semibold">Push Bildirimler</h2>
+              <p className="text-sm text-muted-foreground">Web push bildirim aboneleri</p>
+            </div>
+          </div>
+          <span className="text-2xl font-bold text-primary">{pushSubscriberCount}</span>
+        </div>
+        <p className="text-sm text-muted-foreground mb-3">
+          Toplam {pushSubscriberCount} push bildirim abonesi. Toplu bildirim gondermek icin Push Bildirimler sayfasini kullanin.
+        </p>
+        <Link
+          href="/admin/bildirimler"
+          className="inline-block px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors"
+        >
+          Push Bildirim Gonder
+        </Link>
       </div>
     </div>
   );

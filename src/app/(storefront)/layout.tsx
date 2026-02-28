@@ -19,6 +19,15 @@ const MobileBottomNav = dynamic(
 const PWAInstallPrompt = dynamic(
   () => import("@/components/shared/PWAInstallPrompt")
 );
+const PushPermissionPrompt = dynamic(
+  () => import("@/components/shared/PushPermissionPrompt")
+);
+const AnnouncementBar = dynamic(
+  () => import("@/components/storefront/AnnouncementBar")
+);
+const MarketingPopup = dynamic(
+  () => import("@/components/storefront/MarketingPopup")
+);
 
 export default function StorefrontLayout({
   children,
@@ -29,6 +38,7 @@ export default function StorefrontLayout({
     <Providers>
       <div className="min-h-screen flex flex-col">
         <OfflineIndicator />
+        <AnnouncementBar />
         <Header />
         <CartDrawer />
         <WishlistInit />
@@ -38,6 +48,8 @@ export default function StorefrontLayout({
         <Footer />
         <MobileBottomNav />
         <PWAInstallPrompt />
+        <PushPermissionPrompt />
+        <MarketingPopup />
       </div>
     </Providers>
   );

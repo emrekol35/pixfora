@@ -1,7 +1,7 @@
-// Pixfora Service Worker v2
-const CACHE_NAME = "pixfora-v2";
-const STATIC_CACHE = "pixfora-static-v2";
-const IMAGE_CACHE = "pixfora-images-v2";
+// Pixfora Service Worker v3
+const CACHE_NAME = "pixfora-v3";
+const STATIC_CACHE = "pixfora-static-v3";
+const IMAGE_CACHE = "pixfora-images-v3";
 const OFFLINE_URL = "/offline.html";
 
 // Onceden cache'lenecek kritik dosyalar
@@ -164,5 +164,44 @@ self.addEventListener("fetch", (event) => {
         return response;
       })
       .catch(() => caches.match(request))
+  );
+});
+
+// ============================================================
+// PUSH NOTIFICATIONS
+// ============================================================
+
+// Push bildirim geldiginde native bildirim goster
+self.addEventListener("push", (event) => {
+  const data = event.data ? event.data.json() : {};
+  const title = data.title || "Pixfora";
+  const options = {
+    body: data.body || "",
+    icon: data.icon || "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
+    data: { url: data.url || "/" },
+    tag: data.tag || "pixfora-notification",
+    vibrate: [200, 100, 200],
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Bildirime tiklaninca ilgili sayfayi ac
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || "/";
+  event.waitUntil(
+    clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clientList) => {
+        // Zaten acik bir pencere varsa fokusla
+        for (const client of clientList) {
+          if (client.url.includes(url) && "focus" in client) {
+            return client.focus();
+          }
+        }
+        // Yoksa yeni pencere ac
+        return clients.openWindow(url);
+      })
   );
 });
