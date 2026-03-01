@@ -148,7 +148,8 @@ model Category {
   parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
   children Category[] @relation("CategoryTree")
 
-  products Product[]
+  products           Product[]
+  trendyolCategories TrendyolCategory[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -170,7 +171,8 @@ model Brand {
   seoDescription String? @map("seo_description") @db.Text
   seoKeywords    String? @map("seo_keywords")
 
-  products Product[]
+  products       Product[]
+  trendyolBrands TrendyolBrand[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -224,6 +226,7 @@ model Product {
   wishlists           Wishlist[]
   stockNotifications  StockNotification[]
   questions           ProductQuestion[]
+  trendyolProduct     TrendyolProduct?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -399,12 +402,13 @@ model Order {
   couponId String? @map("coupon_id")
   coupon   Coupon? @relation(fields: [couponId], references: [id])
 
-  user     User?       @relation(fields: [userId], references: [id])
-  items    OrderItem[]
-  payments Payment[]
-  invoice   Invoice?
-  returns   Return[]
-  shipments Shipment[]
+  user           User?           @relation(fields: [userId], references: [id])
+  items          OrderItem[]
+  payments       Payment[]
+  invoice        Invoice?
+  returns        Return[]
+  shipments      Shipment[]
+  trendyolOrders TrendyolOrder[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1071,4 +1075,78 @@ model TrackingEvent {
   @@index([createdAt])
   @@index([eventType, createdAt])
   @@map("tracking_events")
+}
+
+// ============================================================
+// TRENDYOL PAZARYERI ENTEGRASYONU
+// ============================================================
+
+enum TrendyolSyncStatus {
+  PENDING
+  SYNCED
+  FAILED
+  NOT_SYNCED
+}
+
+model TrendyolProduct {
+  id                 String             @id @default(cuid())
+  productId          String             @unique @map("product_id")
+  trendyolProductId  String?            @map("trendyol_product_id")
+  trendyolBarcode    String?            @map("trendyol_barcode")
+  batchRequestId     String?            @map("batch_request_id")
+  syncStatus         TrendyolSyncStatus @default(PENDING) @map("sync_status")
+  lastSyncedAt       DateTime?          @map("last_synced_at")
+  lastError          String?            @db.Text @map("last_error")
+  trendyolCategoryId Int?               @map("trendyol_category_id")
+  trendyolBrandId    Int?               @map("trendyol_brand_id")
+  attributes         Json?
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([syncStatus])
+  @@index([batchRequestId])
+  @@map("trendyol_products")
+}
+
+model TrendyolOrder {
+  id                    String   @id @default(cuid())
+  orderId               String?  @map("order_id")
+  trendyolOrderNumber   String   @unique @map("trendyol_order_number")
+  trendyolPackageId     String?  @map("trendyol_package_id")
+  shipmentPackageStatus String?  @map("shipment_package_status")
+  rawData               Json     @map("raw_data")
+  syncedAt              DateTime @default(now()) @map("synced_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  order Order? @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@index([trendyolPackageId])
+  @@map("trendyol_orders")
+}
+
+model TrendyolCategory {
+  id              Int     @id
+  name            String
+  parentId        Int?    @map("parent_id")
+  path            String?
+  localCategoryId String? @map("local_category_id")
+
+  parent        TrendyolCategory?  @relation("TrendyolCategoryTree", fields: [parentId], references: [id])
+  children      TrendyolCategory[] @relation("TrendyolCategoryTree")
+  localCategory Category?          @relation(fields: [localCategoryId], references: [id])
+
+  @@map("trendyol_categories")
+}
+
+model TrendyolBrand {
+  id           Int     @id
+  name         String
+  localBrandId String? @map("local_brand_id")
+
+  localBrand Brand? @relation(fields: [localBrandId], references: [id])
+
+  @@map("trendyol_brands")
 }

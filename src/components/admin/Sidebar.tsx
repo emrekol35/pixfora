@@ -116,6 +116,18 @@ const menuItems = [
     ],
   },
   {
+    title: "Trendyol",
+    href: "/admin/trendyol",
+    icon: "🛍️",
+    children: [
+      { title: "Genel Ayarlar", href: "/admin/trendyol" },
+      { title: "Kategori Eşleştirme", href: "/admin/trendyol/kategoriler" },
+      { title: "Marka Eşleştirme", href: "/admin/trendyol/markalar" },
+      { title: "Ürün Yönetimi", href: "/admin/trendyol/urunler" },
+      { title: "Siparişler", href: "/admin/trendyol/siparisler" },
+    ],
+  },
+  {
     title: "Entegrasyonlar",
     href: "/admin/entegrasyonlar",
     icon: "🔗",
