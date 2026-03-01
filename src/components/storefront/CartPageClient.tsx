@@ -5,6 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { useCartStore } from "@/store/cart";
 import CartRecommendations from "./CartRecommendations";
+import { useTracking } from "./TrackingProvider";
 
 export default function CartPageClient() {
   const t = useTranslations("cart");
@@ -20,10 +21,22 @@ export default function CartPageClient() {
     message: string;
   } | null>(null);
   const [couponError, setCouponError] = useState("");
+  const { trackEvent } = useTracking();
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (mounted && items.length > 0) {
+      trackEvent("view_cart", {
+        itemCount: items.length,
+        cartValue: getSubtotal(),
+        source: "page",
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted]);
 
   if (!mounted) {
     return (
@@ -56,6 +69,11 @@ export default function CartPageClient() {
       const data = await res.json();
       if (data.valid) {
         setAppliedCoupon({ type: data.type, discount: data.discount, message: data.message });
+        trackEvent("coupon_applied", {
+          code: couponCode,
+          discountType: data.type,
+          discountAmount: data.discount,
+        });
       } else {
         setCouponError(data.message || t("invalidCoupon"));
       }
@@ -257,6 +275,7 @@ export default function CartPageClient() {
 
             <Link
               href={checkoutUrl as any}
+              onClick={() => trackEvent("begin_checkout", { itemCount: items.length, cartValue: getSubtotal() })}
               className="block w-full py-3 text-center bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark transition-colors"
             >
               {t("proceedToCheckout")}

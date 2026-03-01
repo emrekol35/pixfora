@@ -4,11 +4,16 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useCartStore } from "@/store/cart";
+import { useTracking } from "./TrackingProvider";
+import { useExperiment } from "@/hooks/useExperiment";
+import FreeShippingBar from "./FreeShippingBar";
 
 export default function CartDrawer() {
   const t = useTranslations("cart");
   const { items, isOpen, closeCart, removeItem, updateQuantity, getSubtotal, getItemPrice } = useCartStore();
   const [mounted, setMounted] = useState(false);
+  const { trackEvent } = useTracking();
+  const freeShippingExp = useExperiment("free-shipping-bar");
 
   useEffect(() => {
     setMounted(true);
@@ -23,6 +28,17 @@ export default function CartDrawer() {
     return () => {
       document.body.style.overflow = "";
     };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen && mounted) {
+      trackEvent("view_cart", {
+        itemCount: items.length,
+        cartValue: getSubtotal(),
+        source: "drawer",
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   if (!mounted) return null;
@@ -57,6 +73,9 @@ export default function CartDrawer() {
             </svg>
           </button>
         </div>
+
+        {/* Free Shipping Bar (A/B test) */}
+        {!freeShippingExp.isControl && items.length > 0 && <FreeShippingBar />}
 
         {/* Items */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -113,7 +132,10 @@ export default function CartDrawer() {
                     <div className="flex items-center gap-2 mt-2">
                       <div className="flex items-center border border-border rounded">
                         <button
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          onClick={() => {
+                            trackEvent("update_quantity", { productId: item.product.id, oldQty: item.quantity, newQty: item.quantity - 1 });
+                            updateQuantity(item.id, item.quantity - 1);
+                          }}
                           className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-foreground"
                           disabled={item.quantity <= item.product.minQty}
                         >
@@ -123,14 +145,24 @@ export default function CartDrawer() {
                           {item.quantity}
                         </span>
                         <button
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          onClick={() => {
+                            trackEvent("update_quantity", { productId: item.product.id, oldQty: item.quantity, newQty: item.quantity + 1 });
+                            updateQuantity(item.id, item.quantity + 1);
+                          }}
                           className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-foreground"
                         >
                           +
                         </button>
                       </div>
                       <button
-                        onClick={() => removeItem(item.id)}
+                        onClick={() => {
+                          trackEvent("remove_from_cart", {
+                            productId: item.product.id,
+                            productName: item.product.name,
+                            price: getItemPrice(item),
+                          });
+                          removeItem(item.id);
+                        }}
                         className="text-xs text-danger hover:underline"
                       >
                         {t("remove")}

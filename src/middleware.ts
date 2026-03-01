@@ -142,6 +142,21 @@ export async function middleware(request: NextRequest) {
         return addSecurityHeaders(response);
       }
 
+      if (pathname.startsWith("/api/tracking")) {
+        const { allowed, remaining } = rateLimit(ip, "tracking", 60, 60_000);
+        if (!allowed) {
+          const res = NextResponse.json(
+            { error: "Cok fazla istek." },
+            { status: 429 }
+          );
+          res.headers.set("Retry-After", "60");
+          return addSecurityHeaders(res);
+        }
+        const response = NextResponse.next();
+        response.headers.set("X-RateLimit-Remaining", String(remaining));
+        return addSecurityHeaders(response);
+      }
+
       if (pathname.startsWith("/api/contact")) {
         const { allowed, remaining } = rateLimit(ip, "contact", 5, 60_000);
         if (!allowed) {

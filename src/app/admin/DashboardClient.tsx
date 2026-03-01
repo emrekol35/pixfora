@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useDashboardStats } from "@/hooks/useReportData";
@@ -18,6 +19,25 @@ const StatusPieChart = dynamic(
 
 export default function DashboardClient() {
   const { data, isLoading, error } = useDashboardStats();
+  const [conversionRate, setConversionRate] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/analytics/funnel")
+      .then((res) => {
+        if (!res.ok) return null;
+        return res.json();
+      })
+      .then((json) => {
+        if (json?.funnel?.length >= 2) {
+          const first = json.funnel[0]?.visitors || 0;
+          const last = json.funnel[json.funnel.length - 1]?.visitors || 0;
+          setConversionRate(first > 0 ? (last / first) * 100 : 0);
+        }
+      })
+      .catch(() => {
+        // Silent fail for conversion rate
+      });
+  }, []);
 
   if (isLoading) {
     return (
@@ -68,7 +88,7 @@ export default function DashboardClient() {
   return (
     <div className="space-y-6">
       {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           label="Aylik Gelir"
           value={`${formatCurrency(stats.monthlyRevenue)} TL`}
@@ -97,6 +117,20 @@ export default function DashboardClient() {
           icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>}
           color="bg-warning/10 text-warning"
         />
+        <div className="bg-card border border-border rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-500">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            </div>
+            <span className="text-xs font-medium text-muted-foreground">Donusum Orani</span>
+          </div>
+          <p className="text-2xl font-bold">
+            {conversionRate !== null ? `%${conversionRate.toFixed(2)}` : "-"}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">son 30 gun</p>
+        </div>
       </div>
 
       {/* Charts Row */}

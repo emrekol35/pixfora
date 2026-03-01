@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useSearchStore } from "@/store/search";
 import type { SearchSuggestions } from "@/store/search";
+import { trackEvent } from "@/lib/tracking";
 
 const priceFormatter = new Intl.NumberFormat("tr-TR", {
   style: "currency",
@@ -34,6 +35,7 @@ export default function SearchDropdown({
   const handleRecentClick = (q: string) => {
     setQuery(q);
     addRecentSearch(q);
+    trackEvent("search", { query: q, source: "recent" });
     router.push(`/arama?q=${encodeURIComponent(q)}`);
     onClose();
   };
@@ -41,6 +43,10 @@ export default function SearchDropdown({
   const handleViewAll = () => {
     if (query.length >= 2) {
       addRecentSearch(query);
+      trackEvent("search", {
+        query,
+        resultCount: suggestions?.products?.length || 0,
+      });
     }
     onClose();
   };

@@ -1,12 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
+import { useRouter } from "@/i18n/navigation";
 import { useCartStore, CartVariant } from "@/store/cart";
 import { SHIMMER_PLACEHOLDER } from "@/lib/image-utils";
 import { useRecentlyViewedStore } from "@/store/recently-viewed";
 import ProductCard from "./ProductCard";
+import { useTracking } from "./TrackingProvider";
+import { useExperiment } from "@/hooks/useExperiment";
 
 interface VariantType {
   id: string;
@@ -95,7 +98,9 @@ interface Props {
 
 export default function ProductDetail({ product, similarProducts, boughtTogether, complementaryProducts, giftProducts, canReview }: Props) {
   const t = useTranslations("product");
+  const router = useRouter();
   const [selectedImage, setSelectedImage] = useState(0);
+  const [addedToast, setAddedToast] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [quantity, setQuantity] = useState(product.minQty);
   const [activeTab, setActiveTab] = useState<"desc" | "reviews" | "qa">("desc");
@@ -113,8 +118,12 @@ export default function ProductDetail({ product, similarProducts, boughtTogether
   const [questionSubmitting, setQuestionSubmitting] = useState(false);
   const [questionSubmitted, setQuestionSubmitted] = useState(false);
   const addItem = useCartStore((s) => s.addItem);
+  const openCart = useCartStore((s) => s.openCart);
   const addRecentlyViewed = useRecentlyViewedStore((s) => s.addItem);
   const recentlyViewedItems = useRecentlyViewedStore((s) => s.items);
+  const { trackEvent } = useTracking();
+  const ctaExperiment = useExperiment("product-cta");
+  const addToCartBehavior = useExperiment("add-to-cart-behavior");
 
   // Son goruntulenen urunlere kaydet
   useEffect(() => {
@@ -128,6 +137,17 @@ export default function ProductDetail({ product, similarProducts, boughtTogether
       category: product.category?.name || null,
     });
   }, [product.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    trackEvent("product_view", {
+      productId: product.id,
+      productName: product.name,
+      price: product.price,
+      category: product.category?.name || null,
+      brand: product.brand?.name || null,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.id]);
 
   // Secili varyanti bul
   const selectedVariant = product.hasVariants
@@ -178,6 +198,26 @@ export default function ProductDetail({ product, similarProducts, boughtTogether
       quantity,
       cartVariant
     );
+
+    trackEvent("add_to_cart", {
+      productId: product.id,
+      productName: product.name,
+      price: selectedVariant?.price || product.price,
+      quantity,
+      variantId: selectedVariant?.id || null,
+    });
+
+    // Add-to-cart davranış deneyi
+    const behavior = addToCartBehavior.config?.behavior as string | undefined;
+    if (behavior === "redirect") {
+      router.push("/sepet" as any);
+    } else if (behavior === "toast") {
+      setAddedToast(true);
+      setTimeout(() => setAddedToast(false), 3000);
+    } else {
+      // Kontrol: drawer aç (varsayılan)
+      openCart();
+    }
   };
 
   // Sorulari yukle
@@ -240,6 +280,11 @@ export default function ProductDetail({ product, similarProducts, boughtTogether
 
   const handleOptionSelect = (typeName: string, value: string) => {
     setSelectedOptions((prev) => ({ ...prev, [typeName]: value }));
+    trackEvent("variant_selected", {
+      productId: product.id,
+      optionName: typeName,
+      optionValue: value,
+    });
   };
 
   // Seceneklerin musaitlik durumunu kontrol et
@@ -257,6 +302,11 @@ export default function ProductDetail({ product, similarProducts, boughtTogether
 
   const formatPrice = (price: number) =>
     new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(price);
+
+  const handleTabChange = (tab: "desc" | "reviews" | "qa") => {
+    setActiveTab(tab);
+    trackEvent("product_tab_view", { productId: product.id, tab });
+  };
 
   return (
     <>
@@ -458,9 +508,11 @@ export default function ProductDetail({ product, similarProducts, boughtTogether
             <button
               onClick={handleAddToCart}
               disabled={!canAddToCart}
-              className={`flex-1 py-3 rounded-lg text-sm font-semibold transition-colors ${
+              className={`flex-1 rounded-lg text-sm font-semibold transition-colors ${
+                ctaExperiment.config?.buttonSize === "large" ? "py-4 text-base" : "py-3"
+              } ${
                 canAddToCart
-                  ? "bg-primary text-white hover:bg-primary-dark"
+                  ? `${(ctaExperiment.config?.buttonColor as string) || "bg-primary"} text-white hover:opacity-90`
                   : "bg-muted text-muted-foreground cursor-not-allowed"
               }`}
             >
@@ -468,9 +520,18 @@ export default function ProductDetail({ product, similarProducts, boughtTogether
                 ? product.hasVariants && !selectedVariant
                   ? t("selectVariant")
                   : t("outOfStock")
-                : t("addToCart")}
+                : ctaExperiment.config?.urgencyText && currentStock <= 10
+                  ? `${t("addToCart")} — Stokta ${currentStock} Adet!`
+                  : (ctaExperiment.config?.buttonText as string) || t("addToCart")}
             </button>
           </div>
+
+          {/* Sepete eklendi toast (add-to-cart-behavior deneyi) */}
+          {addedToast && (
+            <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[100] bg-success text-white px-5 py-3 rounded-lg shadow-lg text-sm font-medium animate-fade-in">
+              ✓ Urun sepete eklendi!
+            </div>
+          )}
 
           {/* Stok Bildirimi */}
           {currentStock === 0 && (
@@ -537,7 +598,7 @@ export default function ProductDetail({ product, similarProducts, boughtTogether
       <div className="mt-12">
         <div className="flex border-b border-border overflow-x-auto scrollbar-hide">
           <button
-            onClick={() => setActiveTab("desc")}
+            onClick={() => handleTabChange("desc")}
             className={`px-4 sm:px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
               activeTab === "desc"
                 ? "border-primary text-primary"
@@ -547,7 +608,7 @@ export default function ProductDetail({ product, similarProducts, boughtTogether
             {t("description")}
           </button>
           <button
-            onClick={() => setActiveTab("reviews")}
+            onClick={() => handleTabChange("reviews")}
             className={`px-4 sm:px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
               activeTab === "reviews"
                 ? "border-primary text-primary"
@@ -557,7 +618,7 @@ export default function ProductDetail({ product, similarProducts, boughtTogether
             {t("reviews")} ({product.reviewCount})
           </button>
           <button
-            onClick={() => setActiveTab("qa")}
+            onClick={() => handleTabChange("qa")}
             className={`px-4 sm:px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
               activeTab === "qa"
                 ? "border-primary text-primary"

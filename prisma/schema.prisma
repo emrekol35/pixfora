@@ -984,3 +984,91 @@ model TranslatedSlug {
   @@unique([entityType, entityId, locale])
   @@map("translated_slugs")
 }
+
+// ============================================================
+// A/B TEST & TRACKING
+// ============================================================
+
+enum ABTestStatus {
+  DRAFT
+  RUNNING
+  PAUSED
+  COMPLETED
+}
+
+enum ABTestType {
+  UI_VARIANT
+  FEATURE_FLAG
+  CONTENT
+  LAYOUT
+}
+
+model ABTest {
+  id             String       @id @default(cuid())
+  name           String
+  description    String?      @db.Text
+  status         ABTestStatus @default(DRAFT)
+  testType       ABTestType   @map("test_type")
+  targetPage     String?      @map("target_page")
+  trafficPercent Int          @default(100) @map("traffic_percent")
+  startDate      DateTime?    @map("start_date")
+  endDate        DateTime?    @map("end_date")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  variants    ABTestVariant[]
+  assignments ABTestAssignment[]
+
+  @@map("ab_tests")
+}
+
+model ABTestVariant {
+  id            String  @id @default(cuid())
+  testId        String  @map("test_id")
+  name          String
+  description   String?
+  isControl     Boolean @default(false) @map("is_control")
+  config        Json    @default("{}")
+  trafficWeight Int     @default(50) @map("traffic_weight")
+
+  test        ABTest             @relation(fields: [testId], references: [id], onDelete: Cascade)
+  assignments ABTestAssignment[]
+
+  @@map("ab_test_variants")
+}
+
+model ABTestAssignment {
+  id         String   @id @default(cuid())
+  testId     String   @map("test_id")
+  variantId  String   @map("variant_id")
+  visitorId  String   @map("visitor_id")
+  userId     String?  @map("user_id")
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  test    ABTest        @relation(fields: [testId], references: [id], onDelete: Cascade)
+  variant ABTestVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([testId, visitorId])
+  @@index([visitorId])
+  @@index([variantId])
+  @@map("ab_test_assignments")
+}
+
+model TrackingEvent {
+  id              String   @id @default(cuid())
+  visitorId       String   @map("visitor_id")
+  userId          String?  @map("user_id")
+  sessionId       String   @map("session_id")
+  eventType       String   @map("event_type")
+  eventData       Json?    @map("event_data")
+  page            String?
+  referrer        String?
+  testAssignments Json?    @map("test_assignments")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([visitorId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@index([eventType, createdAt])
+  @@map("tracking_events")
+}

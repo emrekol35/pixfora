@@ -8,6 +8,7 @@ import { SHIMMER_PLACEHOLDER } from "@/lib/image-utils";
 import { useCartStore } from "@/store/cart";
 import { useWishlistStore } from "@/store/wishlist";
 import { useCompareStore } from "@/store/compare";
+import { trackEvent } from "@/lib/tracking";
 
 // Sabit NumberFormat instance (her render'da yeniden oluşturulmaz)
 const priceFormatter = new Intl.NumberFormat("tr-TR", {
@@ -65,6 +66,13 @@ function ProductCardInner({ product }: ProductCardProps) {
         minQty: product.minQty,
         maxQty: product.maxQty,
       });
+      trackEvent("add_to_cart", {
+        productId: product.id,
+        productName: product.name,
+        price: product.price,
+        quantity: 1,
+        source: "product_card",
+      });
     },
     [addItem, product, image]
   );
@@ -105,6 +113,7 @@ function ProductCardInner({ product }: ProductCardProps) {
     <Link
       href={`/urun/${product.slug}`}
       className="group bg-white rounded-xl border border-border overflow-hidden hover:shadow-lg transition-all duration-300"
+      onClick={() => trackEvent("product_click", { productId: product.id, productName: product.name })}
     >
       {/* Image */}
       <div className="relative aspect-square bg-muted overflow-hidden">

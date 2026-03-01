@@ -28,6 +28,9 @@ const AnnouncementBar = dynamic(
 const MarketingPopup = dynamic(
   () => import("@/components/storefront/MarketingPopup")
 );
+const TrackingProvider = dynamic(
+  () => import("@/components/storefront/TrackingProvider")
+);
 
 export default function StorefrontLayout({
   children,
@@ -36,21 +39,23 @@ export default function StorefrontLayout({
 }) {
   return (
     <Providers>
-      <div className="min-h-screen flex flex-col">
-        <OfflineIndicator />
-        <AnnouncementBar />
-        <Header />
-        <CartDrawer />
-        <WishlistInit />
-        <CartSyncProvider />
-        <CompareBar />
-        <main className="flex-1 pb-16 md:pb-0">{children}</main>
-        <Footer />
-        <MobileBottomNav />
-        <PWAInstallPrompt />
-        <PushPermissionPrompt />
-        <MarketingPopup />
-      </div>
+      <TrackingProvider>
+        <div className="min-h-screen flex flex-col">
+          <OfflineIndicator />
+          <AnnouncementBar />
+          <Header />
+          <CartDrawer />
+          <WishlistInit />
+          <CartSyncProvider />
+          <CompareBar />
+          <main className="flex-1 pb-16 md:pb-0">{children}</main>
+          <Footer />
+          <MobileBottomNav />
+          <PWAInstallPrompt />
+          <PushPermissionPrompt />
+          <MarketingPopup />
+        </div>
+      </TrackingProvider>
     </Providers>
   );
 }

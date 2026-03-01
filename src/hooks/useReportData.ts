@@ -130,3 +130,65 @@ export function useReturnReport(params: {
     },
   });
 }
+
+// A/B Test listesi
+export function useABTestList(status?: string) {
+  return useQuery({
+    queryKey: ["ab-tests", status],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (status) params.set("status", status);
+      const res = await fetch(`/api/admin/ab-tests?${params}`);
+      if (!res.ok) throw new Error("A/B test listesi yuklenemedi");
+      return res.json();
+    },
+  });
+}
+
+// A/B Test sonuclari
+export function useABTestResults(id: string, startDate?: string, endDate?: string) {
+  return useQuery({
+    queryKey: ["ab-test-results", id, startDate, endDate],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (startDate) params.set("startDate", startDate);
+      if (endDate) params.set("endDate", endDate);
+      const res = await fetch(`/api/admin/ab-tests/${id}/results?${params}`);
+      if (!res.ok) throw new Error("Test sonuclari yuklenemedi");
+      return res.json();
+    },
+    enabled: !!id,
+  });
+}
+
+// Donusum hunisi verileri
+export function useFunnelData(startDate?: string, endDate?: string, testId?: string) {
+  return useQuery({
+    queryKey: ["funnel-data", startDate, endDate, testId],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (startDate) params.set("startDate", startDate);
+      if (endDate) params.set("endDate", endDate);
+      if (testId) params.set("testId", testId);
+      const res = await fetch(`/api/admin/analytics/funnel?${params}`);
+      if (!res.ok) throw new Error("Huni verileri yuklenemedi");
+      return res.json();
+    },
+  });
+}
+
+// Event analitikleri
+export function useEventAnalytics(startDate?: string, endDate?: string, eventType?: string) {
+  return useQuery({
+    queryKey: ["event-analytics", startDate, endDate, eventType],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (startDate) params.set("startDate", startDate);
+      if (endDate) params.set("endDate", endDate);
+      if (eventType) params.set("eventType", eventType);
+      const res = await fetch(`/api/admin/analytics/events?${params}`);
+      if (!res.ok) throw new Error("Event verileri yuklenemedi");
+      return res.json();
+    },
+  });
+}

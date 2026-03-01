@@ -7,6 +7,8 @@ import { Link } from "@/i18n/navigation";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { useCartStore } from "@/store/cart";
+import { useTracking } from "./TrackingProvider";
+import { useExperiment } from "@/hooks/useExperiment";
 
 type Step = "address" | "shipping" | "payment" | "confirm";
 
@@ -63,6 +65,8 @@ export default function CheckoutClient() {
   const searchParams = useSearchParams();
   const { items, getSubtotal, getItemPrice, clearCart } = useCartStore();
   const [mounted, setMounted] = useState(false);
+  const { trackEvent } = useTracking();
+  const checkoutProgress = useExperiment("checkout-progress");
   const [step, setStep] = useState<Step>("address");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -339,6 +343,7 @@ export default function CheckoutClient() {
     if (addressForm.city) {
       loadShippingRates(addressForm.city);
     }
+    trackEvent("checkout_step", { step: 2, stepName: "shipping" });
     setStep("shipping");
   };
 
@@ -380,6 +385,16 @@ export default function CheckoutClient() {
 
       const orderId = data.order.id;
       const orderNumber = data.order.orderNumber;
+
+      trackEvent("purchase", {
+        orderId,
+        orderNumber,
+        total,
+        itemCount: items.length,
+        paymentMethod,
+        coupon: couponCode || null,
+        shipping: shippingCost,
+      });
 
       // 2. Odeme yontemine gore islem
       if (paymentMethod === "CREDIT_CARD") {
@@ -483,32 +498,53 @@ export default function CheckoutClient() {
       {/* 3D Secure iframe container */}
       <div ref={iframeRef} className="hidden" />
 
-      {/* Steps */}
-      <div className="flex items-center justify-between mb-8 max-w-xl mx-auto">
-        {steps.map((s, idx) => (
-          <div key={s.key} className="flex items-center">
-            <button
-              onClick={() => {
-                const currentIdx = steps.findIndex((st) => st.key === step);
-                if (idx <= currentIdx) setStep(s.key);
-              }}
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                step === s.key
-                  ? "bg-primary text-white"
-                  : steps.findIndex((st) => st.key === step) > idx
-                  ? "bg-success text-white"
-                  : "bg-muted text-muted-foreground"
-              }`}
-            >
-              {steps.findIndex((st) => st.key === step) > idx ? "✓" : idx + 1}
-            </button>
-            <span className={`ml-2 text-sm hidden sm:inline ${step === s.key ? "font-medium" : "text-muted-foreground"}`}>
-              {s.label}
-            </span>
-            {idx < steps.length - 1 && <div className="w-8 sm:w-16 h-px bg-border mx-2" />}
+      {/* Steps — checkout-progress deneyi */}
+      {checkoutProgress.config?.variant === "progress-bar" ? (
+        <div className="mb-8 max-w-xl mx-auto">
+          <div className="flex justify-between text-xs text-muted-foreground mb-2">
+            {steps.map((s) => (
+              <span key={s.key} className={step === s.key ? "text-primary font-semibold" : ""}>
+                {s.label}
+              </span>
+            ))}
           </div>
-        ))}
-      </div>
+          <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-all duration-500"
+              style={{ width: `${((steps.findIndex((s) => s.key === step) + 1) / steps.length) * 100}%` }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mt-1 text-right">
+            {Math.round(((steps.findIndex((s) => s.key === step) + 1) / steps.length) * 100)}% tamamlandi
+          </p>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between mb-8 max-w-xl mx-auto">
+          {steps.map((s, idx) => (
+            <div key={s.key} className="flex items-center">
+              <button
+                onClick={() => {
+                  const currentIdx = steps.findIndex((st) => st.key === step);
+                  if (idx <= currentIdx) setStep(s.key);
+                }}
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                  step === s.key
+                    ? "bg-primary text-white"
+                    : steps.findIndex((st) => st.key === step) > idx
+                    ? "bg-success text-white"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {steps.findIndex((st) => st.key === step) > idx ? "✓" : idx + 1}
+              </button>
+              <span className={`ml-2 text-sm hidden sm:inline ${step === s.key ? "font-medium" : "text-muted-foreground"}`}>
+                {s.label}
+              </span>
+              {idx < steps.length - 1 && <div className="w-8 sm:w-16 h-px bg-border mx-2" />}
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
@@ -678,7 +714,7 @@ export default function CheckoutClient() {
               </div>
               <div className="flex gap-3 mt-6">
                 <button onClick={() => setStep("address")} className="flex-1 py-3 border border-border rounded-lg text-sm font-medium hover:bg-muted">{t("back")}</button>
-                <button onClick={() => setStep("payment")} disabled={!selectedShippingProvider} className="flex-1 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark disabled:bg-muted disabled:text-muted-foreground">{t("continue")}</button>
+                <button onClick={() => { trackEvent("checkout_step", { step: 3, stepName: "payment" }); setStep("payment"); }} disabled={!selectedShippingProvider} className="flex-1 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark disabled:bg-muted disabled:text-muted-foreground">{t("continue")}</button>
               </div>
             </div>
           )}
@@ -694,7 +730,7 @@ export default function CheckoutClient() {
                   { id: "CASH_ON_DELIVERY", name: t("cashOnDelivery"), icon: "📦", desc: t("cashOnDeliveryFee", { fee: formatPrice(10) }) },
                 ].map((method) => (
                   <label key={method.id} className={`flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition-colors ${paymentMethod === method.id ? "border-primary bg-primary/5" : "border-border hover:border-primary"}`}>
-                    <input type="radio" name="payment" value={method.id} checked={paymentMethod === method.id} onChange={() => setPaymentMethod(method.id)} className="w-4 h-4 text-primary" />
+                    <input type="radio" name="payment" value={method.id} checked={paymentMethod === method.id} onChange={() => { setPaymentMethod(method.id); trackEvent("payment_method_selected", { method: method.id }); }} className="w-4 h-4 text-primary" />
                     <span className="text-xl">{method.icon}</span>
                     <div><p className="text-sm font-medium">{method.name}</p><p className="text-xs text-muted-foreground">{method.desc}</p></div>
                   </label>
@@ -796,7 +832,7 @@ export default function CheckoutClient() {
 
               <div className="flex gap-3 mt-6">
                 <button onClick={() => setStep("shipping")} className="flex-1 py-3 border border-border rounded-lg text-sm font-medium hover:bg-muted">{t("back")}</button>
-                <button onClick={() => setStep("confirm")} disabled={paymentMethod === "CREDIT_CARD" && !isCardValid} className="flex-1 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark disabled:bg-muted disabled:text-muted-foreground">{t("continue")}</button>
+                <button onClick={() => { trackEvent("checkout_step", { step: 4, stepName: "confirm" }); setStep("confirm"); }} disabled={paymentMethod === "CREDIT_CARD" && !isCardValid} className="flex-1 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark disabled:bg-muted disabled:text-muted-foreground">{t("continue")}</button>
               </div>
             </div>
           )}

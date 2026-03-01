@@ -105,6 +105,17 @@ const menuItems = [
     ],
   },
   {
+    title: "A/B Testleri",
+    href: "/admin/ab-testleri",
+    icon: "🧪",
+    children: [
+      { title: "Tüm Testler", href: "/admin/ab-testleri" },
+      { title: "Yeni Test", href: "/admin/ab-testleri/yeni" },
+      { title: "Dönüşüm Hunisi", href: "/admin/ab-testleri/huni" },
+      { title: "Event Analizi", href: "/admin/ab-testleri/eventler" },
+    ],
+  },
+  {
     title: "Entegrasyonlar",
     href: "/admin/entegrasyonlar",
     icon: "🔗",
