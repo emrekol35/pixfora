@@ -9,7 +9,7 @@ import {
   type LocalProductForTrendyol,
 } from "@/services/marketplace/trendyol";
 
-/** GET — TrendyolProduct listesi */
+/** GET — Tüm mağaza ürünlerini Trendyol bilgileriyle listele */
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -20,36 +20,49 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "0");
     const size = parseInt(searchParams.get("size") || "20");
-    const syncStatus = searchParams.get("syncStatus") as string | null;
+    const syncStatus = searchParams.get("syncStatus") || "";
     const search = searchParams.get("search") || "";
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const where: any = {};
-    if (syncStatus) where.syncStatus = syncStatus;
+    const where: any = { isActive: true };
     if (search) {
-      where.product = {
-        OR: [
-          { name: { contains: search, mode: "insensitive" } },
-          { sku: { contains: search, mode: "insensitive" } },
-        ],
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { sku: { contains: search, mode: "insensitive" } },
+      ];
+    }
+    if (syncStatus === "NOT_CONFIGURED") {
+      where.trendyolProduct = null;
+    } else if (syncStatus === "NO_CATEGORY") {
+      where.trendyolProduct = {
+        OR: [{ trendyolCategoryId: null }, { trendyolBrandId: null }],
       };
+    } else if (syncStatus) {
+      where.trendyolProduct = { syncStatus };
     }
 
-    const [items, total] = await Promise.all([
-      prisma.trendyolProduct.findMany({
+    const [products, total] = await Promise.all([
+      prisma.product.findMany({
         where,
-        include: {
-          product: {
+        select: {
+          id: true,
+          name: true,
+          sku: true,
+          barcode: true,
+          price: true,
+          stock: true,
+          images: { select: { url: true }, take: 1, orderBy: { order: "asc" } },
+          category: { select: { id: true, name: true } },
+          brand: { select: { id: true, name: true } },
+          trendyolProduct: {
             select: {
               id: true,
-              name: true,
-              sku: true,
-              barcode: true,
-              price: true,
-              comparePrice: true,
-              stock: true,
-              isActive: true,
-              images: { select: { url: true }, take: 1, orderBy: { order: "asc" } },
+              syncStatus: true,
+              trendyolCategoryId: true,
+              trendyolBrandId: true,
+              lastSyncedAt: true,
+              lastError: true,
+              batchRequestId: true,
             },
           },
         },
@@ -57,10 +70,10 @@ export async function GET(request: NextRequest) {
         skip: page * size,
         take: size,
       }),
-      prisma.trendyolProduct.count({ where }),
+      prisma.product.count({ where }),
     ]);
 
-    return NextResponse.json({ items, total, page, size });
+    return NextResponse.json({ products, total, page, size });
   } catch (error) {
     console.error("Trendyol ürün listesi hatası:", error);
     return NextResponse.json({ error: "Ürünler yüklenemedi" }, { status: 500 });
