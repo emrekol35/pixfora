@@ -149,7 +149,8 @@ model Category {
   children Category[] @relation("CategoryTree")
 
   products           Product[]
-  trendyolCategories TrendyolCategory[]
+  trendyolCategories    TrendyolCategory[]
+  hepsiburadaCategories HepsiburadaCategory[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -227,6 +228,7 @@ model Product {
   stockNotifications  StockNotification[]
   questions           ProductQuestion[]
   trendyolProduct     TrendyolProduct?
+  hepsiburadaProduct  HepsiburadaProduct?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -408,7 +410,8 @@ model Order {
   invoice        Invoice?
   returns        Return[]
   shipments      Shipment[]
-  trendyolOrders TrendyolOrder[]
+  trendyolOrders    TrendyolOrder[]
+  hepsiburadaOrders HepsiburadaOrder[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1149,4 +1152,69 @@ model TrendyolBrand {
   localBrand Brand? @relation(fields: [localBrandId], references: [id])
 
   @@map("trendyol_brands")
+}
+
+// ============================================================
+// HEPSİBURADA PAZARYERI ENTEGRASYONU
+// ============================================================
+
+enum HepsiburadaSyncStatus {
+  PENDING
+  SYNCED
+  FAILED
+  NOT_SYNCED
+}
+
+model HepsiburadaProduct {
+  id                    String                @id @default(cuid())
+  productId             String                @unique @map("product_id")
+  hepsiburadaSku        String?               @map("hepsiburada_sku")
+  merchantSku           String?               @map("merchant_sku")
+  barcode               String?
+  syncStatus            HepsiburadaSyncStatus @default(PENDING) @map("sync_status")
+  lastSyncedAt          DateTime?             @map("last_synced_at")
+  lastError             String?               @db.Text @map("last_error")
+  hepsiburadaCategoryId Int?                  @map("hepsiburada_category_id")
+  brandName             String?               @map("brand_name")
+  attributes            Json?
+  createdAt             DateTime              @default(now()) @map("created_at")
+  updatedAt             DateTime              @updatedAt @map("updated_at")
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([syncStatus])
+  @@map("hepsiburada_products")
+}
+
+model HepsiburadaOrder {
+  id              String   @id @default(cuid())
+  orderId         String?  @map("order_id")
+  hbOrderNumber   String   @unique @map("hb_order_number")
+  hbPackageNumber String?  @map("hb_package_number")
+  orderStatus     String?  @map("order_status")
+  rawData         Json     @map("raw_data")
+  syncedAt        DateTime @default(now()) @map("synced_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  order Order? @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@index([hbPackageNumber])
+  @@map("hepsiburada_orders")
+}
+
+model HepsiburadaCategory {
+  id              Int      @id
+  name            String
+  parentId        Int?     @map("parent_id")
+  path            String?
+  available       Boolean  @default(true)
+  leaf            Boolean  @default(false)
+  localCategoryId String?  @map("local_category_id")
+
+  parent        HepsiburadaCategory?  @relation("HepsiburadaCategoryTree", fields: [parentId], references: [id])
+  children      HepsiburadaCategory[] @relation("HepsiburadaCategoryTree")
+  localCategory Category?             @relation(fields: [localCategoryId], references: [id])
+
+  @@map("hepsiburada_categories")
 }

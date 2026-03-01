@@ -3,15 +3,26 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 
-interface MarketplaceStats {
-  trendyol: {
-    connected: boolean;
-    totalProducts: number;
-    syncedProducts: number;
-    pendingProducts: number;
-    failedProducts: number;
-  };
+interface MarketplaceStatItem {
+  connected: boolean;
+  totalProducts: number;
+  syncedProducts: number;
+  pendingProducts: number;
+  failedProducts: number;
 }
+
+interface MarketplaceStats {
+  trendyol: MarketplaceStatItem;
+  hepsiburada: MarketplaceStatItem;
+}
+
+const defaultStat: MarketplaceStatItem = {
+  connected: false,
+  totalProducts: 0,
+  syncedProducts: 0,
+  pendingProducts: 0,
+  failedProducts: 0,
+};
 
 export default function PazaryerleriPage() {
   const [stats, setStats] = useState<MarketplaceStats | null>(null);
@@ -20,40 +31,47 @@ export default function PazaryerleriPage() {
   useEffect(() => {
     async function fetchStats() {
       try {
-        // Trendyol entegrasyon durumunu kontrol et
         const intRes = await fetch("/api/integrations");
         const intData = await intRes.json();
-        const trendyolInt = (intData.integrations || []).find(
+        const integrations = intData.integrations || (Array.isArray(intData) ? intData : []);
+
+        const trendyolInt = integrations.find(
           (i: { service: string }) => i.service === "trendyol"
         );
+        const hepsiburadaInt = integrations.find(
+          (i: { service: string }) => i.service === "hepsiburada"
+        );
 
-        let syncedProducts = 0;
-        let pendingProducts = 0;
-        let failedProducts = 0;
-        let totalProducts = 0;
-
+        // Trendyol stats
+        let trendyolStats = { ...defaultStat };
         if (trendyolInt?.isActive) {
+          trendyolStats.connected = true;
           try {
             const prodRes = await fetch("/api/admin/marketplace/trendyol/products?size=1");
             const prodData = await prodRes.json();
-            totalProducts = prodData.total || 0;
-          } catch {
-            // ignore
-          }
+            trendyolStats.totalProducts = prodData.total || 0;
+          } catch {}
+        }
+
+        // Hepsiburada stats
+        let hepsiburadaStats = { ...defaultStat };
+        if (hepsiburadaInt?.isActive) {
+          hepsiburadaStats.connected = true;
+          try {
+            const prodRes = await fetch("/api/admin/marketplace/hepsiburada/products?size=1");
+            const prodData = await prodRes.json();
+            hepsiburadaStats.totalProducts = prodData.total || 0;
+          } catch {}
         }
 
         setStats({
-          trendyol: {
-            connected: !!trendyolInt?.isActive,
-            totalProducts,
-            syncedProducts,
-            pendingProducts,
-            failedProducts,
-          },
+          trendyol: trendyolStats,
+          hepsiburada: hepsiburadaStats,
         });
       } catch {
         setStats({
-          trendyol: { connected: false, totalProducts: 0, syncedProducts: 0, pendingProducts: 0, failedProducts: 0 },
+          trendyol: { ...defaultStat },
+          hepsiburada: { ...defaultStat },
         });
       } finally {
         setLoading(false);
@@ -75,11 +93,11 @@ export default function PazaryerleriPage() {
     {
       name: "Hepsiburada",
       icon: "🟠",
-      href: "#",
+      href: "/admin/pazaryerleri/hepsiburada",
       color: "from-amber-500 to-amber-600",
-      connected: false,
-      stats: null,
-      available: false,
+      connected: stats?.hepsiburada.connected || false,
+      stats: stats?.hepsiburada,
+      available: true,
     },
     {
       name: "N11",

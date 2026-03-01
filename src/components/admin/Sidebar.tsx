@@ -122,6 +122,7 @@ const menuItems = [
     children: [
       { title: "Genel Bakis", href: "/admin/pazaryerleri" },
       { title: "Trendyol", href: "/admin/pazaryerleri/trendyol" },
+      { title: "Hepsiburada", href: "/admin/pazaryerleri/hepsiburada" },
     ],
   },
   {
