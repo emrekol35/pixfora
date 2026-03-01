@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 import { useCartStore } from "@/store/cart";
 import CartRecommendations from "./CartRecommendations";
 
 export default function CartPageClient() {
+  const t = useTranslations("cart");
+  const common = useTranslations("common");
+  const checkoutT = useTranslations("checkout");
   const { items, removeItem, updateQuantity, getSubtotal, getItemPrice, clearCart } = useCartStore();
   const [mounted, setMounted] = useState(false);
   const [couponCode, setCouponCode] = useState("");
@@ -24,8 +28,8 @@ export default function CartPageClient() {
   if (!mounted) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-8">Sepetim</h1>
-        <div className="text-center py-16 text-muted-foreground">Yukleniyor...</div>
+        <h1 className="text-2xl font-bold mb-8">{t("myCart")}</h1>
+        <div className="text-center py-16 text-muted-foreground">{common("loading")}</div>
       </div>
     );
   }
@@ -53,10 +57,10 @@ export default function CartPageClient() {
       if (data.valid) {
         setAppliedCoupon({ type: data.type, discount: data.discount, message: data.message });
       } else {
-        setCouponError(data.message || "Gecersiz kupon kodu");
+        setCouponError(data.message || t("invalidCoupon"));
       }
     } catch {
-      setCouponError("Kupon dogrulanamadi");
+      setCouponError(t("couponValidationError"));
     } finally {
       setCouponLoading(false);
     }
@@ -74,17 +78,17 @@ export default function CartPageClient() {
   if (items.length === 0) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-8">Sepetim</h1>
+        <h1 className="text-2xl font-bold mb-8">{t("myCart")}</h1>
         <div className="text-center py-16">
           <svg className="w-20 h-20 mx-auto text-muted-foreground/30 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
           </svg>
-          <h2 className="text-lg font-medium text-muted-foreground mb-4">Sepetiniz bos</h2>
+          <h2 className="text-lg font-medium text-muted-foreground mb-4">{t("empty")}</h2>
           <Link
             href="/kategori"
             className="inline-block px-6 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors"
           >
-            Alisverise Basla
+            {t("startShopping")}
           </Link>
         </div>
       </div>
@@ -94,14 +98,14 @@ export default function CartPageClient() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold">Sepetim ({items.length} urun)</h1>
+        <h1 className="text-2xl font-bold">{t("myCart")} ({common("productCount", { count: items.length })})</h1>
         <button
           onClick={() => {
-            if (confirm("Sepeti temizlemek istediginizden emin misiniz?")) clearCart();
+            if (confirm(t("clearCartConfirm"))) clearCart();
           }}
           className="text-sm text-danger hover:underline"
         >
-          Sepeti Temizle
+          {t("clearCart")}
         </button>
       </div>
 
@@ -132,7 +136,7 @@ export default function CartPageClient() {
                 {/* Details */}
                 <div className="flex-1 min-w-0">
                   <Link
-                    href={`/urun/${item.product.slug}`}
+                    href={`/urun/${item.product.slug}` as any}
                     className="text-sm font-medium hover:text-primary line-clamp-2"
                   >
                     {item.product.name}
@@ -167,7 +171,7 @@ export default function CartPageClient() {
                       onClick={() => removeItem(item.id)}
                       className="text-xs text-danger hover:underline"
                     >
-                      Kaldir
+                      {t("remove")}
                     </button>
                   </div>
                 </div>
@@ -184,14 +188,14 @@ export default function CartPageClient() {
         {/* Summary */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-xl border border-border p-6 sticky top-24">
-            <h3 className="font-bold text-lg mb-4">Siparis Ozeti</h3>
+            <h3 className="font-bold text-lg mb-4">{checkoutT("orderSummary")}</h3>
 
             {/* Coupon */}
             <div className="mb-4">
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="Kupon kodu"
+                  placeholder={t("couponCode")}
                   className="flex-1 px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                   value={couponCode}
                   onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponError(""); }}
@@ -202,7 +206,7 @@ export default function CartPageClient() {
                     onClick={handleRemoveCoupon}
                     className="px-4 py-2 bg-danger/10 text-danger rounded-lg text-sm font-medium hover:bg-danger/20 transition-colors"
                   >
-                    Kaldir
+                    {t("remove")}
                   </button>
                 ) : (
                   <button
@@ -210,7 +214,7 @@ export default function CartPageClient() {
                     disabled={couponLoading || !couponCode}
                     className="px-4 py-2 bg-muted text-foreground rounded-lg text-sm font-medium hover:bg-border transition-colors disabled:opacity-50"
                   >
-                    {couponLoading ? "..." : "Uygula"}
+                    {couponLoading ? "..." : t("applyCoupon")}
                   </button>
                 )}
               </div>
@@ -224,45 +228,45 @@ export default function CartPageClient() {
 
             <div className="space-y-3 pb-4 border-b border-border">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Ara Toplam</span>
+                <span className="text-muted-foreground">{t("subtotal")}</span>
                 <span>{formatPrice(subtotal)}</span>
               </div>
               {couponDiscount > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Kupon Indirimi</span>
+                  <span className="text-muted-foreground">{t("discount")}</span>
                   <span className="text-success font-medium">-{formatPrice(couponDiscount)}</span>
                 </div>
               )}
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Kargo</span>
+                <span className="text-muted-foreground">{checkoutT("shipping")}</span>
                 <span className={shippingCost === 0 ? "text-success font-medium" : ""}>
-                  {shippingCost === 0 ? "Ucretsiz" : formatPrice(shippingCost)}
+                  {shippingCost === 0 ? common("free") : formatPrice(shippingCost)}
                 </span>
               </div>
               {subtotal < 500 && !hasFreeShippingCoupon && (
                 <p className="text-xs text-info">
-                  {formatPrice(500 - subtotal)} daha ekleyerek ucretsiz kargo firsatindan yararlanin!
+                  {checkoutT("freeShippingHint", { amount: formatPrice(500 - subtotal) })}
                 </p>
               )}
             </div>
 
             <div className="flex justify-between py-4">
-              <span className="font-bold text-lg">Toplam</span>
+              <span className="font-bold text-lg">{t("total")}</span>
               <span className="font-bold text-lg text-primary">{formatPrice(total)}</span>
             </div>
 
             <Link
-              href={checkoutUrl}
+              href={checkoutUrl as any}
               className="block w-full py-3 text-center bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark transition-colors"
             >
-              Odemeye Gec
+              {t("proceedToCheckout")}
             </Link>
 
             <Link
               href="/kategori"
               className="block w-full py-2.5 text-center text-sm text-muted-foreground hover:text-foreground mt-2"
             >
-              Alisverise Devam Et
+              {t("continueShopping")}
             </Link>
           </div>
         </div>

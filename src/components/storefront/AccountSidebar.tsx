@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { signOut } from "next-auth/react";
 
 const NAV_ITEMS = [
   {
-    label: "Hesabim",
+    labelKey: "myAccount" as const,
     href: "/hesabim",
     exact: true,
     icon: (
@@ -16,7 +17,7 @@ const NAV_ITEMS = [
     ),
   },
   {
-    label: "Siparislerim",
+    labelKey: "orders" as const,
     href: "/hesabim/siparislerim",
     exact: false,
     icon: (
@@ -26,7 +27,7 @@ const NAV_ITEMS = [
     ),
   },
   {
-    label: "Iadelerim",
+    labelKey: "returns" as const,
     href: "/hesabim/iadelerim",
     exact: false,
     icon: (
@@ -36,7 +37,7 @@ const NAV_ITEMS = [
     ),
   },
   {
-    label: "Adreslerim",
+    labelKey: "addresses" as const,
     href: "/hesabim/adreslerim",
     exact: false,
     icon: (
@@ -47,7 +48,7 @@ const NAV_ITEMS = [
     ),
   },
   {
-    label: "Favorilerim",
+    labelKey: "favorites" as const,
     href: "/hesabim/favorilerim",
     exact: false,
     icon: (
@@ -57,7 +58,7 @@ const NAV_ITEMS = [
     ),
   },
   {
-    label: "Profil",
+    labelKey: "profile" as const,
     href: "/hesabim/profil",
     exact: false,
     icon: (
@@ -67,7 +68,7 @@ const NAV_ITEMS = [
     ),
   },
   {
-    label: "Bildirimler",
+    labelKey: "notifications" as const,
     href: "/hesabim/bildirimler",
     exact: true,
     icon: (
@@ -77,7 +78,7 @@ const NAV_ITEMS = [
     ),
   },
   {
-    label: "Bildirim Tercihleri",
+    labelKey: "notificationPreferences" as const,
     href: "/hesabim/bildirim-tercihleri",
     exact: false,
     icon: (
@@ -90,6 +91,8 @@ const NAV_ITEMS = [
 ];
 
 export default function AccountSidebar({ userName }: { userName: string }) {
+  const t = useTranslations("account");
+  const tc = useTranslations("common");
   const pathname = usePathname();
 
   const isActive = (href: string, exact: boolean) => {
@@ -123,7 +126,7 @@ export default function AccountSidebar({ userName }: { userName: string }) {
                 }`}
               >
                 {item.icon}
-                {item.label}
+                {t(item.labelKey)}
               </Link>
             ))}
           </nav>
@@ -137,7 +140,7 @@ export default function AccountSidebar({ userName }: { userName: string }) {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
-              Cikis Yap
+              {tc("logout")}
             </button>
           </div>
         </div>
@@ -157,7 +160,7 @@ export default function AccountSidebar({ userName }: { userName: string }) {
               }`}
             >
               {item.icon}
-              {item.label}
+              {t(item.labelKey)}
             </Link>
           ))}
           <button
@@ -167,7 +170,7 @@ export default function AccountSidebar({ userName }: { userName: string }) {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
-            Cikis Yap
+            {tc("logout")}
           </button>
         </div>
       </div>

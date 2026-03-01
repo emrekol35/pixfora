@@ -4,8 +4,11 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 export default function RegisterForm() {
+  const t = useTranslations("auth");
+  const tc = useTranslations("common");
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -20,12 +23,12 @@ export default function RegisterForm() {
     setError("");
 
     if (password.length < 6) {
-      setError("Sifre en az 6 karakter olmalidir.");
+      setError(t("passwordTooShort"));
       return;
     }
 
     if (password !== passwordConfirm) {
-      setError("Sifreler eslesmiyor.");
+      setError(t("passwordMismatch"));
       return;
     }
 
@@ -41,7 +44,7 @@ export default function RegisterForm() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Kayit sirasinda bir hata olustu.");
+        setError(data.error || t("registerError"));
         return;
       }
 
@@ -52,13 +55,13 @@ export default function RegisterForm() {
       });
 
       if (result?.error) {
-        setError("Kayit basarili ancak giris yapilamadi. Lutfen giris sayfasindan deneyin.");
+        setError(t("registerLoginFailed"));
       } else {
         router.push("/hesabim");
         router.refresh();
       }
     } catch {
-      setError("Bir hata olustu. Lutfen tekrar deneyin.");
+      setError(tc("error"));
     } finally {
       setLoading(false);
     }
@@ -66,12 +69,12 @@ export default function RegisterForm() {
 
   return (
     <div className="max-w-md w-full bg-card border border-border rounded-xl p-8">
-      <h1 className="text-2xl font-bold text-center mb-6">Kayit Ol</h1>
+      <h1 className="text-2xl font-bold text-center mb-6">{t("registerTitle")}</h1>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="name" className="block text-sm font-medium mb-1.5">
-            Ad Soyad
+            {t("name")}
           </label>
           <input
             id="name"
@@ -79,14 +82,14 @@ export default function RegisterForm() {
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Ad Soyad"
+            placeholder={t("namePlaceholder")}
             className="w-full px-4 py-2.5 rounded-lg border border-border bg-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
           />
         </div>
 
         <div>
           <label htmlFor="email" className="block text-sm font-medium mb-1.5">
-            E-posta
+            {t("email")}
           </label>
           <input
             id="email"
@@ -94,22 +97,22 @@ export default function RegisterForm() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="ornek@email.com"
+            placeholder={t("emailPlaceholder")}
             className="w-full px-4 py-2.5 rounded-lg border border-border bg-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
           />
         </div>
 
         <div>
           <label htmlFor="phone" className="block text-sm font-medium mb-1.5">
-            Telefon{" "}
-            <span className="text-muted-foreground font-normal">(istege bagli)</span>
+            {t("phone")}{" "}
+            <span className="text-muted-foreground font-normal">{t("phoneOptional")}</span>
           </label>
           <input
             id="phone"
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            placeholder="05XX XXX XX XX"
+            placeholder={t("phonePlaceholder")}
             className="w-full px-4 py-2.5 rounded-lg border border-border bg-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
           />
         </div>
@@ -119,7 +122,7 @@ export default function RegisterForm() {
             htmlFor="password"
             className="block text-sm font-medium mb-1.5"
           >
-            Sifre
+            {t("password")}
           </label>
           <input
             id="password"
@@ -128,7 +131,7 @@ export default function RegisterForm() {
             minLength={6}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="En az 6 karakter"
+            placeholder={t("passwordMinLength")}
             className="w-full px-4 py-2.5 rounded-lg border border-border bg-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
           />
         </div>
@@ -138,7 +141,7 @@ export default function RegisterForm() {
             htmlFor="passwordConfirm"
             className="block text-sm font-medium mb-1.5"
           >
-            Sifre Tekrar
+            {t("passwordConfirm")}
           </label>
           <input
             id="passwordConfirm"
@@ -146,7 +149,7 @@ export default function RegisterForm() {
             required
             value={passwordConfirm}
             onChange={(e) => setPasswordConfirm(e.target.value)}
-            placeholder="Sifrenizi tekrar girin"
+            placeholder={t("passwordConfirmPlaceholder")}
             className="w-full px-4 py-2.5 rounded-lg border border-border bg-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
           />
         </div>
@@ -162,17 +165,17 @@ export default function RegisterForm() {
           disabled={loading}
           className="bg-primary text-white w-full py-2.5 rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? "Kayit yapiliyor..." : "Kayit Ol"}
+          {loading ? t("registering") : t("registerButton")}
         </button>
       </form>
 
       <p className="text-center text-sm text-muted-foreground mt-6">
-        Zaten hesabiniz var mi?{" "}
+        {t("hasAccount")}{" "}
         <Link
           href="/giris"
           className="text-primary font-medium hover:underline"
         >
-          Giris Yapin
+          {t("loginLink")}
         </Link>
       </p>
     </div>

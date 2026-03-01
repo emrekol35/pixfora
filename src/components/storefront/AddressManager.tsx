@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 
 interface Address {
   id: string;
@@ -49,6 +50,8 @@ export default function AddressManager({
 }: {
   addresses: Address[];
 }) {
+  const t = useTranslations("account");
+  const common = useTranslations("common");
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -146,7 +149,7 @@ export default function AddressManager({
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Bu adresi silmek istediginize emin misiniz?")) return;
+    if (!confirm(t("confirmDeleteAddress"))) return;
 
     setLoading(true);
     try {
@@ -186,7 +189,7 @@ export default function AddressManager({
               <h3 className="font-medium text-foreground">{addr.title}</h3>
               {addr.isDefault && (
                 <span className="text-xs font-medium bg-primary/10 text-primary px-2 py-1 rounded">
-                  Varsayilan
+                  {t("defaultAddress")}
                 </span>
               )}
             </div>
@@ -208,7 +211,7 @@ export default function AddressManager({
                 className="text-sm text-primary hover:underline"
                 disabled={loading}
               >
-                Duzenle
+                {common("edit")}
               </button>
               {!addr.isDefault && (
                 <button
@@ -216,7 +219,7 @@ export default function AddressManager({
                   className="text-sm text-muted-foreground hover:text-foreground"
                   disabled={loading}
                 >
-                  Varsayilan Yap
+                  {t("makeDefault")}
                 </button>
               )}
               <button
@@ -224,7 +227,7 @@ export default function AddressManager({
                 className="text-sm text-danger hover:underline ml-auto"
                 disabled={loading}
               >
-                Sil
+                {common("delete")}
               </button>
             </div>
           </div>
@@ -237,7 +240,7 @@ export default function AddressManager({
           onClick={openNewForm}
           className="w-full border-2 border-dashed border-border rounded-xl p-6 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
         >
-          + Yeni Adres Ekle
+          + {t("newAddress")}
         </button>
       )}
 
@@ -245,14 +248,14 @@ export default function AddressManager({
       {showForm && (
         <div className="bg-card border border-border rounded-xl p-6">
           <h2 className="text-lg font-semibold text-foreground mb-4">
-            {editingId ? "Adresi Duzenle" : "Yeni Adres Ekle"}
+            {editingId ? t("editAddress") : t("newAddress")}
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Adres Basligi */}
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  Adres Basligi (ev, is, vb.)
+                  {t("addressTitle")}
                 </label>
                 <input
                   type="text"
@@ -262,14 +265,14 @@ export default function AddressManager({
                     setForm((f) => ({ ...f, title: e.target.value }))
                   }
                   className="w-full px-3 py-2 border border-border rounded-lg bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="Orn: Ev Adresi"
+                  placeholder={t("addressTitlePlaceholder")}
                 />
               </div>
 
               {/* Ad */}
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  Ad
+                  {t("firstName")}
                 </label>
                 <input
                   type="text"
@@ -285,7 +288,7 @@ export default function AddressManager({
               {/* Soyad */}
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  Soyad
+                  {t("lastName")}
                 </label>
                 <input
                   type="text"
@@ -301,7 +304,7 @@ export default function AddressManager({
               {/* Telefon */}
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  Telefon
+                  {t("phone")}
                 </label>
                 <input
                   type="tel"
@@ -318,7 +321,7 @@ export default function AddressManager({
               {/* Il */}
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  Il
+                  {t("city")}
                 </label>
                 <input
                   type="text"
@@ -334,7 +337,7 @@ export default function AddressManager({
               {/* Ilce */}
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  Ilce
+                  {t("district")}
                 </label>
                 <input
                   type="text"
@@ -350,7 +353,7 @@ export default function AddressManager({
               {/* Mahalle */}
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  Mahalle
+                  {t("neighborhood")}
                 </label>
                 <input
                   type="text"
@@ -365,7 +368,7 @@ export default function AddressManager({
               {/* Posta Kodu */}
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  Posta Kodu
+                  {t("postalCode")}
                 </label>
                 <input
                   type="text"
@@ -380,7 +383,7 @@ export default function AddressManager({
               {/* Adres */}
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  Adres
+                  {t("addressLine")}
                 </label>
                 <textarea
                   required
@@ -406,7 +409,7 @@ export default function AddressManager({
                     className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                   />
                   <span className="text-sm text-foreground">
-                    Varsayilan adres olarak ayarla
+                    {t("makeDefault")}
                   </span>
                 </label>
               </div>
@@ -420,17 +423,17 @@ export default function AddressManager({
                 className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
                 {loading
-                  ? "Kaydediliyor..."
+                  ? t("updating")
                   : editingId
-                  ? "Guncelle"
-                  : "Kaydet"}
+                  ? t("update")
+                  : common("add")}
               </button>
               <button
                 type="button"
                 onClick={closeForm}
                 className="px-6 py-2 rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors"
               >
-                Iptal
+                {common("cancel")}
               </button>
             </div>
           </form>

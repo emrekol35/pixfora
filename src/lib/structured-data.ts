@@ -13,17 +13,18 @@ export function getOrganizationSchema() {
 }
 
 // WebSite schema — arama kutusu (sitelinks searchbox) icin
-export function getWebSiteSchema() {
+export function getWebSiteSchema(locale?: string) {
+  const searchPath = locale === "en" ? "/en/search" : "/arama";
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: "Pixfora",
-    url: BASE_URL,
+    url: locale === "en" ? `${BASE_URL}/en` : BASE_URL,
     potentialAction: {
       "@type": "SearchAction",
       target: {
         "@type": "EntryPoint",
-        urlTemplate: `${BASE_URL}/arama?q={search_term_string}`,
+        urlTemplate: `${BASE_URL}${searchPath}?q={search_term_string}`,
       },
       "query-input": "required name=search_term_string",
     },

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import Image from "next/image";
 
 interface OrderItem {
@@ -50,15 +51,17 @@ interface Order {
   items: OrderItem[];
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  PENDING: "Bekliyor",
-  CONFIRMED: "Onaylandi",
-  PROCESSING: "Hazirlaniyor",
-  SHIPPED: "Kargoda",
-  DELIVERED: "Teslim Edildi",
-  CANCELLED: "Iptal Edildi",
-  REFUNDED: "Iade Edildi",
-};
+function getStatusLabels(t: ReturnType<typeof useTranslations>): Record<string, string> {
+  return {
+    PENDING: t("statusPending"),
+    CONFIRMED: t("statusConfirmed"),
+    PROCESSING: t("statusPreparing"),
+    SHIPPED: t("statusShipped"),
+    DELIVERED: t("statusDelivered"),
+    CANCELLED: t("statusCancelled"),
+    REFUNDED: t("statusReturned"),
+  };
+}
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: "bg-warning",
@@ -70,11 +73,13 @@ const STATUS_COLORS: Record<string, string> = {
   REFUNDED: "bg-muted",
 };
 
-const PAYMENT_LABELS: Record<string, string> = {
-  CREDIT_CARD: "Kredi Karti",
-  BANK_TRANSFER: "Havale / EFT",
-  CASH_ON_DELIVERY: "Kapida Odeme",
-};
+function getPaymentLabels(t: ReturnType<typeof useTranslations>): Record<string, string> {
+  return {
+    CREDIT_CARD: t("paymentCreditCard"),
+    BANK_TRANSFER: t("paymentBankTransfer"),
+    CASH_ON_DELIVERY: t("paymentCashOnDelivery"),
+  };
+}
 
 const SHIPPING_NAMES: Record<string, string> = {
   yurtici: "Yurtici Kargo",
@@ -84,13 +89,15 @@ const SHIPPING_NAMES: Record<string, string> = {
   surat: "Surat Kargo",
 };
 
-const TIMELINE_STEPS = [
-  { key: "PENDING", label: "Siparis Alindi" },
-  { key: "CONFIRMED", label: "Onaylandi" },
-  { key: "PROCESSING", label: "Hazirlaniyor" },
-  { key: "SHIPPED", label: "Kargoda" },
-  { key: "DELIVERED", label: "Teslim Edildi" },
-];
+function getTimelineSteps(t: ReturnType<typeof useTranslations>) {
+  return [
+    { key: "PENDING", label: t("orderReceived") },
+    { key: "CONFIRMED", label: t("statusConfirmed") },
+    { key: "PROCESSING", label: t("statusPreparing") },
+    { key: "SHIPPED", label: t("statusShipped") },
+    { key: "DELIVERED", label: t("statusDelivered") },
+  ];
+}
 
 const STEP_ORDER: Record<string, number> = {
   PENDING: 0,
@@ -118,6 +125,11 @@ function formatDate(dateStr: string): string {
 }
 
 export default function OrderDetailView({ order, hasActiveReturn, activeReturnId }: { order: Order; hasActiveReturn?: boolean; activeReturnId?: string }) {
+  const t = useTranslations("order");
+  const common = useTranslations("common");
+  const STATUS_LABELS = getStatusLabels(t);
+  const PAYMENT_LABELS = getPaymentLabels(t);
+  const TIMELINE_STEPS = getTimelineSteps(t);
   const isCancelled = order.status === "CANCELLED" || order.status === "REFUNDED";
   const currentStepIndex = STEP_ORDER[order.status] ?? -1;
   const [trackingEvents, setTrackingEvents] = useState<TrackingEvent[]>([]);
@@ -149,7 +161,7 @@ export default function OrderDetailView({ order, hasActiveReturn, activeReturnId
         href="/hesabim/siparislerim"
         className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6"
       >
-        &larr; Siparislerime Don
+        &larr; {t("backToOrders")}
       </Link>
 
       {/* Order Header */}
@@ -186,7 +198,7 @@ export default function OrderDetailView({ order, hasActiveReturn, activeReturnId
                 {STATUS_LABELS[order.status]}
               </p>
               <p className="text-sm text-muted-foreground">
-                Bu siparis {order.status === "CANCELLED" ? "iptal edilmistir" : "iade edilmistir"}.
+                {order.status === "CANCELLED" ? t("cancelled") : t("refunded")}
               </p>
             </div>
           </div>
@@ -252,7 +264,7 @@ export default function OrderDetailView({ order, hasActiveReturn, activeReturnId
       {/* Kargo Takip Timeline */}
       {order.trackingNumber && (
         <div className="bg-card border border-border rounded-xl p-6 mb-6">
-          <h2 className="text-sm font-semibold text-foreground mb-4">Kargo Takibi</h2>
+          <h2 className="text-sm font-semibold text-foreground mb-4">{t("shippingTracking")}</h2>
           <div className="flex items-center gap-3 p-3 bg-muted rounded-lg mb-4">
             <span className="text-lg">📦</span>
             <div>
@@ -288,7 +300,7 @@ export default function OrderDetailView({ order, hasActiveReturn, activeReturnId
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">Kargo takip bilgisi henuz mevcut degil.</p>
+            <p className="text-sm text-muted-foreground">{t("noTrackingInfo")}</p>
           )}
         </div>
       )}
@@ -296,7 +308,7 @@ export default function OrderDetailView({ order, hasActiveReturn, activeReturnId
       {/* Items Table */}
       <div className="bg-card border border-border rounded-xl overflow-hidden mb-6">
         <div className="p-4 border-b border-border">
-          <h2 className="text-sm font-semibold text-foreground">Urunler</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t("products")}</h2>
         </div>
         <div className="divide-y divide-border">
           {order.items.map((item) => (
@@ -318,13 +330,13 @@ export default function OrderDetailView({ order, hasActiveReturn, activeReturnId
               </div>
               <div className="flex-1 min-w-0">
                 <Link
-                  href={`/urun/${item.productSlug}`}
+                  href={`/urun/${item.productSlug}` as any}
                   className="text-sm font-medium text-foreground hover:text-primary"
                 >
                   {item.productName}
                 </Link>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {item.quantity} adet x {formatCurrency(item.price)}
+                  {item.quantity} {t("piece")} x {formatCurrency(item.price)}
                 </p>
               </div>
               <div className="text-sm font-semibold text-foreground">
@@ -341,7 +353,7 @@ export default function OrderDetailView({ order, hasActiveReturn, activeReturnId
         {order.shippingAddress && (
           <div className="bg-card border border-border rounded-xl p-5">
             <h2 className="text-sm font-semibold text-foreground mb-3">
-              Teslimat Adresi
+              {t("shippingAddress")}
             </h2>
             <div className="space-y-1 text-sm text-muted-foreground">
               {order.shippingAddress.title && (
@@ -371,7 +383,7 @@ export default function OrderDetailView({ order, hasActiveReturn, activeReturnId
         {/* Payment Info */}
         <div className="bg-card border border-border rounded-xl p-5">
           <h2 className="text-sm font-semibold text-foreground mb-3">
-            Odeme Bilgileri
+            {t("paymentInfo")}
           </h2>
           <div className="space-y-1 text-sm text-muted-foreground">
             {order.paymentMethod && (
@@ -394,7 +406,7 @@ export default function OrderDetailView({ order, hasActiveReturn, activeReturnId
                 <p className="text-xs text-muted-foreground mt-0.5">Bu siparis icin aktif bir iade talebi bulunuyor.</p>
               </div>
               <Link
-                href={`/hesabim/iadelerim/${activeReturnId}`}
+                href={`/hesabim/iadelerim/${activeReturnId}` as any}
                 className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90"
               >
                 Iade Detayi
@@ -407,7 +419,7 @@ export default function OrderDetailView({ order, hasActiveReturn, activeReturnId
                 <p className="text-xs text-muted-foreground mt-0.5">Teslim tarihinden itibaren 14 gun icinde iade talebi olusturabilirsiniz.</p>
               </div>
               <Link
-                href={`/hesabim/siparislerim/${order.id}/iade`}
+                href={`/hesabim/siparislerim/${order.id}/iade` as any}
                 className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90"
               >
                 Iade Talebi
@@ -424,26 +436,26 @@ export default function OrderDetailView({ order, hasActiveReturn, activeReturnId
         </h2>
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Ara Toplam</span>
+            <span className="text-muted-foreground">{t("subtotal")}</span>
             <span className="text-foreground">{formatCurrency(subtotal)}</span>
           </div>
           {(order.shippingCost !== undefined) && (
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Kargo</span>
+              <span className="text-muted-foreground">{t("shippingCost")}</span>
               <span className={order.shippingCost === 0 ? "text-success font-medium" : "text-foreground"}>
-                {order.shippingCost === 0 ? "Ucretsiz" : formatCurrency(order.shippingCost)}
+                {order.shippingCost === 0 ? common("free") : formatCurrency(order.shippingCost)}
               </span>
             </div>
           )}
           {(order.discount !== undefined && order.discount > 0) && (
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Indirim</span>
+              <span className="text-muted-foreground">{t("discount")}</span>
               <span className="text-success font-medium">-{formatCurrency(order.discount)}</span>
             </div>
           )}
           <div className="border-t border-border pt-2 mt-2">
             <div className="flex justify-between text-base font-bold">
-              <span className="text-foreground">Toplam</span>
+              <span className="text-foreground">{t("total")}</span>
               <span className="text-primary">
                 {formatCurrency(order.total)}
               </span>

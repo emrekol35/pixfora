@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import Image from "next/image";
 
 interface TrackingEvent {
@@ -38,16 +39,6 @@ interface TrackingOrder {
   } | null;
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  PENDING: "Beklemede",
-  CONFIRMED: "Onaylandi",
-  PROCESSING: "Hazirlaniyor",
-  SHIPPED: "Kargoda",
-  DELIVERED: "Teslim Edildi",
-  CANCELLED: "Iptal Edildi",
-  REFUNDED: "Iade Edildi",
-};
-
 const STATUS_COLORS: Record<string, string> = {
   PENDING: "bg-yellow-100 text-yellow-800",
   CONFIRMED: "bg-blue-100 text-blue-800",
@@ -69,6 +60,7 @@ const SHIPPING_NAMES: Record<string, string> = {
 const STATUS_STEPS = ["PENDING", "CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED"];
 
 export default function OrderTrackingClient() {
+  const t = useTranslations("tracking");
   const [orderNumber, setOrderNumber] = useState("");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -78,6 +70,19 @@ export default function OrderTrackingClient() {
 
   const formatPrice = (price: number) =>
     new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(price);
+
+  const getStatusLabel = (status: string) => {
+    const map: Record<string, string> = {
+      PENDING: t("statusPending"),
+      CONFIRMED: t("statusConfirmed"),
+      PROCESSING: t("statusProcessing"),
+      SHIPPED: t("statusShipped"),
+      DELIVERED: t("statusDelivered"),
+      CANCELLED: t("statusCancelled"),
+      REFUNDED: t("statusRefunded"),
+    };
+    return map[status] || status;
+  };
 
   const handleTrack = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,10 +104,10 @@ export default function OrderTrackingClient() {
         setOrder(data.order);
         setTrackingEvents(data.trackingEvents || []);
       } else {
-        setError(data.error || "Siparis bulunamadi");
+        setError(data.error || t("notFound"));
       }
     } catch {
-      setError("Bir hata olustu. Lutfen tekrar deneyiniz.");
+      setError(t("genericError"));
     } finally {
       setLoading(false);
     }
@@ -114,11 +119,11 @@ export default function OrderTrackingClient() {
     <div className="max-w-3xl mx-auto">
       {/* Form */}
       <div className="bg-white rounded-xl border border-border p-6 mb-8">
-        <h2 className="text-lg font-bold mb-4">Siparisinizi Takip Edin</h2>
+        <h2 className="text-lg font-bold mb-4">{t("title")}</h2>
         <form onSubmit={handleTrack} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium mb-1 block">Siparis Numarasi</label>
+              <label className="text-sm font-medium mb-1 block">{t("orderNumber")}</label>
               <input
                 type="text"
                 value={orderNumber}
@@ -128,7 +133,7 @@ export default function OrderTrackingClient() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1 block">E-posta Adresiniz</label>
+              <label className="text-sm font-medium mb-1 block">{t("email")}</label>
               <input
                 type="email"
                 value={email}
@@ -143,7 +148,7 @@ export default function OrderTrackingClient() {
             disabled={loading || !orderNumber || !email}
             className="w-full py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark disabled:bg-muted disabled:text-muted-foreground transition-colors"
           >
-            {loading ? "Sorgulanıyor..." : "Siparis Sorgula"}
+            {loading ? t("querying") : t("queryButton")}
           </button>
         </form>
         {error && (
@@ -160,13 +165,13 @@ export default function OrderTrackingClient() {
           <div className="bg-white rounded-xl border border-border p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="font-bold text-lg">Siparis #{order.orderNumber}</h3>
+                <h3 className="font-bold text-lg">{t("orderHash", { number: order.orderNumber })}</h3>
                 <p className="text-sm text-muted-foreground">
                   {new Date(order.createdAt).toLocaleDateString("tr-TR", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                 </p>
               </div>
               <span className={`px-3 py-1 rounded-full text-xs font-semibold ${STATUS_COLORS[order.status] || "bg-muted text-muted-foreground"}`}>
-                {STATUS_LABELS[order.status] || order.status}
+                {getStatusLabel(order.status)}
               </span>
             </div>
 
@@ -189,7 +194,7 @@ export default function OrderTrackingClient() {
                           {isCompleted && !isCurrent ? "✓" : idx + 1}
                         </div>
                         <span className={`text-[10px] sm:text-xs mt-1.5 text-center ${isCurrent ? "font-bold text-primary" : "text-muted-foreground"}`}>
-                          {STATUS_LABELS[step]}
+                          {getStatusLabel(step)}
                         </span>
                       </div>
                     );
@@ -209,12 +214,12 @@ export default function OrderTrackingClient() {
           {/* Kargo takip */}
           {order.trackingNumber && (
             <div className="bg-white rounded-xl border border-border p-6">
-              <h3 className="font-bold mb-4">Kargo Takibi</h3>
+              <h3 className="font-bold mb-4">{t("shippingTracking")}</h3>
               <div className="flex items-center gap-3 p-3 bg-muted rounded-lg mb-4">
                 <span className="text-lg">📦</span>
                 <div>
                   <p className="text-sm font-medium">
-                    {SHIPPING_NAMES[order.shippingCompany || ""] || order.shippingCompany || "Kargo"}
+                    {SHIPPING_NAMES[order.shippingCompany || ""] || order.shippingCompany || t("shippingLabel")}
                   </p>
                   <p className="text-xs text-muted-foreground font-mono">{order.trackingNumber}</p>
                 </div>
@@ -243,14 +248,14 @@ export default function OrderTrackingClient() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">Kargo takip bilgisi henuz mevcut degil.</p>
+                <p className="text-sm text-muted-foreground">{t("noTrackingInfo")}</p>
               )}
             </div>
           )}
 
           {/* Siparis detaylari */}
           <div className="bg-white rounded-xl border border-border p-6">
-            <h3 className="font-bold mb-4">Siparis Detaylari</h3>
+            <h3 className="font-bold mb-4">{t("orderDetails")}</h3>
             <div className="space-y-3 mb-4">
               {order.items.map((item, idx) => (
                 <div key={idx} className="flex items-center gap-3 text-sm">
@@ -259,7 +264,7 @@ export default function OrderTrackingClient() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="truncate">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">{item.quantity} adet x {formatPrice(item.price)}</p>
+                    <p className="text-xs text-muted-foreground">{item.quantity} {t("piece")} x {formatPrice(item.price)}</p>
                   </div>
                   <span className="font-medium">{formatPrice(item.total)}</span>
                 </div>
@@ -267,21 +272,21 @@ export default function OrderTrackingClient() {
             </div>
             <div className="border-t border-border pt-3 space-y-1.5 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Ara Toplam</span>
+                <span className="text-muted-foreground">{t("subtotal")}</span>
                 <span>{formatPrice(order.subtotal)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Kargo</span>
-                <span>{order.shippingCost === 0 ? "Ucretsiz" : formatPrice(order.shippingCost)}</span>
+                <span className="text-muted-foreground">{t("shipping")}</span>
+                <span>{order.shippingCost === 0 ? t("free") : formatPrice(order.shippingCost)}</span>
               </div>
               {order.discount > 0 && (
                 <div className="flex justify-between text-success">
-                  <span>Indirim</span>
+                  <span>{t("discountLabel")}</span>
                   <span>-{formatPrice(order.discount)}</span>
                 </div>
               )}
               <div className="flex justify-between font-bold text-lg pt-2 border-t border-border">
-                <span>Toplam</span>
+                <span>{t("total")}</span>
                 <span className="text-primary">{formatPrice(order.total)}</span>
               </div>
             </div>
@@ -290,7 +295,7 @@ export default function OrderTrackingClient() {
           {/* Teslimat adresi */}
           {order.shippingAddress && (
             <div className="bg-white rounded-xl border border-border p-6">
-              <h3 className="font-bold mb-2">Teslimat Adresi</h3>
+              <h3 className="font-bold mb-2">{t("shippingAddress")}</h3>
               <p className="text-sm text-muted-foreground">
                 {order.shippingAddress.firstName} {order.shippingAddress.lastName} — {order.shippingAddress.district}/{order.shippingAddress.city}
               </p>

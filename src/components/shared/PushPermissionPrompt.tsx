@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 
 // Base64 URL encoded string'i Uint8Array'e donustur (VAPID key icin)
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
@@ -19,6 +20,7 @@ const DISMISS_DAYS = 14;
 const SHOW_DELAY = 5000; // 5 saniye
 
 export default function PushPermissionPrompt() {
+  const t = useTranslations("notification");
   const [showBanner, setShowBanner] = useState(false);
   const [isSubscribing, setIsSubscribing] = useState(false);
 
@@ -94,9 +96,9 @@ export default function PushPermissionPrompt() {
             </svg>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold">Bildirim almak ister misiniz?</p>
+            <p className="text-sm font-semibold">{t("pushPromptTitle")}</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Siparis, kampanya ve firsatlardan aninda haberdar olun.
+              {t("pushPromptDesc")}
             </p>
           </div>
           <button
@@ -114,14 +116,14 @@ export default function PushPermissionPrompt() {
             onClick={handleDismiss}
             className="flex-1 px-3 py-2 text-xs font-medium text-muted-foreground border border-border rounded-lg hover:bg-muted transition-colors"
           >
-            Simdi Degil
+            {t("pushDismiss")}
           </button>
           <button
             onClick={handleAccept}
             disabled={isSubscribing}
             className="flex-1 px-3 py-2 text-xs font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
           >
-            {isSubscribing ? "Kaydediliyor..." : "Izin Ver"}
+            {isSubscribing ? t("subscribing") : t("pushAllow")}
           </button>
         </div>
       </div>

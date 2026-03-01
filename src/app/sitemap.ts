@@ -5,53 +5,60 @@ export const dynamic = "force-dynamic";
 
 const BASE_URL = process.env.AUTH_URL || "https://pixfora.com";
 
-// Not: Urun sayisi 50.000'i gecerse generateSitemaps() ile sitemap index'e gecilmeli
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  // Statik rotalar
+  // Statik rotalar (TR + EN alternates)
   const staticRoutes: MetadataRoute.Sitemap = [
     {
       url: BASE_URL,
       lastModified: new Date(),
       changeFrequency: "daily",
       priority: 1.0,
+      alternates: { languages: { tr: BASE_URL, en: `${BASE_URL}/en` } },
     },
     {
       url: `${BASE_URL}/kategori`,
       lastModified: new Date(),
       changeFrequency: "daily",
       priority: 0.8,
+      alternates: { languages: { tr: `${BASE_URL}/kategori`, en: `${BASE_URL}/en/category` } },
     },
     {
       url: `${BASE_URL}/markalar`,
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 0.7,
+      alternates: { languages: { tr: `${BASE_URL}/markalar`, en: `${BASE_URL}/en/brands` } },
     },
     {
       url: `${BASE_URL}/blog`,
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 0.7,
+      alternates: { languages: { tr: `${BASE_URL}/blog`, en: `${BASE_URL}/en/blog` } },
     },
     {
       url: `${BASE_URL}/iletisim`,
       changeFrequency: "monthly",
       priority: 0.5,
+      alternates: { languages: { tr: `${BASE_URL}/iletisim`, en: `${BASE_URL}/en/contact` } },
     },
     {
       url: `${BASE_URL}/cok-satanlar`,
       changeFrequency: "daily",
       priority: 0.7,
+      alternates: { languages: { tr: `${BASE_URL}/cok-satanlar`, en: `${BASE_URL}/en/best-sellers` } },
     },
     {
       url: `${BASE_URL}/firsatlar`,
       changeFrequency: "daily",
       priority: 0.7,
+      alternates: { languages: { tr: `${BASE_URL}/firsatlar`, en: `${BASE_URL}/en/deals` } },
     },
     {
       url: `${BASE_URL}/yeni-urunler`,
       changeFrequency: "daily",
       priority: 0.7,
+      alternates: { languages: { tr: `${BASE_URL}/yeni-urunler`, en: `${BASE_URL}/en/new-arrivals` } },
     },
   ];
 
@@ -85,6 +92,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: p.updatedAt,
     changeFrequency: "weekly",
     priority: 0.9,
+    alternates: {
+      languages: {
+        tr: `${BASE_URL}/urun/${p.slug}`,
+        en: `${BASE_URL}/en/product/${p.slug}`,
+      },
+    },
   }));
 
   const categoryRoutes: MetadataRoute.Sitemap = categories.map((c) => ({
@@ -92,6 +105,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: c.updatedAt,
     changeFrequency: "weekly",
     priority: 0.8,
+    alternates: {
+      languages: {
+        tr: `${BASE_URL}/kategori/${c.slug}`,
+        en: `${BASE_URL}/en/category/${c.slug}`,
+      },
+    },
   }));
 
   const brandRoutes: MetadataRoute.Sitemap = brands.map((b) => ({
@@ -99,6 +118,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: b.updatedAt,
     changeFrequency: "weekly",
     priority: 0.7,
+    alternates: {
+      languages: {
+        tr: `${BASE_URL}/marka/${b.slug}`,
+        en: `${BASE_URL}/en/brand/${b.slug}`,
+      },
+    },
   }));
 
   const blogRoutes: MetadataRoute.Sitemap = blogPosts.map((bp) => ({
@@ -106,6 +131,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: bp.updatedAt,
     changeFrequency: "monthly",
     priority: 0.6,
+    alternates: {
+      languages: {
+        tr: `${BASE_URL}/blog/${bp.slug}`,
+        en: `${BASE_URL}/en/blog/${bp.slug}`,
+      },
+    },
   }));
 
   const pageRoutes: MetadataRoute.Sitemap = pages.map((pg) => ({
@@ -113,6 +144,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: pg.updatedAt,
     changeFrequency: "monthly",
     priority: 0.5,
+    alternates: {
+      languages: {
+        tr: `${BASE_URL}/sayfa/${pg.slug}`,
+        en: `${BASE_URL}/en/page/${pg.slug}`,
+      },
+    },
   }));
 
   return [

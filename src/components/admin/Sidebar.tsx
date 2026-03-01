@@ -139,6 +139,19 @@ const menuItems = [
     icon: "📋",
   },
   {
+    title: "Çeviriler",
+    href: "/admin/ceviriler",
+    icon: "🌐",
+    children: [
+      { title: "Genel Bakış", href: "/admin/ceviriler" },
+      { title: "Ürünler", href: "/admin/ceviriler/product" },
+      { title: "Kategoriler", href: "/admin/ceviriler/category" },
+      { title: "Markalar", href: "/admin/ceviriler/brand" },
+      { title: "Sayfalar", href: "/admin/ceviriler/page" },
+      { title: "Blog", href: "/admin/ceviriler/blogPost" },
+    ],
+  },
+  {
     title: "Ayarlar",
     href: "/admin/ayarlar",
     icon: "⚙️",

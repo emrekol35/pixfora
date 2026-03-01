@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 export default function ContactForm() {
+  const t = useTranslations("contact");
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -55,11 +57,11 @@ export default function ContactForm() {
 
   return (
     <div className="bg-card border border-border rounded-xl p-6">
-      <h2 className="text-lg font-semibold mb-4">Bize Yazin</h2>
+      <h2 className="text-lg font-semibold mb-4">{t("formTitle")}</h2>
 
       {success && (
         <div className="bg-success/10 text-success border border-success/20 rounded-lg p-4 mb-4 text-sm">
-          Mesajiniz basariyla gonderildi. En kisa surede donus yapacagiz.
+          {t("success")}
         </div>
       )}
 
@@ -72,7 +74,7 @@ export default function ContactForm() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="name" className="block text-sm font-medium mb-1">
-            Ad Soyad <span className="text-danger">*</span>
+            {t("name")} <span className="text-danger">*</span>
           </label>
           <input
             type="text"
@@ -87,7 +89,7 @@ export default function ContactForm() {
 
         <div>
           <label htmlFor="email" className="block text-sm font-medium mb-1">
-            E-posta <span className="text-danger">*</span>
+            {t("email")} <span className="text-danger">*</span>
           </label>
           <input
             type="email"
@@ -102,7 +104,7 @@ export default function ContactForm() {
 
         <div>
           <label htmlFor="phone" className="block text-sm font-medium mb-1">
-            Telefon
+            {t("phone")}
           </label>
           <input
             type="tel"
@@ -116,7 +118,7 @@ export default function ContactForm() {
 
         <div>
           <label htmlFor="subject" className="block text-sm font-medium mb-1">
-            Konu <span className="text-danger">*</span>
+            {t("subject")} <span className="text-danger">*</span>
           </label>
           <select
             id="subject"
@@ -126,17 +128,17 @@ export default function ContactForm() {
             required
             className="w-full border border-border rounded-lg px-3 py-2 bg-muted text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
           >
-            <option value="Genel">Genel</option>
-            <option value="Siparis Hakkinda">Siparis Hakkinda</option>
-            <option value="Iade/Degisim">Iade/Degisim</option>
-            <option value="Oneri/Sikayet">Oneri/Sikayet</option>
-            <option value="Diger">Diger</option>
+            <option value="Genel">{t("subjects.general")}</option>
+            <option value="Siparis Hakkinda">{t("subjects.order")}</option>
+            <option value="Iade/Degisim">{t("subjects.return")}</option>
+            <option value="Oneri/Sikayet">{t("subjects.complaint")}</option>
+            <option value="Diger">{t("subjects.other")}</option>
           </select>
         </div>
 
         <div>
           <label htmlFor="message" className="block text-sm font-medium mb-1">
-            Mesaj <span className="text-danger">*</span>
+            {t("message")} <span className="text-danger">*</span>
           </label>
           <textarea
             id="message"
@@ -154,7 +156,7 @@ export default function ContactForm() {
           disabled={loading}
           className="w-full bg-primary text-white font-medium py-2.5 px-4 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
         >
-          {loading ? "Gonderiliyor..." : "Mesaj Gonder"}
+          {loading ? t("sending") : t("sendMessage")}
         </button>
       </form>
     </div>

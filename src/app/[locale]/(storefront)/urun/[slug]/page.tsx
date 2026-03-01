@@ -1,0 +1,272 @@
+import { notFound } from "next/navigation";
+import { prisma } from "@/lib/db";
+import { auth } from "@/lib/auth";
+import type { Metadata } from "next";
+import ProductDetail from "@/components/storefront/ProductDetail";
+import Link from "next/link";
+import { getBoughtTogether, getSimilarProducts } from "@/services/recommendation";
+import JsonLd from "@/components/seo/JsonLd";
+import { getProductSchema, getBreadcrumbSchema } from "@/lib/structured-data";
+import { getEntityTranslations } from "@/lib/translations";
+import { getLocale } from "next-intl/server";
+
+export const dynamic = "force-dynamic";
+
+interface Props {
+  params: Promise<{ slug: string }>;
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const product = await prisma.product.findUnique({
+    where: { slug },
+    select: {
+      id: true,
+      name: true,
+      seoTitle: true,
+      seoDescription: true,
+      shortDesc: true,
+      price: true,
+      images: { orderBy: { order: "asc" }, take: 1, select: { url: true } },
+    },
+  });
+  if (!product) return { title: "Urun Bulunamadi" };
+
+  // i18n: DB çevirilerini uygula
+  const locale = await getLocale();
+  let { name, seoTitle, seoDescription, shortDesc } = product;
+  if (locale !== "tr") {
+    const tr = await getEntityTranslations("product", product.id, locale);
+    if (tr.name) name = tr.name;
+    if (tr.seoTitle) seoTitle = tr.seoTitle;
+    if (tr.seoDescription) seoDescription = tr.seoDescription;
+    if (tr.shortDesc) shortDesc = tr.shortDesc;
+  }
+
+  const title = seoTitle || name;
+  const description = seoDescription || shortDesc || name;
+  const imageUrl = product.images[0]?.url;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: `/urun/${slug}` },
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      ...(imageUrl && { images: [{ url: imageUrl, width: 800, height: 800, alt: name }] }),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      ...(imageUrl && { images: [imageUrl] }),
+    },
+  };
+}
+
+export default async function ProductPage({ params }: Props) {
+  const { slug } = await params;
+
+  const product = await prisma.product.findUnique({
+    where: { slug },
+    include: {
+      images: { orderBy: { order: "asc" } },
+      category: { select: { name: true, slug: true } },
+      brand: { select: { name: true, slug: true } },
+      variantTypes: {
+        orderBy: { order: "asc" },
+        include: {
+          options: { orderBy: { order: "asc" } },
+        },
+      },
+      variants: {
+        where: { isActive: true },
+      },
+      tags: true,
+      reviews: {
+        where: { isApproved: true },
+        include: {
+          user: { select: { name: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+      },
+      _count: {
+        select: { reviews: { where: { isApproved: true } } },
+      },
+    },
+  });
+
+  if (!product || !product.isActive) notFound();
+
+  // i18n: DB çevirilerini uygula
+  const locale = await getLocale();
+  if (locale !== "tr") {
+    const tr = await getEntityTranslations("product", product.id, locale);
+    if (tr.name) (product as any).name = tr.name;
+    if (tr.description) (product as any).description = tr.description;
+    if (tr.shortDesc) (product as any).shortDesc = tr.shortDesc;
+  }
+
+  // Ortalama puan
+  const avgRating =
+    product.reviews.length > 0
+      ? product.reviews.reduce((sum, r) => sum + r.rating, 0) / product.reviews.length
+      : 0;
+
+  // Tamamlayici urunler
+  const complementaryData = await prisma.complementaryProduct.findMany({
+    where: { mainProductId: product.id },
+    include: {
+      compProduct: {
+        include: {
+          images: { orderBy: { order: "asc" }, take: 1 },
+          category: { select: { name: true } },
+          brand: { select: { name: true } },
+        },
+      },
+    },
+  });
+  const complementaryProducts = complementaryData
+    .filter((cp) => cp.compProduct.isActive)
+    .map((cp) => cp.compProduct);
+
+  // Hediyeli urunler
+  const giftProducts = await prisma.giftProduct.findMany({
+    where: { productId: product.id },
+  });
+
+  // Oneri sistemi: birlikte alinan + benzer urunler
+  const [boughtTogether, similarProducts] = await Promise.all([
+    getBoughtTogether(product.id, 4),
+    getSimilarProducts(
+      product.id,
+      product.categoryId,
+      product.brandId,
+      product.tags,
+      product.price,
+      8
+    ),
+  ]);
+
+  // canReview kontrolu
+  const session = await auth();
+  let canReview = false;
+  if (session?.user?.id) {
+    const deliveredOrder = await prisma.order.findFirst({
+      where: {
+        userId: session.user.id,
+        status: "DELIVERED",
+        items: { some: { productId: product.id } },
+      },
+    });
+    const existingReview = await prisma.review.findFirst({
+      where: { userId: session.user.id, productId: product.id },
+    });
+    canReview = !!deliveredOrder && !existingReview;
+  }
+
+  // Variant options'lari duzgun formata cevir
+  const variants = product.variants.map((v) => ({
+    ...v,
+    options: v.options as Record<string, string>,
+  }));
+
+  const BASE_URL = process.env.AUTH_URL || "https://pixfora.com";
+
+  // JSON-LD: Product schema
+  const productSchemaData = getProductSchema({
+    name: product.name,
+    slug: product.slug,
+    description: product.description,
+    price: product.price,
+    comparePrice: product.comparePrice,
+    stock: product.stock,
+    sku: product.sku,
+    images: product.images.map((img) => ({ url: img.url, alt: img.alt })),
+    brand: product.brand,
+    category: product.category,
+    avgRating,
+    reviewCount: product._count.reviews,
+    reviews: product.reviews.map((r) => ({
+      rating: r.rating,
+      comment: r.comment,
+      createdAt: r.createdAt,
+      user: r.user,
+    })),
+  });
+
+  // JSON-LD: Breadcrumb schema
+  const breadcrumbItems = [
+    { name: "Anasayfa", url: BASE_URL },
+    ...(product.category
+      ? [{ name: product.category.name, url: `${BASE_URL}/kategori/${product.category.slug}` }]
+      : []),
+    { name: product.name, url: `${BASE_URL}/urun/${product.slug}` },
+  ];
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      <JsonLd data={productSchemaData} />
+      <JsonLd data={getBreadcrumbSchema(breadcrumbItems)} />
+
+      {/* Breadcrumb */}
+      <nav className="text-sm mb-6">
+        <ol className="flex items-center gap-2 text-muted-foreground flex-wrap">
+          <li><Link href="/" className="hover:text-primary">Anasayfa</Link></li>
+          {product.category && (
+            <>
+              <li>/</li>
+              <li>
+                <Link href={`/kategori/${product.category.slug}`} className="hover:text-primary">
+                  {product.category.name}
+                </Link>
+              </li>
+            </>
+          )}
+          <li>/</li>
+          <li className="text-foreground font-medium truncate max-w-[200px]">{product.name}</li>
+        </ol>
+      </nav>
+
+      <ProductDetail
+        product={{
+          id: product.id,
+          name: product.name,
+          slug: product.slug,
+          description: product.description,
+          shortDesc: product.shortDesc,
+          price: product.price,
+          comparePrice: product.comparePrice,
+          stock: product.stock,
+          sku: product.sku,
+          minQty: product.minQty,
+          maxQty: product.maxQty,
+          hasVariants: product.hasVariants,
+          images: product.images,
+          category: product.category,
+          brand: product.brand,
+          variantTypes: product.variantTypes,
+          variants,
+          tags: product.tags,
+          reviews: product.reviews.map((r) => ({
+            id: r.id,
+            rating: r.rating,
+            comment: r.comment,
+            createdAt: r.createdAt.toISOString(),
+            user: r.user,
+          })),
+          reviewCount: product._count.reviews,
+          avgRating,
+        }}
+        similarProducts={similarProducts}
+        boughtTogether={boughtTogether}
+        complementaryProducts={complementaryProducts}
+        giftProducts={giftProducts}
+        canReview={canReview}
+      />
+    </div>
+  );
+}

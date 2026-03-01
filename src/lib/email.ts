@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { EmailLocale, getEmailTranslations } from "./email-i18n";
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.gmail.com",
@@ -37,46 +38,55 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
   }
 }
 
+// Helper: locale-aware price formatter
+function createPriceFormatter(locale: EmailLocale) {
+  return (p: number) =>
+    new Intl.NumberFormat(locale === "tr" ? "tr-TR" : "en-US", {
+      style: "currency",
+      currency: locale === "tr" ? "TRY" : "USD",
+    }).format(p);
+}
+
 // Siparis Onay Maili
 export function orderConfirmationEmail(order: {
   orderNumber: string;
   total: number;
   items: { name: string; quantity: number; price: number }[];
   paymentMethod: string;
-}) {
+}, locale: EmailLocale = "tr") {
+  const t = getEmailTranslations(locale);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pixfora.com";
   const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Pixfora";
-  const formatPrice = (p: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(p);
+  const formatPrice = createPriceFormatter(locale);
 
   const paymentLabel =
-    order.paymentMethod === "CREDIT_CARD" ? "Kredi Karti" :
-    order.paymentMethod === "BANK_TRANSFER" ? "Havale / EFT" :
-    "Kapida Odeme";
+    t.orderConfirmation.paymentLabels[order.paymentMethod] ||
+    t.orderConfirmation.paymentLabels.CASH_ON_DELIVERY;
 
   const itemsHtml = order.items
     .map((i) => `<tr><td style="padding:8px;border-bottom:1px solid #eee">${i.name}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:center">${i.quantity}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:right">${formatPrice(i.price * i.quantity)}</td></tr>`)
     .join("");
 
   return {
-    subject: `${siteName} - Siparisiniz Alindi (#${order.orderNumber})`,
+    subject: `${siteName} - ${t.orderConfirmation.subject(order.orderNumber)}`,
     html: `
     <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
       <div style="background:#2563eb;padding:24px;text-align:center">
         <h1 style="color:#fff;margin:0;font-size:24px">${siteName}</h1>
       </div>
       <div style="padding:24px;background:#fff">
-        <h2 style="color:#2563eb;margin-top:0">Siparisiniz Alindi!</h2>
-        <p>Siparis numaraniz: <strong>#${order.orderNumber}</strong></p>
-        <p>Odeme Yontemi: <strong>${paymentLabel}</strong></p>
+        <h2 style="color:#2563eb;margin-top:0">${t.orderConfirmation.title}</h2>
+        <p>${t.orderNumberLabel} <strong>#${order.orderNumber}</strong></p>
+        <p>${t.orderConfirmation.paymentMethodLabel} <strong>${paymentLabel}</strong></p>
         <table style="width:100%;border-collapse:collapse;margin:16px 0">
-          <thead><tr style="background:#f5f5f5"><th style="padding:8px;text-align:left">Urun</th><th style="padding:8px;text-align:center">Adet</th><th style="padding:8px;text-align:right">Tutar</th></tr></thead>
+          <thead><tr style="background:#f5f5f5"><th style="padding:8px;text-align:left">${t.orderConfirmation.productCol}</th><th style="padding:8px;text-align:center">${t.orderConfirmation.quantityCol}</th><th style="padding:8px;text-align:right">${t.orderConfirmation.amountCol}</th></tr></thead>
           <tbody>${itemsHtml}</tbody>
-          <tfoot><tr><td colspan="2" style="padding:8px;font-weight:bold;text-align:right">Toplam:</td><td style="padding:8px;font-weight:bold;text-align:right;color:#2563eb">${formatPrice(order.total)}</td></tr></tfoot>
+          <tfoot><tr><td colspan="2" style="padding:8px;font-weight:bold;text-align:right">${t.orderConfirmation.totalLabel}</td><td style="padding:8px;font-weight:bold;text-align:right;color:#2563eb">${formatPrice(order.total)}</td></tr></tfoot>
         </table>
-        <p><a href="${siteUrl}" style="color:#2563eb">Siparislerinizi takip etmek icin tiklayiniz</a></p>
+        <p><a href="${siteUrl}" style="color:#2563eb">${t.orderConfirmation.trackOrders}</a></p>
       </div>
       <div style="padding:16px;background:#f5f5f5;text-align:center;font-size:12px;color:#888">
-        <p>${siteName} | Bu e-posta otomatik olarak gonderilmistir.</p>
+        <p>${siteName} | ${t.autoEmail}</p>
       </div>
     </div>`,
   };
@@ -87,7 +97,8 @@ export function shippingNotificationEmail(order: {
   orderNumber: string;
   trackingNumber: string;
   shippingCompany: string;
-}) {
+}, locale: EmailLocale = "tr") {
+  const t = getEmailTranslations(locale);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pixfora.com";
   const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Pixfora";
 
@@ -102,26 +113,26 @@ export function shippingNotificationEmail(order: {
   const companyName = companyNames[order.shippingCompany] || order.shippingCompany;
 
   return {
-    subject: `${siteName} - Siparisiniz Kargoya Verildi (#${order.orderNumber})`,
+    subject: `${siteName} - ${t.shippingNotification.subject(order.orderNumber)}`,
     html: `
     <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
       <div style="background:#2563eb;padding:24px;text-align:center">
         <h1 style="color:#fff;margin:0;font-size:24px">${siteName}</h1>
       </div>
       <div style="padding:24px;background:#fff">
-        <h2 style="color:#16a34a;margin-top:0">Siparisiniz Kargoya Verildi!</h2>
-        <p>Siparis numaraniz: <strong>#${order.orderNumber}</strong></p>
+        <h2 style="color:#16a34a;margin-top:0">${t.shippingNotification.title}</h2>
+        <p>${t.orderNumberLabel} <strong>#${order.orderNumber}</strong></p>
         <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin:16px 0">
-          <p style="margin:4px 0"><strong>Kargo Firmasi:</strong> ${companyName}</p>
-          <p style="margin:4px 0"><strong>Takip Numarasi:</strong> ${order.trackingNumber}</p>
+          <p style="margin:4px 0"><strong>${t.shippingNotification.shippingCompanyLabel}</strong> ${companyName}</p>
+          <p style="margin:4px 0"><strong>${t.shippingNotification.trackingNumberLabel}</strong> ${order.trackingNumber}</p>
         </div>
         <div style="text-align:center;margin:24px 0">
-          <a href="${siteUrl}/siparis-takip" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">Siparisimi Takip Et</a>
+          <a href="${siteUrl}/siparis-takip" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">${t.shippingNotification.trackOrder}</a>
         </div>
-        <p style="font-size:13px;color:#666">Siparis takip sayfasinda siparis numaranizi ve e-posta adresinizi girerek kargo durumunuzu ogrenebilirsiniz.</p>
+        <p style="font-size:13px;color:#666">${t.shippingNotification.trackingHelp}</p>
       </div>
       <div style="padding:16px;background:#f5f5f5;text-align:center;font-size:12px;color:#888">
-        <p>${siteName} | Bu e-posta otomatik olarak gonderilmistir.</p>
+        <p>${siteName} | ${t.autoEmail}</p>
       </div>
     </div>`,
   };
@@ -131,27 +142,28 @@ export function shippingNotificationEmail(order: {
 export function paymentConfirmationEmail(order: {
   orderNumber: string;
   total: number;
-}) {
+}, locale: EmailLocale = "tr") {
+  const t = getEmailTranslations(locale);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pixfora.com";
   const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Pixfora";
-  const formatPrice = (p: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(p);
+  const formatPrice = createPriceFormatter(locale);
 
   return {
-    subject: `${siteName} - Odemeniz Onaylandi (#${order.orderNumber})`,
+    subject: `${siteName} - ${t.paymentConfirmation.subject(order.orderNumber)}`,
     html: `
     <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
       <div style="background:#2563eb;padding:24px;text-align:center">
         <h1 style="color:#fff;margin:0;font-size:24px">${siteName}</h1>
       </div>
       <div style="padding:24px;background:#fff">
-        <h2 style="color:#16a34a;margin-top:0">Odemeniz Onaylandi!</h2>
-        <p>Siparis numaraniz: <strong>#${order.orderNumber}</strong></p>
-        <p>Toplam tutar: <strong>${formatPrice(order.total)}</strong></p>
-        <p>Siparisiniz hazirlama asamasina alindi.</p>
-        <p><a href="${siteUrl}" style="color:#2563eb">Siparislerinizi takip etmek icin tiklayiniz</a></p>
+        <h2 style="color:#16a34a;margin-top:0">${t.paymentConfirmation.title}</h2>
+        <p>${t.orderNumberLabel} <strong>#${order.orderNumber}</strong></p>
+        <p>${t.paymentConfirmation.totalAmount} <strong>${formatPrice(order.total)}</strong></p>
+        <p>${t.paymentConfirmation.preparingOrder}</p>
+        <p><a href="${siteUrl}" style="color:#2563eb">${t.paymentConfirmation.trackOrders}</a></p>
       </div>
       <div style="padding:16px;background:#f5f5f5;text-align:center;font-size:12px;color:#888">
-        <p>${siteName} | Bu e-posta otomatik olarak gonderilmistir.</p>
+        <p>${siteName} | ${t.autoEmail}</p>
       </div>
     </div>`,
   };
@@ -164,7 +176,8 @@ export function orderStatusChangeEmail(order: {
   statusLabel: string;
   trackingNumber?: string | null;
   shippingCompany?: string | null;
-}) {
+}, locale: EmailLocale = "tr") {
+  const t = getEmailTranslations(locale);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pixfora.com";
   const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Pixfora";
 
@@ -199,19 +212,19 @@ export function orderStatusChangeEmail(order: {
 
   let trackingHtml = "";
   if (order.status === "SHIPPED" && order.trackingNumber) {
-    const companyName = companyNames[order.shippingCompany || ""] || order.shippingCompany || "Kargo";
+    const companyName = companyNames[order.shippingCompany || ""] || order.shippingCompany || t.orderStatusChange.defaultCompanyName;
     trackingHtml = `
       <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin:16px 0">
-        <p style="margin:4px 0"><strong>Kargo Firmasi:</strong> ${companyName}</p>
-        <p style="margin:4px 0"><strong>Takip Numarasi:</strong> ${order.trackingNumber}</p>
+        <p style="margin:4px 0"><strong>${t.orderStatusChange.shippingCompanyLabel}</strong> ${companyName}</p>
+        <p style="margin:4px 0"><strong>${t.orderStatusChange.trackingNumberLabel}</strong> ${order.trackingNumber}</p>
       </div>
       <div style="text-align:center;margin:24px 0">
-        <a href="${siteUrl}/siparis-takip" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">Siparisimi Takip Et</a>
+        <a href="${siteUrl}/siparis-takip" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">${t.orderStatusChange.trackOrder}</a>
       </div>`;
   }
 
   return {
-    subject: `${siteName} - Siparis Durumu: ${order.statusLabel} (#${order.orderNumber})`,
+    subject: `${siteName} - ${t.orderStatusChange.subject(order.statusLabel, order.orderNumber)}`,
     html: `
     <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
       <div style="background:#2563eb;padding:24px;text-align:center">
@@ -221,15 +234,15 @@ export function orderStatusChangeEmail(order: {
         <div style="text-align:center;margin-bottom:20px">
           <span style="font-size:48px">${icon}</span>
         </div>
-        <h2 style="color:${color};margin-top:0;text-align:center">Siparis Durumu: ${order.statusLabel}</h2>
-        <p style="text-align:center">Siparis numaraniz: <strong>#${order.orderNumber}</strong></p>
+        <h2 style="color:${color};margin-top:0;text-align:center">${t.orderStatusChange.statusTitle(order.statusLabel)}</h2>
+        <p style="text-align:center">${t.orderNumberLabel} <strong>#${order.orderNumber}</strong></p>
         ${trackingHtml}
         <div style="text-align:center;margin:24px 0">
-          <a href="${siteUrl}/hesabim/siparislerim" style="color:#2563eb;text-decoration:underline">Siparis detaylarini goruntuleyiniz</a>
+          <a href="${siteUrl}/hesabim/siparislerim" style="color:#2563eb;text-decoration:underline">${t.orderStatusChange.viewOrderDetails}</a>
         </div>
       </div>
       <div style="padding:16px;background:#f5f5f5;text-align:center;font-size:12px;color:#888">
-        <p>${siteName} | Bu e-posta otomatik olarak gonderilmistir.</p>
+        <p>${siteName} | ${t.autoEmail}</p>
       </div>
     </div>`,
   };
@@ -240,30 +253,31 @@ export function bankTransferInfoEmail(order: {
   orderNumber: string;
   total: number;
   bankAccounts: { bankName: string; iban: string; accountHolder: string }[];
-}) {
+}, locale: EmailLocale = "tr") {
+  const t = getEmailTranslations(locale);
   const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Pixfora";
-  const formatPrice = (p: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(p);
+  const formatPrice = createPriceFormatter(locale);
 
   const banksHtml = order.bankAccounts
-    .map((b) => `<div style="background:#f5f5f5;border-radius:8px;padding:12px;margin:8px 0"><p style="margin:2px 0;font-weight:bold">${b.bankName}</p><p style="margin:2px 0">IBAN: ${b.iban}</p><p style="margin:2px 0">Hesap Sahibi: ${b.accountHolder}</p></div>`)
+    .map((b) => `<div style="background:#f5f5f5;border-radius:8px;padding:12px;margin:8px 0"><p style="margin:2px 0;font-weight:bold">${b.bankName}</p><p style="margin:2px 0">IBAN: ${b.iban}</p><p style="margin:2px 0">${t.bankTransferInfo.accountHolder} ${b.accountHolder}</p></div>`)
     .join("");
 
   return {
-    subject: `${siteName} - Havale Bilgileri (#${order.orderNumber})`,
+    subject: `${siteName} - ${t.bankTransferInfo.subject(order.orderNumber)}`,
     html: `
     <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
       <div style="background:#2563eb;padding:24px;text-align:center">
         <h1 style="color:#fff;margin:0;font-size:24px">${siteName}</h1>
       </div>
       <div style="padding:24px;background:#fff">
-        <h2 style="margin-top:0">Havale/EFT Bilgileri</h2>
-        <p>Siparis numaraniz: <strong>#${order.orderNumber}</strong></p>
-        <p>Odenecek tutar: <strong style="color:#2563eb">${formatPrice(order.total)}</strong></p>
-        <p style="color:#dc2626;font-weight:bold">Aciklama kisimna siparis numaranizi yazmayi unutmayiniz!</p>
+        <h2 style="margin-top:0">${t.bankTransferInfo.title}</h2>
+        <p>${t.orderNumberLabel} <strong>#${order.orderNumber}</strong></p>
+        <p>${t.bankTransferInfo.amountToPay} <strong style="color:#2563eb">${formatPrice(order.total)}</strong></p>
+        <p style="color:#dc2626;font-weight:bold">${t.bankTransferInfo.ibanReminder}</p>
         ${banksHtml}
       </div>
       <div style="padding:16px;background:#f5f5f5;text-align:center;font-size:12px;color:#888">
-        <p>${siteName} | Bu e-posta otomatik olarak gonderilmistir.</p>
+        <p>${siteName} | ${t.autoEmail}</p>
       </div>
     </div>`,
   };
@@ -275,7 +289,8 @@ export function lowStockAlertEmail(products: {
   sku: string | null;
   stock: number;
   slug: string;
-}[]) {
+}[], locale: EmailLocale = "tr") {
+  const t = getEmailTranslations(locale);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pixfora.com";
   const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Pixfora";
 
@@ -291,31 +306,31 @@ export function lowStockAlertEmail(products: {
     .join("");
 
   return {
-    subject: `${siteName} - Dusuk Stok Uyarisi (${products.length} urun)`,
+    subject: `${siteName} - ${t.lowStockAlert.subject(products.length)}`,
     html: `
     <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
       <div style="background:#dc2626;padding:24px;text-align:center">
-        <h1 style="color:#fff;margin:0;font-size:24px">${siteName} - Stok Uyarisi</h1>
+        <h1 style="color:#fff;margin:0;font-size:24px">${siteName} - ${t.lowStockAlert.headerTitle}</h1>
       </div>
       <div style="padding:24px;background:#fff">
-        <h2 style="color:#dc2626;margin-top:0">Dusuk Stoklu Urunler</h2>
-        <p>Asagidaki <strong>${products.length}</strong> urunun stogu kritik seviyenin altina dustu:</p>
+        <h2 style="color:#dc2626;margin-top:0">${t.lowStockAlert.title}</h2>
+        <p>${t.lowStockAlert.description(products.length)}</p>
         <table style="width:100%;border-collapse:collapse;margin:16px 0">
           <thead>
             <tr style="background:#f5f5f5">
-              <th style="padding:8px;text-align:left">Urun</th>
-              <th style="padding:8px;text-align:center">SKU</th>
-              <th style="padding:8px;text-align:center">Stok</th>
+              <th style="padding:8px;text-align:left">${t.lowStockAlert.productCol}</th>
+              <th style="padding:8px;text-align:center">${t.lowStockAlert.skuCol}</th>
+              <th style="padding:8px;text-align:center">${t.lowStockAlert.stockCol}</th>
             </tr>
           </thead>
           <tbody>${rowsHtml}</tbody>
         </table>
         <div style="text-align:center;margin:24px 0">
-          <a href="${siteUrl}/admin/urunler" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">Urunleri Yonet</a>
+          <a href="${siteUrl}/admin/urunler" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">${t.lowStockAlert.manageProducts}</a>
         </div>
       </div>
       <div style="padding:16px;background:#f5f5f5;text-align:center;font-size:12px;color:#888">
-        <p>${siteName} | Bu e-posta otomatik olarak gonderilmistir.</p>
+        <p>${siteName} | ${t.autoEmail}</p>
       </div>
     </div>`,
   };
@@ -328,21 +343,22 @@ export function stockBackInStockEmail(data: {
   productSlug: string;
   productImage: string | null;
   productPrice: number;
-}) {
+}, locale: EmailLocale = "tr") {
+  const t = getEmailTranslations(locale);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pixfora.com";
   const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Pixfora";
-  const formatPrice = (p: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(p);
+  const formatPrice = createPriceFormatter(locale);
 
   return {
-    subject: `${siteName} - ${data.productName} tekrar stokta!`,
+    subject: `${siteName} - ${t.backInStock.subject(data.productName)}`,
     html: `
     <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
       <div style="background:#2563eb;padding:24px;text-align:center">
         <h1 style="color:#fff;margin:0;font-size:24px">${siteName}</h1>
       </div>
       <div style="padding:24px;background:#fff">
-        <h2 style="margin-top:0">Merhaba${data.name ? ` ${data.name}` : ""},</h2>
-        <p>Takip ettiginiz urun tekrar stokta! Hemen satin alabilirsiniz:</p>
+        <h2 style="margin-top:0">${t.hello(data.name)}</h2>
+        <p>${t.backInStock.body}</p>
         <div style="margin:16px 0;padding:16px;border:1px solid #eee;border-radius:12px;display:flex;align-items:center;gap:16px">
           ${data.productImage ? `<img src="${data.productImage}" alt="" style="width:80px;height:80px;object-fit:cover;border-radius:8px" />` : `<div style="width:80px;height:80px;background:#f5f5f5;border-radius:8px"></div>`}
           <div>
@@ -351,11 +367,11 @@ export function stockBackInStockEmail(data: {
           </div>
         </div>
         <div style="text-align:center;margin:24px 0">
-          <a href="${siteUrl}/urun/${data.productSlug}" style="display:inline-block;background:#2563eb;color:#fff;padding:14px 40px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px">Urunu Incele</a>
+          <a href="${siteUrl}/urun/${data.productSlug}" style="display:inline-block;background:#2563eb;color:#fff;padding:14px 40px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px">${t.backInStock.viewProduct}</a>
         </div>
       </div>
       <div style="padding:16px;background:#f5f5f5;text-align:center;font-size:12px;color:#888">
-        <p>${siteName} | Bu e-posta otomatik olarak gonderilmistir.</p>
+        <p>${siteName} | ${t.autoEmail}</p>
       </div>
     </div>`,
   };
@@ -364,10 +380,11 @@ export function stockBackInStockEmail(data: {
 export function abandonedCartEmail(user: {
   name: string;
   items: { name: string; price: number; image: string | null }[];
-}) {
+}, locale: EmailLocale = "tr") {
+  const t = getEmailTranslations(locale);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pixfora.com";
   const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Pixfora";
-  const formatPrice = (p: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(p);
+  const formatPrice = createPriceFormatter(locale);
 
   const itemsHtml = user.items
     .map(
@@ -383,22 +400,22 @@ export function abandonedCartEmail(user: {
     .join("");
 
   return {
-    subject: `${siteName} - Sepetinizde urunler bekliyor!`,
+    subject: `${siteName} - ${t.abandonedCart.subject}`,
     html: `
     <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
       <div style="background:#2563eb;padding:24px;text-align:center">
         <h1 style="color:#fff;margin:0;font-size:24px">${siteName}</h1>
       </div>
       <div style="padding:24px;background:#fff">
-        <h2 style="margin-top:0">Merhaba${user.name ? ` ${user.name}` : ""},</h2>
-        <p>Sepetinizde bekleyen urunler var! Hemen siparisinizi tamamlayin:</p>
+        <h2 style="margin-top:0">${t.hello(user.name)}</h2>
+        <p>${t.abandonedCart.body}</p>
         <div style="margin:16px 0">${itemsHtml}</div>
         <div style="text-align:center;margin:24px 0">
-          <a href="${siteUrl}/sepet" style="display:inline-block;background:#2563eb;color:#fff;padding:14px 40px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px">Sepetime Git</a>
+          <a href="${siteUrl}/sepet" style="display:inline-block;background:#2563eb;color:#fff;padding:14px 40px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px">${t.abandonedCart.goToCart}</a>
         </div>
       </div>
       <div style="padding:16px;background:#f5f5f5;text-align:center;font-size:12px;color:#888">
-        <p>${siteName} | Bu e-posta otomatik olarak gonderilmistir.</p>
+        <p>${siteName} | ${t.autoEmail}</p>
       </div>
     </div>`,
   };
@@ -414,38 +431,39 @@ export function returnRequestEmail(data: {
   returnNumber: string;
   refundAmount: number;
   items: { name: string; quantity: number; price: number }[];
-}) {
+}, locale: EmailLocale = "tr") {
+  const t = getEmailTranslations(locale);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pixfora.com";
   const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Pixfora";
-  const formatPrice = (p: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(p);
+  const formatPrice = createPriceFormatter(locale);
 
   const itemsHtml = data.items
     .map((i) => `<tr><td style="padding:8px;border-bottom:1px solid #eee">${i.name}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:center">${i.quantity}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:right">${formatPrice(i.price * i.quantity)}</td></tr>`)
     .join("");
 
   return {
-    subject: `${siteName} - Iade Talebiniz Alindi (#${data.returnNumber})`,
+    subject: `${siteName} - ${t.returnRequest.subject(data.returnNumber)}`,
     html: `
     <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
       <div style="background:#2563eb;padding:24px;text-align:center">
         <h1 style="color:#fff;margin:0;font-size:24px">${siteName}</h1>
       </div>
       <div style="padding:24px;background:#fff">
-        <h2 style="color:#2563eb;margin-top:0">Iade Talebiniz Alindi</h2>
-        <p>Iade numaraniz: <strong>#${data.returnNumber}</strong></p>
-        <p>Siparis numarasi: <strong>#${data.orderNumber}</strong></p>
+        <h2 style="color:#2563eb;margin-top:0">${t.returnRequest.title}</h2>
+        <p>${t.returnRequest.returnNumberLabel} <strong>#${data.returnNumber}</strong></p>
+        <p>${t.returnRequest.orderNumberLabel} <strong>#${data.orderNumber}</strong></p>
         <table style="width:100%;border-collapse:collapse;margin:16px 0">
-          <thead><tr style="background:#f5f5f5"><th style="padding:8px;text-align:left">Urun</th><th style="padding:8px;text-align:center">Adet</th><th style="padding:8px;text-align:right">Tutar</th></tr></thead>
+          <thead><tr style="background:#f5f5f5"><th style="padding:8px;text-align:left">${t.returnRequest.productCol}</th><th style="padding:8px;text-align:center">${t.returnRequest.quantityCol}</th><th style="padding:8px;text-align:right">${t.returnRequest.amountCol}</th></tr></thead>
           <tbody>${itemsHtml}</tbody>
-          <tfoot><tr><td colspan="2" style="padding:8px;font-weight:bold;text-align:right">Iade Tutari:</td><td style="padding:8px;font-weight:bold;text-align:right;color:#2563eb">${formatPrice(data.refundAmount)}</td></tr></tfoot>
+          <tfoot><tr><td colspan="2" style="padding:8px;font-weight:bold;text-align:right">${t.returnRequest.refundAmountLabel}</td><td style="padding:8px;font-weight:bold;text-align:right;color:#2563eb">${formatPrice(data.refundAmount)}</td></tr></tfoot>
         </table>
-        <p>Talebiniz en kisa surede degerlendirilecektir.</p>
+        <p>${t.returnRequest.pendingReview}</p>
         <div style="text-align:center;margin:24px 0">
-          <a href="${siteUrl}/hesabim/iadelerim" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">Iadelerimi Takip Et</a>
+          <a href="${siteUrl}/hesabim/iadelerim" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">${t.returnRequest.trackReturns}</a>
         </div>
       </div>
       <div style="padding:16px;background:#f5f5f5;text-align:center;font-size:12px;color:#888">
-        <p>${siteName} | Bu e-posta otomatik olarak gonderilmistir.</p>
+        <p>${siteName} | ${t.autoEmail}</p>
       </div>
     </div>`,
   };
@@ -456,29 +474,30 @@ export function returnApprovedEmail(data: {
   orderNumber: string;
   returnNumber: string;
   adminNote?: string | null;
-}) {
+}, locale: EmailLocale = "tr") {
+  const t = getEmailTranslations(locale);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pixfora.com";
   const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Pixfora";
 
   return {
-    subject: `${siteName} - Iade Talebiniz Onaylandi (#${data.returnNumber})`,
+    subject: `${siteName} - ${t.returnApproved.subject(data.returnNumber)}`,
     html: `
     <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
       <div style="background:#2563eb;padding:24px;text-align:center">
         <h1 style="color:#fff;margin:0;font-size:24px">${siteName}</h1>
       </div>
       <div style="padding:24px;background:#fff">
-        <h2 style="color:#16a34a;margin-top:0;text-align:center">Iade Talebiniz Onaylandi!</h2>
-        <p>Iade numaraniz: <strong>#${data.returnNumber}</strong></p>
-        <p>Siparis numarasi: <strong>#${data.orderNumber}</strong></p>
-        ${data.adminNote ? `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin:16px 0"><p style="margin:0"><strong>Magaza Notu:</strong> ${data.adminNote}</p></div>` : ""}
-        <p>Lutfen iade edilecek urunu kargoyla gonderiniz. Urun teslim alindiginda iade islemi tamamlanacaktir.</p>
+        <h2 style="color:#16a34a;margin-top:0;text-align:center">${t.returnApproved.title}</h2>
+        <p>${t.returnApproved.returnNumberLabel} <strong>#${data.returnNumber}</strong></p>
+        <p>${t.returnApproved.orderNumberLabel} <strong>#${data.orderNumber}</strong></p>
+        ${data.adminNote ? `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin:16px 0"><p style="margin:0"><strong>${t.returnApproved.storeNote}</strong> ${data.adminNote}</p></div>` : ""}
+        <p>${t.returnApproved.instructions}</p>
         <div style="text-align:center;margin:24px 0">
-          <a href="${siteUrl}/hesabim/iadelerim" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">Iade Detayi</a>
+          <a href="${siteUrl}/hesabim/iadelerim" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">${t.returnApproved.returnDetails}</a>
         </div>
       </div>
       <div style="padding:16px;background:#f5f5f5;text-align:center;font-size:12px;color:#888">
-        <p>${siteName} | Bu e-posta otomatik olarak gonderilmistir.</p>
+        <p>${siteName} | ${t.autoEmail}</p>
       </div>
     </div>`,
   };
@@ -489,31 +508,32 @@ export function returnRejectedEmail(data: {
   orderNumber: string;
   returnNumber: string;
   reason: string;
-}) {
+}, locale: EmailLocale = "tr") {
+  const t = getEmailTranslations(locale);
   const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Pixfora";
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pixfora.com";
 
   return {
-    subject: `${siteName} - Iade Talebiniz Reddedildi (#${data.returnNumber})`,
+    subject: `${siteName} - ${t.returnRejected.subject(data.returnNumber)}`,
     html: `
     <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
       <div style="background:#2563eb;padding:24px;text-align:center">
         <h1 style="color:#fff;margin:0;font-size:24px">${siteName}</h1>
       </div>
       <div style="padding:24px;background:#fff">
-        <h2 style="color:#dc2626;margin-top:0;text-align:center">Iade Talebiniz Reddedildi</h2>
-        <p>Iade numaraniz: <strong>#${data.returnNumber}</strong></p>
-        <p>Siparis numarasi: <strong>#${data.orderNumber}</strong></p>
+        <h2 style="color:#dc2626;margin-top:0;text-align:center">${t.returnRejected.title}</h2>
+        <p>${t.returnRejected.returnNumberLabel} <strong>#${data.returnNumber}</strong></p>
+        <p>${t.returnRejected.orderNumberLabel} <strong>#${data.orderNumber}</strong></p>
         <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px;margin:16px 0">
-          <p style="margin:0"><strong>Red Nedeni:</strong> ${data.reason}</p>
+          <p style="margin:0"><strong>${t.returnRejected.rejectionReason}</strong> ${data.reason}</p>
         </div>
-        <p>Sorulariniz icin bizimle iletisime gecebilirsiniz.</p>
+        <p>${t.returnRejected.contactUs}</p>
         <div style="text-align:center;margin:24px 0">
-          <a href="${siteUrl}/iletisim" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">Iletisim</a>
+          <a href="${siteUrl}/iletisim" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">${t.returnRejected.contactButton}</a>
         </div>
       </div>
       <div style="padding:16px;background:#f5f5f5;text-align:center;font-size:12px;color:#888">
-        <p>${siteName} | Bu e-posta otomatik olarak gonderilmistir.</p>
+        <p>${siteName} | ${t.autoEmail}</p>
       </div>
     </div>`,
   };
@@ -524,33 +544,34 @@ export function returnRefundedEmail(data: {
   orderNumber: string;
   returnNumber: string;
   amount: number;
-}) {
+}, locale: EmailLocale = "tr") {
+  const t = getEmailTranslations(locale);
   const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Pixfora";
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pixfora.com";
-  const formatPrice = (p: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(p);
+  const formatPrice = createPriceFormatter(locale);
 
   return {
-    subject: `${siteName} - Iade Tutariniz Yatirildi (#${data.returnNumber})`,
+    subject: `${siteName} - ${t.returnRefunded.subject(data.returnNumber)}`,
     html: `
     <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
       <div style="background:#2563eb;padding:24px;text-align:center">
         <h1 style="color:#fff;margin:0;font-size:24px">${siteName}</h1>
       </div>
       <div style="padding:24px;background:#fff">
-        <h2 style="color:#16a34a;margin-top:0;text-align:center">Iade Islemi Tamamlandi!</h2>
-        <p>Iade numaraniz: <strong>#${data.returnNumber}</strong></p>
-        <p>Siparis numarasi: <strong>#${data.orderNumber}</strong></p>
+        <h2 style="color:#16a34a;margin-top:0;text-align:center">${t.returnRefunded.title}</h2>
+        <p>${t.returnRefunded.returnNumberLabel} <strong>#${data.returnNumber}</strong></p>
+        <p>${t.returnRefunded.orderNumberLabel} <strong>#${data.orderNumber}</strong></p>
         <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin:16px 0;text-align:center">
-          <p style="margin:0;font-size:13px;color:#666">Iade Tutari</p>
+          <p style="margin:0;font-size:13px;color:#666">${t.returnRefunded.refundAmountLabel}</p>
           <p style="margin:8px 0 0;font-size:24px;font-weight:bold;color:#16a34a">${formatPrice(data.amount)}</p>
         </div>
-        <p>Iade tutari orijinal odeme yontinenize yatirilmistir. Hesabiniza yansimasi 3-10 is gunu surebilir.</p>
+        <p>${t.returnRefunded.refundNotice}</p>
         <div style="text-align:center;margin:24px 0">
-          <a href="${siteUrl}/hesabim/iadelerim" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">Iade Detayi</a>
+          <a href="${siteUrl}/hesabim/iadelerim" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">${t.returnRefunded.returnDetails}</a>
         </div>
       </div>
       <div style="padding:16px;background:#f5f5f5;text-align:center;font-size:12px;color:#888">
-        <p>${siteName} | Bu e-posta otomatik olarak gonderilmistir.</p>
+        <p>${siteName} | ${t.autoEmail}</p>
       </div>
     </div>`,
   };
@@ -560,32 +581,33 @@ export function returnRefundedEmail(data: {
 export function deliveryConfirmationEmail(data: {
   orderNumber: string;
   deliveryDate: string;
-}) {
+}, locale: EmailLocale = "tr") {
+  const t = getEmailTranslations(locale);
   const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Pixfora";
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pixfora.com";
 
   return {
-    subject: `${siteName} - Siparisleriniz Teslim Edildi (#${data.orderNumber})`,
+    subject: `${siteName} - ${t.deliveryConfirmation.subject(data.orderNumber)}`,
     html: `
     <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
       <div style="background:#2563eb;padding:24px;text-align:center">
         <h1 style="color:#fff;margin:0;font-size:24px">${siteName}</h1>
       </div>
       <div style="padding:24px;background:#fff">
-        <h2 style="color:#16a34a;margin-top:0;text-align:center">Siparisleriniz Teslim Edildi!</h2>
-        <p>Siparis numaraniz: <strong>#${data.orderNumber}</strong></p>
-        <p>Teslim tarihi: <strong>${data.deliveryDate}</strong></p>
+        <h2 style="color:#16a34a;margin-top:0;text-align:center">${t.deliveryConfirmation.title}</h2>
+        <p>${t.orderNumberLabel} <strong>#${data.orderNumber}</strong></p>
+        <p>${t.deliveryConfirmation.deliveryDateLabel} <strong>${data.deliveryDate}</strong></p>
         <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin:16px 0;text-align:center">
-          <p style="margin:0;font-size:16px;color:#16a34a;font-weight:bold">Teslimat Basariyla Tamamlandi</p>
+          <p style="margin:0;font-size:16px;color:#16a34a;font-weight:bold">${t.deliveryConfirmation.deliverySuccess}</p>
         </div>
-        <p>Siparislerinizden memnun kaldiysiniz, urunlerimizi degerlendirerek diger musterilerimize yardimci olabilirsiniz.</p>
+        <p>${t.deliveryConfirmation.reviewPrompt}</p>
         <div style="text-align:center;margin:24px 0">
-          <a href="${siteUrl}/hesabim/siparislerim" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">Siparislerimi Gor</a>
+          <a href="${siteUrl}/hesabim/siparislerim" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">${t.deliveryConfirmation.viewOrders}</a>
         </div>
-        <p style="color:#888;font-size:13px">Herhangi bir sorun yasarsaniz, 14 gun icinde iade talebi olusturabilirsiniz.</p>
+        <p style="color:#888;font-size:13px">${t.deliveryConfirmation.returnNotice}</p>
       </div>
       <div style="padding:16px;background:#f5f5f5;text-align:center;font-size:12px;color:#888">
-        <p>${siteName} | Bu e-posta otomatik olarak gonderilmistir.</p>
+        <p>${siteName} | ${t.autoEmail}</p>
       </div>
     </div>`,
   };
@@ -602,12 +624,11 @@ export function recommendationEmail(data: {
     image: string | null;
     slug: string;
   }[];
-}) {
+}, locale: EmailLocale = "tr") {
+  const t = getEmailTranslations(locale);
   const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Pixfora";
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pixfora.com";
-
-  const formatPrice = (price: number) =>
-    new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(price);
+  const formatPrice = createPriceFormatter(locale);
 
   const productCards = data.products
     .map(
@@ -635,58 +656,59 @@ export function recommendationEmail(data: {
     .join("");
 
   return {
-    subject: `${siteName} - Size Ozel Urun Onerileri`,
+    subject: `${siteName} - ${t.recommendation.subject}`,
     html: `
     <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
       <div style="background:#2563eb;padding:24px;text-align:center">
         <h1 style="color:#fff;margin:0;font-size:24px">${siteName}</h1>
       </div>
       <div style="padding:24px;background:#fff">
-        <h2 style="margin-top:0;text-align:center;color:#1f2937">Size Ozel Secilmis Urunler</h2>
-        <p>Merhaba <strong>${data.userName}</strong>,</p>
-        <p>Alisveris gecmisinize gore sectigimiz urunleri gormek ister misiniz?</p>
+        <h2 style="margin-top:0;text-align:center;color:#1f2937">${t.recommendation.title}</h2>
+        <p>${t.hello()} <strong>${data.userName}</strong>,</p>
+        <p>${t.recommendation.body}</p>
         <table style="width:100%;border-collapse:collapse;margin:16px 0">
           ${productCards}
         </table>
         <div style="text-align:center;margin:24px 0">
-          <a href="${siteUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">Tum Urunleri Kesfet</a>
+          <a href="${siteUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">${t.recommendation.discoverAll}</a>
         </div>
       </div>
       <div style="padding:16px;background:#f5f5f5;text-align:center;font-size:12px;color:#888">
-        <p>${siteName} | Bu e-posta otomatik olarak gonderilmistir.</p>
+        <p>${siteName} | ${t.autoEmail}</p>
       </div>
     </div>`,
   };
 }
 
 // Newsletter Onay Maili
-export function newsletterConfirmationEmail(email: string, token: string) {
+export function newsletterConfirmationEmail(email: string, token: string, locale: EmailLocale = "tr") {
+  const t = getEmailTranslations(locale);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pixfora.com";
   const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Pixfora";
 
   return {
-    subject: `${siteName} - E-Bulten Aboneliginizi Onaylayin`,
+    subject: `${siteName} - ${t.newsletterConfirmation.subject}`,
     html: `<div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;background:#fff;border:1px solid #e5e5e5;border-radius:12px;overflow:hidden">
       <div style="background:#2563eb;padding:24px;text-align:center">
         <h1 style="margin:0;color:#fff;font-size:24px">${siteName}</h1>
       </div>
       <div style="padding:32px 24px">
-        <h2 style="margin-top:0;color:#1f2937;text-align:center">E-Bulten Aboneligi</h2>
+        <h2 style="margin-top:0;color:#1f2937;text-align:center">${t.newsletterConfirmation.title}</h2>
         <p style="color:#4b5563;font-size:14px;line-height:1.6">
-          Merhaba,<br/><br/>
-          ${siteName} e-bultenine abone oldugunuz icin tesekkur ederiz! Aboneliginizi onaylamak icin asagidaki butona tiklayin.
+          ${t.hello()}<br/><br/>
+          ${siteName} ${t.newsletterConfirmation.body}
         </p>
         <div style="text-align:center;margin:32px 0">
           <a href="${siteUrl}/bulten/onayla?token=${token}" style="display:inline-block;background:#2563eb;color:#fff;padding:14px 40px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">
-            Aboneligi Onayla
+            ${t.newsletterConfirmation.confirmButton}
           </a>
         </div>
         <p style="color:#9ca3af;font-size:12px;text-align:center">
-          Bu e-postayi siz talep etmediyseniz, gormezden gelebilirsiniz.
+          ${t.newsletterConfirmation.ignoreNotice}
         </p>
       </div>
       <div style="padding:16px;background:#f5f5f5;text-align:center;font-size:12px;color:#888">
-        <p>${siteName} | <a href="${siteUrl}/bulten/abonelikten-cik?email=${encodeURIComponent(email)}" style="color:#888">Abonelikten cik</a></p>
+        <p>${siteName} | <a href="${siteUrl}/bulten/abonelikten-cik?email=${encodeURIComponent(email)}" style="color:#888">${t.newsletterConfirmation.unsubscribe}</a></p>
       </div>
     </div>`,
   };

@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
+import { useRouter } from "@/i18n/navigation";
+import { useSearchParams } from "next/navigation";
+import { Link } from "@/i18n/navigation";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { useCartStore } from "@/store/cart";
 
 type Step = "address" | "shipping" | "payment" | "confirm";
@@ -55,6 +57,8 @@ interface ShippingRate {
 }
 
 export default function CheckoutClient() {
+  const t = useTranslations("checkout");
+  const common = useTranslations("common");
   const router = useRouter();
   const searchParams = useSearchParams();
   const { items, getSubtotal, getItemPrice, clearCart } = useCartStore();
@@ -240,8 +244,8 @@ export default function CheckoutClient() {
     // Fallback - statik kargo secenekleri
     setFallbackShipping(true);
     setShippingRates([
-      { provider: "standard", providerName: "Standart Kargo", price: 39.9, estimatedDays: "3-5 is gunu" },
-      { provider: "express", providerName: "Hizli Kargo", price: 59.9, estimatedDays: "1-2 is gunu" },
+      { provider: "standard", providerName: t("standardShipping"), price: 39.9, estimatedDays: t("businessDays35") },
+      { provider: "express", providerName: t("expressShipping"), price: 59.9, estimatedDays: t("businessDays12") },
     ]);
     setSelectedShippingProvider("standard");
     setLoadingRates(false);
@@ -260,16 +264,16 @@ export default function CheckoutClient() {
   }, [loadSavedAddresses, loadBankAccounts, searchParams]);
 
   if (!mounted) {
-    return <div className="max-w-4xl mx-auto px-4 py-8"><p>Yukleniyor...</p></div>;
+    return <div className="max-w-4xl mx-auto px-4 py-8"><p>{common("loading")}</p></div>;
   }
 
   if (items.length === 0) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8 text-center">
-        <h1 className="text-2xl font-bold mb-4">Sepetiniz Bos</h1>
-        <p className="text-muted-foreground mb-6">Odeme yapabilmek icin sepetinize urun ekleyin.</p>
+        <h1 className="text-2xl font-bold mb-4">{t("emptyCart")}</h1>
+        <p className="text-muted-foreground mb-6">{t("emptyCartDesc")}</p>
         <Link href="/kategori" className="px-6 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark">
-          Alisverise Basla
+          {t("startShopping")}
         </Link>
       </div>
     );
@@ -291,10 +295,10 @@ export default function CheckoutClient() {
     new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(price);
 
   const steps: { key: Step; label: string }[] = [
-    { key: "address", label: "Adres" },
-    { key: "shipping", label: "Kargo" },
-    { key: "payment", label: "Odeme" },
-    { key: "confirm", label: "Onay" },
+    { key: "address", label: t("step1Address") },
+    { key: "shipping", label: t("stepShipping") },
+    { key: "payment", label: t("step2Payment") },
+    { key: "confirm", label: t("stepConfirm") },
   ];
 
   const isAddressValid =
@@ -372,7 +376,7 @@ export default function CheckoutClient() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Siparis olusturulamadi");
+      if (!res.ok) throw new Error(data.error || t("orderCreateError"));
 
       const orderId = data.order.id;
       const orderNumber = data.order.orderNumber;
@@ -391,7 +395,7 @@ export default function CheckoutClient() {
         });
 
         const payData = await payRes.json();
-        if (!payRes.ok) throw new Error(payData.error || "Odeme baslatma hatasi");
+        if (!payRes.ok) throw new Error(payData.error || t("paymentError"));
 
         // 3D Secure HTML'ini goster
         if (payData.htmlContent) {
@@ -421,11 +425,11 @@ export default function CheckoutClient() {
         if (paymentMethod === "BANK_TRANSFER") {
           setShowBankInfo(true);
         } else {
-          router.push(`/siparis-basarili?no=${orderNumber}`);
+          router.push(`/siparis-basarili?no=${orderNumber}` as any);
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Bir hata olustu");
+      setError(err instanceof Error ? err.message : t("genericError"));
     } finally {
       setIsSubmitting(false);
     }
@@ -439,14 +443,14 @@ export default function CheckoutClient() {
           <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
             <span className="text-2xl">🏦</span>
           </div>
-          <h1 className="text-2xl font-bold mb-2">Siparisiniz Alindi!</h1>
+          <h1 className="text-2xl font-bold mb-2">{t("orderReceived")}</h1>
           <p className="text-muted-foreground mb-6">
-            Asagidaki banka hesaplarindan birine havale/EFT yaparak odemenizi tamamlayabilirsiniz.
+            {t("bankTransferInfo")}
           </p>
 
           <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 mb-6">
             <p className="text-sm font-medium text-warning">
-              Aciklama kismina siparis numaranizi yazmayi unutmayiniz!
+              {t("bankTransferWarning")}
             </p>
           </div>
 
@@ -455,17 +459,17 @@ export default function CheckoutClient() {
               <div key={bank.bankName} className="p-4 bg-muted rounded-lg">
                 <p className="font-bold text-sm">{bank.bankName}</p>
                 <p className="text-sm text-muted-foreground mt-1">IBAN: {bank.iban}</p>
-                <p className="text-sm text-muted-foreground">Hesap Sahibi: {bank.accountHolder}</p>
+                <p className="text-sm text-muted-foreground">{t("accountHolder")}: {bank.accountHolder}</p>
               </div>
             ))}
           </div>
 
           <div className="bg-muted rounded-lg p-4 mb-6">
-            <p className="text-sm"><strong>Odenecek Tutar:</strong> <span className="text-primary font-bold">{formatPrice(total)}</span></p>
+            <p className="text-sm"><strong>{t("amountToPay")}:</strong> <span className="text-primary font-bold">{formatPrice(total)}</span></p>
           </div>
 
           <Link href="/" className="inline-block px-6 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark">
-            Anasayfaya Don
+            {t("returnHome")}
           </Link>
         </div>
       </div>
@@ -474,7 +478,7 @@ export default function CheckoutClient() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-8">Odeme</h1>
+      <h1 className="text-2xl font-bold mb-8">{t("title")}</h1>
 
       {/* 3D Secure iframe container */}
       <div ref={iframeRef} className="hidden" />
@@ -511,12 +515,12 @@ export default function CheckoutClient() {
           {/* Step 1: Address */}
           {step === "address" && (
             <div className="bg-white rounded-xl border border-border p-6">
-              <h2 className="text-lg font-bold mb-4">Teslimat Adresi</h2>
+              <h2 className="text-lg font-bold mb-4">{t("shippingAddress")}</h2>
 
               {/* Kayitli adresler */}
               {!loadingAddresses && savedAddresses.length > 0 && (
                 <div className="mb-6">
-                  <p className="text-sm font-medium text-muted-foreground mb-3">Kayitli Adresleriniz</p>
+                  <p className="text-sm font-medium text-muted-foreground mb-3">{t("savedAddresses")}</p>
                   <div className="space-y-2">
                     {savedAddresses.map((addr) => (
                       <label
@@ -538,7 +542,7 @@ export default function CheckoutClient() {
                           <div className="flex items-center gap-2">
                             <p className="text-sm font-medium">{addr.title}</p>
                             {addr.isDefault && (
-                              <span className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary rounded font-medium">Varsayilan</span>
+                              <span className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary rounded font-medium">{t("defaultBadge")}</span>
                             )}
                           </div>
                           <p className="text-sm text-muted-foreground mt-0.5">
@@ -571,8 +575,8 @@ export default function CheckoutClient() {
                         className="w-4 h-4 text-primary"
                       />
                       <div>
-                        <p className="text-sm font-medium">+ Yeni adres girin</p>
-                        <p className="text-xs text-muted-foreground">Farkli bir adrese gonderim yapmak istiyorsaniz</p>
+                        <p className="text-sm font-medium">{t("newAddress")}</p>
+                        <p className="text-xs text-muted-foreground">{t("newAddressDesc")}</p>
                       </div>
                     </label>
                   </div>
@@ -582,7 +586,7 @@ export default function CheckoutClient() {
               {loadingAddresses && (
                 <div className="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
                   <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                  Kayitli adresler yukleniyor...
+                  {t("loadingAddresses")}
                 </div>
               )}
 
@@ -590,34 +594,34 @@ export default function CheckoutClient() {
               {(useNewAddress || savedAddresses.length === 0) && !loadingAddresses && (
                 <>
                   <div className="mb-4">
-                    <label className="text-sm font-medium mb-1 block">E-posta (misafir siparis icin)</label>
+                    <label className="text-sm font-medium mb-1 block">{t("guestEmail")}</label>
                     <input type="email" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={guestEmail} onChange={(e) => setGuestEmail(e.target.value)} placeholder="ornek@email.com" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div><label className="text-sm font-medium mb-1 block">Ad *</label><input type="text" autoComplete="given-name" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={addressForm.firstName} onChange={(e) => setAddressForm((p) => ({ ...p, firstName: e.target.value }))} /></div>
-                    <div><label className="text-sm font-medium mb-1 block">Soyad *</label><input type="text" autoComplete="family-name" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={addressForm.lastName} onChange={(e) => setAddressForm((p) => ({ ...p, lastName: e.target.value }))} /></div>
-                    <div className="col-span-2"><label className="text-sm font-medium mb-1 block">Telefon *</label><input type="tel" autoComplete="tel" inputMode="tel" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={addressForm.phone} onChange={(e) => setAddressForm((p) => ({ ...p, phone: e.target.value }))} placeholder="05XX XXX XX XX" /></div>
-                    <div><label className="text-sm font-medium mb-1 block">Sehir *</label><input type="text" autoComplete="address-level1" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={addressForm.city} onChange={(e) => setAddressForm((p) => ({ ...p, city: e.target.value }))} /></div>
-                    <div><label className="text-sm font-medium mb-1 block">Ilce *</label><input type="text" autoComplete="address-level2" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={addressForm.district} onChange={(e) => setAddressForm((p) => ({ ...p, district: e.target.value }))} /></div>
-                    <div className="col-span-2"><label className="text-sm font-medium mb-1 block">Adres *</label><textarea rows={3} autoComplete="street-address" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none" value={addressForm.address} onChange={(e) => setAddressForm((p) => ({ ...p, address: e.target.value }))} /></div>
-                    <div><label className="text-sm font-medium mb-1 block">Posta Kodu</label><input type="text" autoComplete="postal-code" inputMode="numeric" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={addressForm.zipCode} onChange={(e) => setAddressForm((p) => ({ ...p, zipCode: e.target.value }))} /></div>
+                    <div><label className="text-sm font-medium mb-1 block">{`${t("firstName")} *`}</label><input type="text" autoComplete="given-name" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={addressForm.firstName} onChange={(e) => setAddressForm((p) => ({ ...p, firstName: e.target.value }))} /></div>
+                    <div><label className="text-sm font-medium mb-1 block">{`${t("lastName")} *`}</label><input type="text" autoComplete="family-name" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={addressForm.lastName} onChange={(e) => setAddressForm((p) => ({ ...p, lastName: e.target.value }))} /></div>
+                    <div className="col-span-2"><label className="text-sm font-medium mb-1 block">{`${t("phone")} *`}</label><input type="tel" autoComplete="tel" inputMode="tel" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={addressForm.phone} onChange={(e) => setAddressForm((p) => ({ ...p, phone: e.target.value }))} placeholder="05XX XXX XX XX" /></div>
+                    <div><label className="text-sm font-medium mb-1 block">{`${t("city")} *`}</label><input type="text" autoComplete="address-level1" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={addressForm.city} onChange={(e) => setAddressForm((p) => ({ ...p, city: e.target.value }))} /></div>
+                    <div><label className="text-sm font-medium mb-1 block">{`${t("district")} *`}</label><input type="text" autoComplete="address-level2" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={addressForm.district} onChange={(e) => setAddressForm((p) => ({ ...p, district: e.target.value }))} /></div>
+                    <div className="col-span-2"><label className="text-sm font-medium mb-1 block">{`${t("address")} *`}</label><textarea rows={3} autoComplete="street-address" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none" value={addressForm.address} onChange={(e) => setAddressForm((p) => ({ ...p, address: e.target.value }))} /></div>
+                    <div><label className="text-sm font-medium mb-1 block">{t("postalCode")}</label><input type="text" autoComplete="postal-code" inputMode="numeric" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={addressForm.zipCode} onChange={(e) => setAddressForm((p) => ({ ...p, zipCode: e.target.value }))} /></div>
                   </div>
                 </>
               )}
 
-              <button onClick={handleProceedToShipping} disabled={!isAddressValid} className="mt-6 w-full py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark disabled:bg-muted disabled:text-muted-foreground transition-colors">Devam Et</button>
+              <button onClick={handleProceedToShipping} disabled={!isAddressValid} className="mt-6 w-full py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark disabled:bg-muted disabled:text-muted-foreground transition-colors">{t("continue")}</button>
             </div>
           )}
 
           {/* Step 2: Shipping */}
           {step === "shipping" && (
             <div className="bg-white rounded-xl border border-border p-6">
-              <h2 className="text-lg font-bold mb-4">Kargo Secimi</h2>
+              <h2 className="text-lg font-bold mb-4">{t("shippingSelection")}</h2>
 
               {loadingRates ? (
                 <div className="flex items-center justify-center py-8 gap-2 text-sm text-muted-foreground">
                   <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                  Kargo ucretleri hesaplaniyor...
+                  {t("calculatingRates")}
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -648,7 +652,7 @@ export default function CheckoutClient() {
                           </div>
                         </div>
                         <span className={`text-sm font-bold ${displayPrice === 0 ? "text-success" : ""}`}>
-                          {displayPrice === 0 ? "Ucretsiz" : formatPrice(displayPrice)}
+                          {displayPrice === 0 ? t("free") : formatPrice(displayPrice)}
                         </span>
                       </label>
                     );
@@ -656,25 +660,25 @@ export default function CheckoutClient() {
 
                   {!fallbackShipping && subtotal < 500 && !hasFreeShippingCoupon && (
                     <p className="text-xs text-info mt-2">
-                      {formatPrice(500 - subtotal)} daha ekleyerek ucretsiz kargo firsatindan yararlanin!
+                      {t("freeShippingHint", { amount: formatPrice(500 - subtotal) })}
                     </p>
                   )}
                 </div>
               )}
 
               <div className="mt-4">
-                <label className="text-sm font-medium mb-1 block">Siparis Notu (opsiyonel)</label>
+                <label className="text-sm font-medium mb-1 block">{t("orderNote")}</label>
                 <textarea
                   rows={2}
                   className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none"
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
-                  placeholder="Teslimat ile ilgili notunuz..."
+                  placeholder={t("deliveryNotePlaceholder")}
                 />
               </div>
               <div className="flex gap-3 mt-6">
-                <button onClick={() => setStep("address")} className="flex-1 py-3 border border-border rounded-lg text-sm font-medium hover:bg-muted">Geri</button>
-                <button onClick={() => setStep("payment")} disabled={!selectedShippingProvider} className="flex-1 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark disabled:bg-muted disabled:text-muted-foreground">Devam Et</button>
+                <button onClick={() => setStep("address")} className="flex-1 py-3 border border-border rounded-lg text-sm font-medium hover:bg-muted">{t("back")}</button>
+                <button onClick={() => setStep("payment")} disabled={!selectedShippingProvider} className="flex-1 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark disabled:bg-muted disabled:text-muted-foreground">{t("continue")}</button>
               </div>
             </div>
           )}
@@ -682,12 +686,12 @@ export default function CheckoutClient() {
           {/* Step 3: Payment */}
           {step === "payment" && (
             <div className="bg-white rounded-xl border border-border p-6">
-              <h2 className="text-lg font-bold mb-4">Odeme Yontemi</h2>
+              <h2 className="text-lg font-bold mb-4">{t("paymentMethod")}</h2>
               <div className="space-y-3">
                 {[
-                  { id: "CREDIT_CARD", name: "Kredi / Banka Karti", icon: "💳", desc: "Guvenli 3D Secure odeme (iyzico)" },
-                  { id: "BANK_TRANSFER", name: "Havale / EFT", icon: "🏦", desc: "Banka hesabina havale" },
-                  { id: "CASH_ON_DELIVERY", name: "Kapida Odeme", icon: "📦", desc: `+${formatPrice(10)} kapida odeme ucreti` },
+                  { id: "CREDIT_CARD", name: t("creditCard"), icon: "💳", desc: t("creditCardDesc") },
+                  { id: "BANK_TRANSFER", name: t("bankTransfer"), icon: "🏦", desc: t("bankTransferDesc") },
+                  { id: "CASH_ON_DELIVERY", name: t("cashOnDelivery"), icon: "📦", desc: t("cashOnDeliveryFee", { fee: formatPrice(10) }) },
                 ].map((method) => (
                   <label key={method.id} className={`flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition-colors ${paymentMethod === method.id ? "border-primary bg-primary/5" : "border-border hover:border-primary"}`}>
                     <input type="radio" name="payment" value={method.id} checked={paymentMethod === method.id} onChange={() => setPaymentMethod(method.id)} className="w-4 h-4 text-primary" />
@@ -700,9 +704,9 @@ export default function CheckoutClient() {
               {/* Credit Card Form */}
               {paymentMethod === "CREDIT_CARD" && (
                 <div className="mt-6 pt-4 border-t border-border space-y-4">
-                  <h3 className="text-sm font-bold">Kart Bilgileri</h3>
-                  <div><label className="text-sm font-medium mb-1 block">Kart Uzerindeki Isim</label><input type="text" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={cardForm.holderName} onChange={(e) => setCardForm((p) => ({ ...p, holderName: e.target.value.toUpperCase() }))} placeholder="AD SOYAD" /></div>
-                  <div><label className="text-sm font-medium mb-1 block">Kart Numarasi</label><input type="text" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary font-mono" value={cardForm.number} onChange={(e) => {
+                  <h3 className="text-sm font-bold">{t("cardInfo")}</h3>
+                  <div><label className="text-sm font-medium mb-1 block">{t("cardHolderName")}</label><input type="text" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={cardForm.holderName} onChange={(e) => setCardForm((p) => ({ ...p, holderName: e.target.value.toUpperCase() }))} placeholder="AD SOYAD" /></div>
+                  <div><label className="text-sm font-medium mb-1 block">{t("cardNumber")}</label><input type="text" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary font-mono" value={cardForm.number} onChange={(e) => {
                     const formatted = formatCardNumber(e.target.value);
                     setCardForm((p) => ({ ...p, number: formatted }));
                     const digits = formatted.replace(/\s/g, "");
@@ -714,26 +718,26 @@ export default function CheckoutClient() {
                     }
                   }} placeholder="0000 0000 0000 0000" maxLength={19} /></div>
                   <div className="grid grid-cols-3 gap-3">
-                    <div><label className="text-sm font-medium mb-1 block">Ay</label><select className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={cardForm.expireMonth} onChange={(e) => setCardForm((p) => ({ ...p, expireMonth: e.target.value }))}><option value="">Ay</option>{Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0")).map((m) => (<option key={m} value={m}>{m}</option>))}</select></div>
-                    <div><label className="text-sm font-medium mb-1 block">Yil</label><select className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={cardForm.expireYear} onChange={(e) => setCardForm((p) => ({ ...p, expireYear: e.target.value }))}><option value="">Yil</option>{Array.from({ length: 10 }, (_, i) => String(new Date().getFullYear() + i)).map((y) => (<option key={y} value={y}>{y}</option>))}</select></div>
+                    <div><label className="text-sm font-medium mb-1 block">{t("month")}</label><select className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={cardForm.expireMonth} onChange={(e) => setCardForm((p) => ({ ...p, expireMonth: e.target.value }))}><option value="">{t("month")}</option>{Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0")).map((m) => (<option key={m} value={m}>{m}</option>))}</select></div>
+                    <div><label className="text-sm font-medium mb-1 block">{t("year")}</label><select className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" value={cardForm.expireYear} onChange={(e) => setCardForm((p) => ({ ...p, expireYear: e.target.value }))}><option value="">{t("year")}</option>{Array.from({ length: 10 }, (_, i) => String(new Date().getFullYear() + i)).map((y) => (<option key={y} value={y}>{y}</option>))}</select></div>
                     <div><label className="text-sm font-medium mb-1 block">CVC</label><input type="text" className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary font-mono" value={cardForm.cvc} onChange={(e) => setCardForm((p) => ({ ...p, cvc: e.target.value.replace(/\D/g, "").substring(0, 4) }))} placeholder="000" maxLength={4} /></div>
                   </div>
                   {/* Taksit Secenekleri */}
                   {loadingInstallments && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
                       <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                      Taksit secenekleri sorgulanıyor...
+                      {t("queryingInstallments")}
                     </div>
                   )}
                   {installments.length > 0 && !loadingInstallments && (
                     <div>
-                      <label className="text-sm font-medium mb-2 block">Taksit Secenekleri</label>
+                      <label className="text-sm font-medium mb-2 block">{t("installmentOptions")}</label>
                       <div className="border border-border rounded-lg overflow-hidden">
                         {/* Tek cekim */}
                         <label className={`flex items-center justify-between p-3 cursor-pointer transition-colors ${selectedInstallment === 1 ? "bg-primary/5" : "hover:bg-muted"}`}>
                           <div className="flex items-center gap-2">
                             <input type="radio" name="installment" checked={selectedInstallment === 1} onChange={() => setSelectedInstallment(1)} className="w-4 h-4 text-primary" />
-                            <span className="text-sm">Tek Cekim</span>
+                            <span className="text-sm">{t("singlePayment")}</span>
                           </div>
                           <span className="text-sm font-bold">{formatPrice(total)}</span>
                         </label>
@@ -741,8 +745,8 @@ export default function CheckoutClient() {
                           <label key={inst.installmentCount} className={`flex items-center justify-between p-3 border-t border-border cursor-pointer transition-colors ${selectedInstallment === inst.installmentCount ? "bg-primary/5" : "hover:bg-muted"}`}>
                             <div className="flex items-center gap-2">
                               <input type="radio" name="installment" checked={selectedInstallment === inst.installmentCount} onChange={() => setSelectedInstallment(inst.installmentCount)} className="w-4 h-4 text-primary" />
-                              <span className="text-sm">{inst.installmentCount} Taksit</span>
-                              <span className="text-xs text-muted-foreground">(Aylik {formatPrice(inst.installmentPrice)})</span>
+                              <span className="text-sm">{t("installmentCount", { count: inst.installmentCount })}</span>
+                              <span className="text-xs text-muted-foreground">({t("monthly", { price: formatPrice(inst.installmentPrice) })})</span>
                             </div>
                             <span className="text-sm font-bold">{formatPrice(inst.totalPrice)}</span>
                           </label>
@@ -756,18 +760,18 @@ export default function CheckoutClient() {
 
                   <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted rounded-lg p-3">
                     <span>🔒</span>
-                    <span>Kart bilgileriniz iyzico altyapisi ile guvenle islenir. Bilgileriniz sunucularimizda saklanmaz.</span>
+                    <span>{t("securePaymentNote")}</span>
                   </div>
                 </div>
               )}
 
               {/* Coupon */}
               <div className="mt-6 pt-4 border-t border-border">
-                <label className="text-sm font-medium mb-2 block">Kupon Kodu</label>
+                <label className="text-sm font-medium mb-2 block">{t("couponCode")}</label>
                 <div className="flex gap-2">
-                  <input type="text" className="flex-1 px-3 py-2 border border-border rounded-lg text-sm" value={couponCode} onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponError(""); }} placeholder="Kupon kodunuzu girin" disabled={!!appliedCoupon} />
+                  <input type="text" className="flex-1 px-3 py-2 border border-border rounded-lg text-sm" value={couponCode} onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponError(""); }} placeholder={t("couponPlaceholder")} disabled={!!appliedCoupon} />
                   {appliedCoupon ? (
-                    <button onClick={() => { setAppliedCoupon(null); setCouponCode(""); }} className="px-4 py-2 bg-danger/10 text-danger rounded-lg text-sm font-medium hover:bg-danger/20">Kaldir</button>
+                    <button onClick={() => { setAppliedCoupon(null); setCouponCode(""); }} className="px-4 py-2 bg-danger/10 text-danger rounded-lg text-sm font-medium hover:bg-danger/20">{t("removeCoupon")}</button>
                   ) : (
                     <button onClick={async () => {
                       if (!couponCode) return;
@@ -783,7 +787,7 @@ export default function CheckoutClient() {
                       } else {
                         setCouponError(data.message);
                       }
-                    }} className="px-4 py-2 bg-muted rounded-lg text-sm font-medium hover:bg-border">Uygula</button>
+                    }} className="px-4 py-2 bg-muted rounded-lg text-sm font-medium hover:bg-border">{t("apply")}</button>
                   )}
                 </div>
                 {couponError && <p className="text-xs text-danger mt-1">{couponError}</p>}
@@ -791,8 +795,8 @@ export default function CheckoutClient() {
               </div>
 
               <div className="flex gap-3 mt-6">
-                <button onClick={() => setStep("shipping")} className="flex-1 py-3 border border-border rounded-lg text-sm font-medium hover:bg-muted">Geri</button>
-                <button onClick={() => setStep("confirm")} disabled={paymentMethod === "CREDIT_CARD" && !isCardValid} className="flex-1 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark disabled:bg-muted disabled:text-muted-foreground">Devam Et</button>
+                <button onClick={() => setStep("shipping")} className="flex-1 py-3 border border-border rounded-lg text-sm font-medium hover:bg-muted">{t("back")}</button>
+                <button onClick={() => setStep("confirm")} disabled={paymentMethod === "CREDIT_CARD" && !isCardValid} className="flex-1 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark disabled:bg-muted disabled:text-muted-foreground">{t("continue")}</button>
               </div>
             </div>
           )}
@@ -800,23 +804,23 @@ export default function CheckoutClient() {
           {/* Step 4: Confirm */}
           {step === "confirm" && (
             <div className="bg-white rounded-xl border border-border p-6">
-              <h2 className="text-lg font-bold mb-4">Siparis Ozeti</h2>
-              <div className="p-4 bg-muted rounded-lg mb-4"><p className="text-sm font-medium mb-1">Teslimat Adresi</p><p className="text-sm text-muted-foreground">{addressForm.firstName} {addressForm.lastName} - {addressForm.phone}<br />{addressForm.address}, {addressForm.district}/{addressForm.city}</p></div>
+              <h2 className="text-lg font-bold mb-4">{t("orderSummary")}</h2>
+              <div className="p-4 bg-muted rounded-lg mb-4"><p className="text-sm font-medium mb-1">{t("shippingAddress")}</p><p className="text-sm text-muted-foreground">{addressForm.firstName} {addressForm.lastName} - {addressForm.phone}<br />{addressForm.address}, {addressForm.district}/{addressForm.city}</p></div>
               <div className="p-4 bg-muted rounded-lg mb-4">
-                <p className="text-sm font-medium mb-1">Kargo</p>
+                <p className="text-sm font-medium mb-1">{t("shipping")}</p>
                 <p className="text-sm text-muted-foreground">
-                  {selectedRate?.providerName || "Standart Kargo"} — {selectedRate?.estimatedDays || "3-5 is gunu"}
-                  {shippingCost === 0 ? " (Ucretsiz)" : ` (${formatPrice(shippingCost)})`}
+                  {selectedRate?.providerName || t("standardShipping")} — {selectedRate?.estimatedDays || t("businessDays35")}
+                  {shippingCost === 0 ? ` (${t("free")})` : ` (${formatPrice(shippingCost)})`}
                 </p>
               </div>
-              <div className="p-4 bg-muted rounded-lg mb-4"><p className="text-sm font-medium mb-1">Odeme Yontemi</p><p className="text-sm text-muted-foreground">{paymentMethod === "CREDIT_CARD" && `Kredi Karti (**** ${cardForm.number.replace(/\s/g, "").slice(-4)})`}{paymentMethod === "BANK_TRANSFER" && "Havale / EFT"}{paymentMethod === "CASH_ON_DELIVERY" && "Kapida Odeme"}</p></div>
+              <div className="p-4 bg-muted rounded-lg mb-4"><p className="text-sm font-medium mb-1">{t("paymentMethod")}</p><p className="text-sm text-muted-foreground">{paymentMethod === "CREDIT_CARD" && t("creditCardMasked", { last4: cardForm.number.replace(/\s/g, "").slice(-4) })}{paymentMethod === "BANK_TRANSFER" && t("bankTransfer")}{paymentMethod === "CASH_ON_DELIVERY" && t("cashOnDelivery")}</p></div>
               <div className="space-y-3 mb-4">
                 {items.map((item) => {
                   const price = getItemPrice(item);
                   return (
                     <div key={item.id} className="flex items-center gap-3 text-sm">
                       <div className="w-12 h-12 bg-muted rounded overflow-hidden shrink-0 relative">{item.product.image && <Image src={item.product.image} alt={item.product.name} fill className="object-cover" sizes="48px" />}</div>
-                      <div className="flex-1 min-w-0"><p className="truncate">{item.product.name}</p><p className="text-xs text-muted-foreground">{item.quantity} adet</p></div>
+                      <div className="flex-1 min-w-0"><p className="truncate">{item.product.name}</p><p className="text-xs text-muted-foreground">{item.quantity} {common("piece")}</p></div>
                       <span className="font-medium">{formatPrice(price * item.quantity)}</span>
                     </div>
                   );
@@ -824,8 +828,8 @@ export default function CheckoutClient() {
               </div>
               {error && <div className="p-3 bg-danger/10 text-danger text-sm rounded-lg mb-4">{error}</div>}
               <div className="flex gap-3">
-                <button onClick={() => setStep("payment")} className="flex-1 py-3 border border-border rounded-lg text-sm font-medium hover:bg-muted">Geri</button>
-                <button onClick={handleSubmitOrder} disabled={isSubmitting} className="flex-1 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark disabled:opacity-50">{isSubmitting ? "Isleniyor..." : `Siparisi Onayla (${formatPrice(total)})`}</button>
+                <button onClick={() => setStep("payment")} className="flex-1 py-3 border border-border rounded-lg text-sm font-medium hover:bg-muted">{t("back")}</button>
+                <button onClick={handleSubmitOrder} disabled={isSubmitting} className="flex-1 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark disabled:opacity-50">{isSubmitting ? t("processing") : t("confirmOrder", { price: formatPrice(total) })}</button>
               </div>
             </div>
           )}
@@ -834,7 +838,7 @@ export default function CheckoutClient() {
         {/* Order Summary Sidebar */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-xl border border-border p-6 sticky top-24">
-            <h3 className="font-bold mb-4">Siparis ({items.length} urun)</h3>
+            <h3 className="font-bold mb-4">{t("orderCount", { count: items.length })}</h3>
             <div className="space-y-3 max-h-60 overflow-y-auto pb-4 border-b border-border">
               {items.map((item) => {
                 const price = getItemPrice(item);
@@ -847,12 +851,12 @@ export default function CheckoutClient() {
               })}
             </div>
             <div className="space-y-2 py-4 text-sm">
-              <div className="flex justify-between"><span className="text-muted-foreground">Ara Toplam</span><span>{formatPrice(subtotal)}</span></div>
-              {couponDiscount > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Kupon Indirimi</span><span className="text-success font-medium">-{formatPrice(couponDiscount)}</span></div>}
-              <div className="flex justify-between"><span className="text-muted-foreground">Kargo</span><span className={shippingCost === 0 ? "text-success font-medium" : ""}>{shippingCost === 0 ? "Ucretsiz" : formatPrice(shippingCost)}</span></div>
-              {codFee > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Kapida Odeme</span><span>{formatPrice(codFee)}</span></div>}
+              <div className="flex justify-between"><span className="text-muted-foreground">{t("subtotal")}</span><span>{formatPrice(subtotal)}</span></div>
+              {couponDiscount > 0 && <div className="flex justify-between"><span className="text-muted-foreground">{t("couponDiscount")}</span><span className="text-success font-medium">-{formatPrice(couponDiscount)}</span></div>}
+              <div className="flex justify-between"><span className="text-muted-foreground">{t("shipping")}</span><span className={shippingCost === 0 ? "text-success font-medium" : ""}>{shippingCost === 0 ? t("free") : formatPrice(shippingCost)}</span></div>
+              {codFee > 0 && <div className="flex justify-between"><span className="text-muted-foreground">{t("cashOnDeliveryLabel")}</span><span>{formatPrice(codFee)}</span></div>}
             </div>
-            <div className="flex justify-between pt-4 border-t border-border"><span className="font-bold text-lg">Toplam</span><span className="font-bold text-lg text-primary">{formatPrice(total)}</span></div>
+            <div className="flex justify-between pt-4 border-t border-border"><span className="font-bold text-lg">{t("total")}</span><span className="font-bold text-lg text-primary">{formatPrice(total)}</span></div>
           </div>
         </div>
       </div>

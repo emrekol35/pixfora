@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useRouter } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import ProductCard from "./ProductCard";
 import type { FacetData } from "@/lib/search-helpers";
 
@@ -52,6 +53,7 @@ export default function SearchResults({
   currentInStock,
   currentSort,
 }: SearchResultsProps) {
+  const t = useTranslations("filter");
   const router = useRouter();
   const [filterOpen, setFilterOpen] = useState(false);
   const [localMin, setLocalMin] = useState(currentMinPrice?.toString() || "");
@@ -64,7 +66,7 @@ export default function SearchResults({
     (currentMinPrice !== undefined || currentMaxPrice !== undefined ? 1 : 0) +
     (currentInStock ? 1 : 0);
 
-  const buildUrl = (params: Record<string, string | undefined>) => {
+  const buildUrl = (params: Record<string, string | undefined>): any => {
     const sp = new URLSearchParams();
     const allParams: Record<string, string | undefined> = {
       q: currentQuery,
@@ -119,7 +121,7 @@ export default function SearchResults({
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
         </svg>
-        Filtreler {activeFilterCount > 0 && `(${activeFilterCount})`}
+        {t("filters")} {activeFilterCount > 0 && `(${activeFilterCount})`}
       </button>
 
       {/* Sidebar */}
@@ -170,7 +172,7 @@ export default function SearchResults({
                 href={buildUrl({ stok: undefined, sayfa: undefined })}
                 className="inline-flex items-center gap-1 px-2.5 py-1 bg-primary/10 text-primary text-xs rounded-full hover:bg-primary/20"
               >
-                Stokta var <span className="font-bold">×</span>
+                {t("inStock")} <span className="font-bold">×</span>
               </Link>
             )}
             <Link
@@ -184,7 +186,7 @@ export default function SearchResults({
               })}
               className="text-xs text-muted-foreground hover:text-foreground underline"
             >
-              Tumu Temizle
+              {t("clearAll")}
             </Link>
           </div>
         )}
@@ -192,7 +194,7 @@ export default function SearchResults({
         {/* Kategori Filtresi */}
         {facets && facets.categories.length > 0 && (
           <div>
-            <h3 className="font-semibold text-sm mb-3">Kategori</h3>
+            <h3 className="font-semibold text-sm mb-3">{t("category")}</h3>
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {facets.categories.map((cat) => (
                 <label key={cat.id} className="flex items-center gap-2 text-sm cursor-pointer">
@@ -221,7 +223,7 @@ export default function SearchResults({
         {/* Marka Filtresi */}
         {facets && facets.brands.length > 0 && (
           <div>
-            <h3 className="font-semibold text-sm mb-3">Marka</h3>
+            <h3 className="font-semibold text-sm mb-3">{t("brand")}</h3>
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {facets.brands.map((brand) => (
                 <label key={brand.id} className="flex items-center gap-2 text-sm cursor-pointer">
@@ -249,7 +251,7 @@ export default function SearchResults({
 
         {/* Fiyat Aralığı */}
         <div>
-          <h3 className="font-semibold text-sm mb-3">Fiyat Araligi</h3>
+          <h3 className="font-semibold text-sm mb-3">{t("priceRange")}</h3>
           {facets && facets.priceRange.max > 0 && (
             <p className="text-xs text-muted-foreground mb-2">
               {Math.floor(facets.priceRange.min)}₺ - {Math.ceil(facets.priceRange.max)}₺
@@ -277,7 +279,7 @@ export default function SearchResults({
               onClick={applyPrice}
               className="px-3 py-1.5 bg-primary text-white rounded text-sm hover:bg-primary/90 shrink-0"
             >
-              Git
+              {t("go")}
             </button>
           </div>
         </div>
@@ -285,7 +287,7 @@ export default function SearchResults({
         {/* Stok Durumu */}
         {facets && (
           <div>
-            <h3 className="font-semibold text-sm mb-3">Stok Durumu</h3>
+            <h3 className="font-semibold text-sm mb-3">{t("stockStatus")}</h3>
             <label className="flex items-center gap-2 text-sm cursor-pointer">
               <input
                 type="checkbox"
@@ -295,7 +297,7 @@ export default function SearchResults({
                 }
                 className="rounded border-border text-primary focus:ring-primary w-4 h-4"
               />
-              <span>Sadece stokta olanlar</span>
+              <span>{t("inStockOnly")}</span>
               <span className="text-xs text-muted-foreground">({facets.inStockCount})</span>
             </label>
           </div>
@@ -306,18 +308,18 @@ export default function SearchResults({
       <div className="flex-1">
         {/* Sort Bar */}
         <div className="flex items-center justify-between mb-4 pb-4 border-b border-border">
-          <p className="text-sm text-muted-foreground">{total} sonuc</p>
+          <p className="text-sm text-muted-foreground">{t("resultCount", { count: total })}</p>
           <select
             value={currentSort}
             onChange={(e) => router.push(buildUrl({ siralama: e.target.value, sayfa: undefined }))}
             className="text-sm border border-border rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary"
           >
-            <option value="ilgili">Ilgili</option>
-            <option value="newest">En Yeni</option>
-            <option value="price-asc">Fiyat (Dusuk → Yuksek)</option>
-            <option value="price-desc">Fiyat (Yuksek → Dusuk)</option>
-            <option value="name">A-Z</option>
-            <option value="popular">Populer</option>
+            <option value="ilgili">{t("sortRelevant")}</option>
+            <option value="newest">{t("sortNewest")}</option>
+            <option value="price-asc">{t("sortPriceAsc")}</option>
+            <option value="price-desc">{t("sortPriceDesc")}</option>
+            <option value="name">{t("sortAZ")}</option>
+            <option value="popular">{t("sortPopular")}</option>
           </select>
         </div>
 
@@ -343,8 +345,8 @@ export default function SearchResults({
                 d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
               />
             </svg>
-            <p className="text-lg font-medium mb-1">Sonuc bulunamadi</p>
-            <p className="text-sm">Farkli anahtar kelimeler deneyin veya filtreleri degistirin.</p>
+            <p className="text-lg font-medium mb-1">{t("noResults")}</p>
+            <p className="text-sm">{t("noResultsHint")}</p>
           </div>
         )}
 
@@ -356,7 +358,7 @@ export default function SearchResults({
                 href={buildUrl({ sayfa: String(page - 1) })}
                 className="px-3 py-1.5 border border-border rounded-lg text-sm hover:bg-muted"
               >
-                ← Onceki
+                {t("previous")}
               </Link>
             )}
             {Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -385,7 +387,7 @@ export default function SearchResults({
                 href={buildUrl({ sayfa: String(page + 1) })}
                 className="px-3 py-1.5 border border-border rounded-lg text-sm hover:bg-muted"
               >
-                Sonraki →
+                {t("next")}
               </Link>
             )}
           </div>

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import Image from "next/image";
 
 interface OrderItem {
@@ -22,15 +23,17 @@ interface Order {
   items: OrderItem[];
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  PENDING: "Bekliyor",
-  CONFIRMED: "Onaylandi",
-  PROCESSING: "Hazirlaniyor",
-  SHIPPED: "Kargoda",
-  DELIVERED: "Teslim Edildi",
-  CANCELLED: "Iptal Edildi",
-  REFUNDED: "Iade Edildi",
-};
+function getStatusLabels(t: ReturnType<typeof useTranslations>): Record<string, string> {
+  return {
+    PENDING: t("statusPending"),
+    CONFIRMED: t("statusConfirmed"),
+    PROCESSING: t("statusPreparing"),
+    SHIPPED: t("statusShipped"),
+    DELIVERED: t("statusDelivered"),
+    CANCELLED: t("statusCancelled"),
+    REFUNDED: t("statusReturned"),
+  };
+}
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: "bg-warning",
@@ -43,13 +46,6 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 type FilterTab = "all" | "active" | "delivered" | "cancelled";
-
-const FILTER_TABS: { key: FilterTab; label: string }[] = [
-  { key: "all", label: "Tumu" },
-  { key: "active", label: "Aktif" },
-  { key: "delivered", label: "Teslim Edildi" },
-  { key: "cancelled", label: "Iptal" },
-];
 
 const ACTIVE_STATUSES = ["PENDING", "CONFIRMED", "PROCESSING", "SHIPPED"];
 const CANCELLED_STATUSES = ["CANCELLED", "REFUNDED"];
@@ -70,7 +66,15 @@ function formatDate(dateStr: string): string {
 }
 
 export default function OrderHistory({ orders }: { orders: Order[] }) {
+  const t = useTranslations("order");
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
+  const STATUS_LABELS = getStatusLabels(t);
+  const FILTER_TABS: { key: FilterTab; label: string }[] = [
+    { key: "all", label: t("filterAll") },
+    { key: "active", label: t("filterActive") },
+    { key: "delivered", label: t("statusDelivered") },
+    { key: "cancelled", label: t("filterCancelled") },
+  ];
 
   const filteredOrders = orders.filter((order) => {
     switch (activeTab) {
@@ -108,13 +112,13 @@ export default function OrderHistory({ orders }: { orders: Order[] }) {
       {filteredOrders.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-muted-foreground text-lg mb-4">
-            Henuz siparisiniz yok.
+            {t("noOrdersYet")}
           </p>
           <Link
             href="/kategori"
             className="inline-block bg-primary text-white px-6 py-2 rounded-lg hover:bg-muted transition-colors"
           >
-            Alisverise Basla
+            {t("startShopping")}
           </Link>
         </div>
       ) : (
@@ -169,13 +173,13 @@ export default function OrderHistory({ orders }: { orders: Order[] }) {
                     </div>
                     <div className="flex-1 min-w-0">
                       <Link
-                        href={`/urun/${item.productSlug}`}
+                        href={`/urun/${item.productSlug}` as any}
                         className="text-sm font-medium text-foreground hover:text-primary truncate block"
                       >
                         {item.productName}
                       </Link>
                       <p className="text-xs text-muted-foreground">
-                        {item.quantity} adet x {formatCurrency(item.price)}
+                        {item.quantity} {t("piece")} x {formatCurrency(item.price)}
                       </p>
                     </div>
                     <div className="text-sm font-medium text-foreground">
@@ -194,7 +198,7 @@ export default function OrderHistory({ orders }: { orders: Order[] }) {
                   </span>
                 </div>
                 <Link
-                  href={`/hesabim/siparislerim/${order.id}`}
+                  href={`/hesabim/siparislerim/${order.id}` as any}
                   className="text-sm font-medium text-primary hover:underline"
                 >
                   Detay &rarr;

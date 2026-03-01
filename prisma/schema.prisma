@@ -949,3 +949,38 @@ model Shipment {
   @@index([trackingNumber])
   @@map("shipments")
 }
+
+// ============================================================
+// COKLU DIL (i18n) CEVIRILERI
+// ============================================================
+
+model Translation {
+  id         String @id @default(cuid())
+  entityType String @map("entity_type")
+  entityId   String @map("entity_id")
+  locale     String
+  field      String
+  value      String @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([entityType, entityId, locale, field])
+  @@index([entityType, entityId, locale])
+  @@map("translations")
+}
+
+model TranslatedSlug {
+  id         String @id @default(cuid())
+  entityType String @map("entity_type")
+  entityId   String @map("entity_id")
+  locale     String
+  slug       String
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([entityType, locale, slug])
+  @@unique([entityType, entityId, locale])
+  @@map("translated_slugs")
+}

@@ -3,6 +3,7 @@
 import React, { useCallback, memo } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { SHIMMER_PLACEHOLDER } from "@/lib/image-utils";
 import { useCartStore } from "@/store/cart";
 import { useWishlistStore } from "@/store/wishlist";
@@ -34,6 +35,7 @@ interface ProductCardProps {
 }
 
 function ProductCardInner({ product }: ProductCardProps) {
+  const t = useTranslations("product");
   const addItem = useCartStore((s) => s.addItem);
   const toggleWishlist = useWishlistStore((s) => s.toggleWishlist);
   const isInWishlist = useWishlistStore((s) => s.isInWishlist(product.id));
@@ -133,12 +135,12 @@ function ProductCardInner({ product }: ProductCardProps) {
           )}
           {product.isFeatured && (
             <span className="px-2 py-0.5 bg-warning text-white text-xs font-bold rounded">
-              One Cikan
+              {t("featured")}
             </span>
           )}
           {product.stock <= 0 && (
             <span className="px-2 py-0.5 bg-muted-foreground text-white text-xs font-bold rounded">
-              Tukendi
+              {t("outOfStock")}
             </span>
           )}
         </div>
@@ -161,7 +163,7 @@ function ProductCardInner({ product }: ProductCardProps) {
             className={`w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition-colors ${
               isInCompare ? "bg-primary text-white" : "bg-white/90 text-muted-foreground hover:bg-white hover:text-primary"
             }`}
-            title={isInCompare ? "Karsilastirmadan Cikar" : "Karsilastir"}
+            title={isInCompare ? t("removeFromCompare") : t("compare")}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />

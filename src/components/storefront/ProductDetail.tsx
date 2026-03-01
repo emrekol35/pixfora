@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { useCartStore, CartVariant } from "@/store/cart";
 import { SHIMMER_PLACEHOLDER } from "@/lib/image-utils";
@@ -93,6 +94,7 @@ interface Props {
 }
 
 export default function ProductDetail({ product, similarProducts, boughtTogether, complementaryProducts, giftProducts, canReview }: Props) {
+  const t = useTranslations("product");
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [quantity, setQuantity] = useState(product.minQty);
@@ -326,7 +328,7 @@ export default function ProductDetail({ product, similarProducts, boughtTogether
                 ))}
               </div>
               <span className="text-sm text-muted-foreground">
-                {product.avgRating.toFixed(1)} ({product.reviewCount} degerlendirme)
+                {product.avgRating.toFixed(1)} ({t("reviewCount", { count: product.reviewCount })})
               </span>
             </div>
           )}
@@ -360,7 +362,7 @@ export default function ProductDetail({ product, similarProducts, boughtTogether
                 <div key={type.id}>
                   <label className="text-sm font-medium mb-2 block">
                     {type.name}:{" "}
-                    <span className="text-primary">{selectedOptions[type.name] || "Seciniz"}</span>
+                    <span className="text-primary">{selectedOptions[type.name] || t("selectOption")}</span>
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {type.options.map((opt) => {
@@ -396,10 +398,10 @@ export default function ProductDetail({ product, similarProducts, boughtTogether
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                Stokta ({currentStock} adet)
+                {t("inStockCount", { count: currentStock })}
               </span>
             ) : (
-              <span className="text-sm text-danger font-medium">Stokta yok</span>
+              <span className="text-sm text-danger font-medium">{t("outOfStock")}</span>
             )}
           </div>
 
@@ -464,9 +466,9 @@ export default function ProductDetail({ product, similarProducts, boughtTogether
             >
               {!canAddToCart
                 ? product.hasVariants && !selectedVariant
-                  ? "Secenek Seciniz"
-                  : "Stokta Yok"
-                : "Sepete Ekle"}
+                  ? t("selectVariant")
+                  : t("outOfStock")
+                : t("addToCart")}
             </button>
           </div>
 
@@ -524,7 +526,7 @@ export default function ProductDetail({ product, similarProducts, boughtTogether
             {product.tags.length > 0 && (
               <p>
                 <span className="font-medium text-foreground">Etiketler:</span>{" "}
-                {product.tags.map((t) => t.tag).join(", ")}
+                {product.tags.map((tag) => tag.tag).join(", ")}
               </p>
             )}
           </div>
@@ -542,7 +544,7 @@ export default function ProductDetail({ product, similarProducts, boughtTogether
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            Urun Aciklamasi
+            {t("description")}
           </button>
           <button
             onClick={() => setActiveTab("reviews")}
@@ -552,7 +554,7 @@ export default function ProductDetail({ product, similarProducts, boughtTogether
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            Degerlendirmeler ({product.reviewCount})
+            {t("reviews")} ({product.reviewCount})
           </button>
           <button
             onClick={() => setActiveTab("qa")}
@@ -562,7 +564,7 @@ export default function ProductDetail({ product, similarProducts, boughtTogether
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            Soru & Cevap
+            {t("questions")}
           </button>
         </div>
 
@@ -609,14 +611,14 @@ export default function ProductDetail({ product, similarProducts, boughtTogether
                 ))
               ) : (
                 <p className="text-center text-muted-foreground py-8">
-                  Henuz degerlendirme yapilmamis.
+                  {t("noReviews")}
                 </p>
               )}
 
               {/* Review Form */}
               {canReview && !reviewSubmitted && (
                 <div className="mt-8 border-t border-border pt-6">
-                  <h3 className="text-lg font-semibold mb-4">Degerlendirme Yap</h3>
+                  <h3 className="text-lg font-semibold mb-4">{t("writeReview")}</h3>
                   <form
                     onSubmit={async (e) => {
                       e.preventDefault();
@@ -635,7 +637,7 @@ export default function ProductDetail({ product, similarProducts, boughtTogether
                           setReviewSubmitted(true);
                         } else {
                           const data = await res.json();
-                          alert(data.error || "Yorum gonderilemedi.");
+                          alert(data.error || t("reviewSubmitError"));
                         }
                       } catch {
                         alert("Bir hata olustu.");

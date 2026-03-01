@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useTranslations } from "next-intl";
 import Image from "next/image";
 
 interface PopupData {
@@ -14,6 +15,7 @@ interface PopupData {
 }
 
 export default function MarketingPopup() {
+  const tc = useTranslations("common");
   const [popups, setPopups] = useState<PopupData[]>([]);
   const [activePopup, setActivePopup] = useState<PopupData | null>(null);
   const exitListenerAdded = useRef(false);
@@ -123,7 +125,7 @@ export default function MarketingPopup() {
         <button
           onClick={handleClose}
           className="absolute top-3 right-3 z-10 w-8 h-8 bg-white/80 backdrop-blur rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white transition-colors shadow-sm"
-          aria-label="Kapat"
+          aria-label={tc("close")}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />

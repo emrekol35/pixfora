@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useSearchStore } from "@/store/search";
 import type { SearchSuggestions } from "@/store/search";
 
@@ -27,6 +28,7 @@ export default function SearchDropdown({
   onClose,
 }: SearchDropdownProps) {
   const router = useRouter();
+  const t = useTranslations("search");
   const { addRecentSearch, removeRecentSearch, clearRecentSearches, setQuery } = useSearchStore();
 
   const handleRecentClick = (q: string) => {
@@ -51,7 +53,7 @@ export default function SearchDropdown({
       <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-border rounded-lg shadow-lg overflow-hidden z-50">
         <div className="flex items-center justify-between px-3 pt-3 pb-1">
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            Son Aramalar
+            {t("recentSearches")}
           </span>
           <button
             onClick={(e) => {
@@ -61,7 +63,7 @@ export default function SearchDropdown({
             }}
             className="text-xs text-muted-foreground hover:text-foreground"
           >
-            Temizle
+            {t("clear")}
           </button>
         </div>
         {recentSearches.map((q) => (
@@ -98,7 +100,7 @@ export default function SearchDropdown({
     return (
       <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-border rounded-lg shadow-lg overflow-hidden z-50">
         <div className="p-4 text-center text-sm text-muted-foreground">
-          Araniyor...
+          {t("searching")}
         </div>
       </div>
     );
@@ -113,7 +115,7 @@ export default function SearchDropdown({
     return (
       <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-border rounded-lg shadow-lg overflow-hidden z-50">
         <div className="p-4 text-center text-sm text-muted-foreground">
-          Sonuc bulunamadi
+          {t("noResults")}
         </div>
       </div>
     );
@@ -126,7 +128,7 @@ export default function SearchDropdown({
         <div>
           <div className="px-3 pt-3 pb-1">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Kategoriler
+              {t("categories")}
             </span>
           </div>
           {suggestions!.categories.map((cat) => (
@@ -144,7 +146,7 @@ export default function SearchDropdown({
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{cat.name}</p>
               </div>
-              <span className="text-xs text-muted-foreground shrink-0">{cat.productCount} urun</span>
+              <span className="text-xs text-muted-foreground shrink-0">{t("productCount", { count: cat.productCount })}</span>
             </Link>
           ))}
         </div>
@@ -155,7 +157,7 @@ export default function SearchDropdown({
         <div className={hasCategories ? "border-t border-border" : ""}>
           <div className="px-3 pt-3 pb-1">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Markalar
+              {t("brands")}
             </span>
           </div>
           {suggestions!.brands.map((brand) => (
@@ -184,7 +186,7 @@ export default function SearchDropdown({
         <div className={(hasCategories || hasBrands) ? "border-t border-border" : ""}>
           <div className="px-3 pt-3 pb-1">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Urunler
+              {t("products")}
             </span>
           </div>
           {suggestions!.products.map((product) => (
@@ -219,7 +221,7 @@ export default function SearchDropdown({
         className="block p-3 text-center text-sm text-primary font-medium hover:bg-muted border-t border-border"
         onClick={handleViewAll}
       >
-        &ldquo;{query}&rdquo; icin tum sonuclari gor →
+        {t("viewAllResults", { query })} →
       </Link>
     </div>
   );

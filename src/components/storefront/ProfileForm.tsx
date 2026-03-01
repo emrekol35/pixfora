@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 interface ProfileFormProps {
   user: {
@@ -12,6 +13,7 @@ interface ProfileFormProps {
 }
 
 export default function ProfileForm({ user }: ProfileFormProps) {
+  const t = useTranslations("profile");
   // Personal info state
   const [name, setName] = useState(user.name);
   const [phone, setPhone] = useState(user.phone || "");
@@ -43,13 +45,13 @@ export default function ProfileForm({ user }: ProfileFormProps) {
       const data = await res.json();
 
       if (!res.ok) {
-        setInfoError(data.error || "Bir hata olustu.");
+        setInfoError(data.error || t("updateError"));
       } else {
-        setInfoSuccess("Basariyla guncellendi");
+        setInfoSuccess(t("updateSuccess"));
         setTimeout(() => setInfoSuccess(""), 3000);
       }
     } catch {
-      setInfoError("Bir hata olustu. Lutfen tekrar deneyin.");
+      setInfoError(t("updateError"));
     } finally {
       setInfoLoading(false);
     }
@@ -82,16 +84,16 @@ export default function ProfileForm({ user }: ProfileFormProps) {
       const data = await res.json();
 
       if (!res.ok) {
-        setPassError(data.error || "Bir hata olustu.");
+        setPassError(data.error || t("passwordError"));
       } else {
-        setPassSuccess("Sifreniz degistirildi");
+        setPassSuccess(t("passwordSuccess"));
         setCurrentPassword("");
         setNewPassword("");
         setNewPasswordConfirm("");
         setTimeout(() => setPassSuccess(""), 3000);
       }
     } catch {
-      setPassError("Bir hata olustu. Lutfen tekrar deneyin.");
+      setPassError(t("passwordError"));
     } finally {
       setPassLoading(false);
     }
@@ -101,11 +103,11 @@ export default function ProfileForm({ user }: ProfileFormProps) {
     <div className="space-y-8">
       {/* Personal Info Section */}
       <div className="bg-card border border-border rounded-xl p-6">
-        <h2 className="text-lg font-semibold mb-4">Kisisel Bilgiler</h2>
+        <h2 className="text-lg font-semibold mb-4">{t("personalInfo")}</h2>
         <form onSubmit={handleInfoSubmit} className="space-y-4">
           <div>
             <label htmlFor="name" className="block text-sm font-medium mb-1.5">
-              Ad Soyad
+              {t("fullName")}
             </label>
             <input
               id="name"
@@ -122,7 +124,7 @@ export default function ProfileForm({ user }: ProfileFormProps) {
               htmlFor="profile-email"
               className="block text-sm font-medium mb-1.5"
             >
-              E-posta
+              {t("email")}
             </label>
             <input
               id="profile-email"
@@ -132,7 +134,7 @@ export default function ProfileForm({ user }: ProfileFormProps) {
               className="w-full px-4 py-2.5 rounded-lg border border-border bg-muted text-muted-foreground cursor-not-allowed"
             />
             <p className="text-xs text-muted-foreground mt-1">
-              E-posta degistirilemez
+              {t("emailReadOnly")}
             </p>
           </div>
 
@@ -141,7 +143,7 @@ export default function ProfileForm({ user }: ProfileFormProps) {
               htmlFor="profile-phone"
               className="block text-sm font-medium mb-1.5"
             >
-              Telefon
+              {t("phone")}
             </label>
             <input
               id="profile-phone"
@@ -170,21 +172,21 @@ export default function ProfileForm({ user }: ProfileFormProps) {
             disabled={infoLoading}
             className="bg-primary text-white px-6 py-2.5 rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {infoLoading ? "Kaydediliyor..." : "Bilgileri Guncelle"}
+            {infoLoading ? t("updating") : t("updateInfo")}
           </button>
         </form>
       </div>
 
       {/* Password Change Section */}
       <div className="bg-card border border-border rounded-xl p-6">
-        <h2 className="text-lg font-semibold mb-4">Sifre Degistir</h2>
+        <h2 className="text-lg font-semibold mb-4">{t("changePassword")}</h2>
         <form onSubmit={handlePasswordSubmit} className="space-y-4">
           <div>
             <label
               htmlFor="currentPassword"
               className="block text-sm font-medium mb-1.5"
             >
-              Mevcut Sifre
+              {t("currentPassword")}
             </label>
             <input
               id="currentPassword"
@@ -202,7 +204,7 @@ export default function ProfileForm({ user }: ProfileFormProps) {
               htmlFor="newPassword"
               className="block text-sm font-medium mb-1.5"
             >
-              Yeni Sifre
+              {t("newPassword")}
             </label>
             <input
               id="newPassword"
@@ -221,7 +223,7 @@ export default function ProfileForm({ user }: ProfileFormProps) {
               htmlFor="newPasswordConfirm"
               className="block text-sm font-medium mb-1.5"
             >
-              Yeni Sifre Tekrar
+              {t("confirmNewPassword")}
             </label>
             <input
               id="newPasswordConfirm"
@@ -251,7 +253,7 @@ export default function ProfileForm({ user }: ProfileFormProps) {
             disabled={passLoading}
             className="bg-primary text-white px-6 py-2.5 rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {passLoading ? "Degistiriliyor..." : "Sifreyi Degistir"}
+            {passLoading ? t("changingPassword") : t("changePasswordBtn")}
           </button>
         </form>
       </div>

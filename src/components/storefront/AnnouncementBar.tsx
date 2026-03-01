@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 
 interface Announcement {
@@ -12,6 +13,7 @@ interface Announcement {
 }
 
 export default function AnnouncementBar() {
+  const tc = useTranslations("common");
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
@@ -93,7 +95,7 @@ export default function AnnouncementBar() {
         onClick={() => handleDismiss(current.id)}
         className="absolute right-2 top-1/2 -translate-y-1/2 p-1 opacity-60 hover:opacity-100 transition-opacity"
         style={{ color: current.textColor }}
-        aria-label="Duyuruyu kapat"
+        aria-label={tc("closeAnnouncement")}
       >
         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />

@@ -9,8 +9,12 @@ import { useWishlistStore } from "@/store/wishlist";
 import { useSearchStore } from "@/store/search";
 import NotificationBell from "@/components/storefront/NotificationBell";
 import SearchDropdown from "@/components/storefront/SearchDropdown";
+import LanguageSwitcher from "@/components/storefront/LanguageSwitcher";
+import { useTranslations } from "next-intl";
 
 export default function Header() {
+  const t = useTranslations("header");
+  const tc = useTranslations("common");
   const router = useRouter();
   const { data: session } = useSession();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -100,14 +104,15 @@ export default function Header() {
       {/* Top Bar */}
       <div className="bg-foreground text-white text-xs py-1.5">
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between">
-          <span>Ucretsiz kargo 500₺ ve uzeri siparislerde!</span>
+          <span>{t("freeShippingBanner")}</span>
           <div className="hidden sm:flex items-center gap-4">
             <Link href="/hesabim/siparislerim" className="hover:underline">
-              Siparis Takibi
+              {t("orderTracking")}
             </Link>
             <Link href="/iletisim" className="hover:underline">
-              Yardim
+              {t("help")}
             </Link>
+            <LanguageSwitcher />
           </div>
         </div>
       </div>
@@ -125,7 +130,7 @@ export default function Header() {
             <div className="relative">
               <input
                 type="text"
-                placeholder="Urun, kategori veya marka ara..."
+                placeholder={t("searchPlaceholder")}
                 className="w-full pl-10 pr-4 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 value={query}
                 onChange={(e) => handleSearch(e.target.value)}
@@ -163,7 +168,7 @@ export default function Header() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
-              <span className="hidden lg:inline">{session?.user ? session.user.name || "Hesabim" : "Giris Yap"}</span>
+              <span className="hidden lg:inline">{session?.user ? session.user.name || tc("myAccount") : tc("login")}</span>
             </Link>
 
             {/* Notifications */}
@@ -191,7 +196,7 @@ export default function Header() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
               </svg>
-              <span className="hidden lg:inline">Sepet</span>
+              <span className="hidden lg:inline">{tc("cart")}</span>
               {mounted && itemCount > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 bg-primary text-white text-[10px] font-bold rounded-full w-4.5 h-4.5 flex items-center justify-center min-w-[18px] h-[18px]">
                   {itemCount}
@@ -224,37 +229,37 @@ export default function Header() {
           <ul className="flex items-center gap-6 py-2.5 text-sm">
             <li>
               <Link href="/kategori" className="font-medium text-foreground hover:text-primary transition-colors">
-                Tum Kategoriler
+                {t("allCategories")}
               </Link>
             </li>
             <li>
               <Link href="/markalar" className="text-muted-foreground hover:text-primary transition-colors">
-                Markalar
+                {tc("brands")}
               </Link>
             </li>
             <li>
               <Link href="/firsatlar" className="text-danger font-medium hover:text-danger/80 transition-colors">
-                Firsatlar
+                {t("deals")}
               </Link>
             </li>
             <li>
               <Link href="/yeni-urunler" className="text-muted-foreground hover:text-primary transition-colors">
-                Yeni Urunler
+                {t("newProducts")}
               </Link>
             </li>
             <li>
               <Link href="/cok-satanlar" className="text-muted-foreground hover:text-primary transition-colors">
-                Cok Satanlar
+                {t("bestSellers")}
               </Link>
             </li>
             <li>
               <Link href="/blog" className="text-muted-foreground hover:text-primary transition-colors">
-                Blog
+                {t("blog")}
               </Link>
             </li>
             <li>
               <Link href="/iletisim" className="text-muted-foreground hover:text-primary transition-colors">
-                Iletisim
+                {t("contact")}
               </Link>
             </li>
           </ul>
@@ -268,7 +273,7 @@ export default function Header() {
           <div className="p-4 border-b border-border">
             <input
               type="text"
-              placeholder="Urun ara..."
+              placeholder={t("mobileSearchPlaceholder")}
               className="w-full pl-10 pr-4 py-2.5 border border-border rounded-lg text-sm"
               value={query}
               onChange={(e) => handleSearch(e.target.value)}
@@ -276,15 +281,15 @@ export default function Header() {
           </div>
           <nav className="p-4 space-y-3">
             {[
-              { href: "/kategori", label: "Tum Kategoriler" },
-              { href: "/markalar", label: "Markalar" },
-              { href: "/firsatlar", label: "Firsatlar" },
-              { href: "/yeni-urunler", label: "Yeni Urunler" },
-              { href: "/cok-satanlar", label: "Cok Satanlar" },
-              { href: "/siparis-takip", label: "Siparis Takip" },
-              { href: session?.user ? "/hesabim" : "/giris", label: session?.user ? "Hesabim" : "Giris Yap" },
-              { href: "/blog", label: "Blog" },
-              { href: "/iletisim", label: "Iletisim" },
+              { href: "/kategori", label: t("allCategories") },
+              { href: "/markalar", label: tc("brands") },
+              { href: "/firsatlar", label: t("deals") },
+              { href: "/yeni-urunler", label: t("newProducts") },
+              { href: "/cok-satanlar", label: t("bestSellers") },
+              { href: "/siparis-takip", label: t("orderTracking") },
+              { href: session?.user ? "/hesabim" : "/giris", label: session?.user ? tc("myAccount") : tc("login") },
+              { href: "/blog", label: t("blog") },
+              { href: "/iletisim", label: t("contact") },
             ].map((item) => (
               <Link
                 key={item.href}

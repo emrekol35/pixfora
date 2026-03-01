@@ -1,8 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import Image from "next/image";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { useWishlistStore } from "@/store/wishlist";
 import { useCartStore } from "@/store/cart";
 
@@ -23,6 +24,8 @@ interface FavoritesListProps {
 }
 
 export default function FavoritesList({ products }: FavoritesListProps) {
+  const t = useTranslations("product");
+  const common = useTranslations("common");
   const router = useRouter();
   const toggleWishlist = useWishlistStore((s) => s.toggleWishlist);
   const addToCart = useCartStore((s) => s.addItem);
@@ -49,13 +52,13 @@ export default function FavoritesList({ products }: FavoritesListProps) {
           />
         </svg>
         <p className="text-muted-foreground text-lg mb-4">
-          Favori listeniz bos.
+          {t("emptyFavorites")}
         </p>
         <Link
           href="/kategori"
           className="bg-primary text-white px-6 py-2 rounded-lg hover:opacity-90 transition"
         >
-          Urunlere goz atin
+          {t("browseFavorites")}
         </Link>
       </div>
     );
@@ -68,7 +71,7 @@ export default function FavoritesList({ products }: FavoritesListProps) {
           key={product.id}
           className="bg-card border border-border rounded-xl overflow-hidden hover:shadow-md transition"
         >
-          <Link href={`/urun/${product.slug}`}>
+          <Link href={`/urun/${product.slug}` as any}>
             <div className="aspect-square bg-muted relative">
               {product.image ? (
                 <Image
@@ -98,14 +101,14 @@ export default function FavoritesList({ products }: FavoritesListProps) {
               {!product.isActive && (
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                   <span className="text-white text-sm font-medium">
-                    Satista Degil
+                    {t("notForSale")}
                   </span>
                 </div>
               )}
               {product.stock === 0 && product.isActive && (
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                   <span className="text-white text-sm font-medium">
-                    Tukendi
+                    {t("outOfStock")}
                   </span>
                 </div>
               )}
@@ -118,7 +121,7 @@ export default function FavoritesList({ products }: FavoritesListProps) {
                 {product.category}
               </span>
             )}
-            <Link href={`/urun/${product.slug}`}>
+            <Link href={`/urun/${product.slug}` as any}>
               <h3 className="font-medium truncate mt-1 text-foreground hover:text-primary transition">
                 {product.name}
               </h3>
@@ -158,13 +161,13 @@ export default function FavoritesList({ products }: FavoritesListProps) {
                 disabled={!product.isActive || product.stock === 0}
                 className="flex-1 bg-primary text-white text-sm py-2 px-3 rounded-lg hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Sepete Ekle
+                {t("addToCart")}
               </button>
               <button
                 onClick={() => handleRemove(product.id)}
                 className="bg-danger text-white text-sm py-2 px-3 rounded-lg hover:opacity-90 transition"
               >
-                Kaldir
+                {common("remove")}
               </button>
             </div>
           </div>

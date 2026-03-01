@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useCartStore } from "@/store/cart";
 
 export default function CartDrawer() {
+  const t = useTranslations("cart");
   const { items, isOpen, closeCart, removeItem, updateQuantity, getSubtotal, getItemPrice } = useCartStore();
   const [mounted, setMounted] = useState(false);
 
@@ -44,7 +46,7 @@ export default function CartDrawer() {
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h2 className="text-lg font-bold">
-            Sepetim ({items.length} urun)
+            {t("myCart")} ({t("itemCount", { count: items.length })})
           </h2>
           <button
             onClick={closeCart}
@@ -63,12 +65,12 @@ export default function CartDrawer() {
               <svg className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
               </svg>
-              <p className="text-muted-foreground text-sm">Sepetiniz bos</p>
+              <p className="text-muted-foreground text-sm">{t("empty")}</p>
               <button
                 onClick={closeCart}
                 className="mt-4 text-primary text-sm font-medium hover:underline"
               >
-                Alisverise basla
+                {t("startShopping")}
               </button>
             </div>
           ) : (
@@ -131,7 +133,7 @@ export default function CartDrawer() {
                         onClick={() => removeItem(item.id)}
                         className="text-xs text-danger hover:underline"
                       >
-                        Kaldir
+                        {t("remove")}
                       </button>
                     </div>
                   </div>
@@ -152,7 +154,7 @@ export default function CartDrawer() {
         {items.length > 0 && (
           <div className="p-4 border-t border-border bg-white shrink-0">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm text-muted-foreground">Ara Toplam</span>
+              <span className="text-sm text-muted-foreground">{t("subtotal")}</span>
               <span className="text-lg font-bold">
                 {new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(getSubtotal())}
               </span>
@@ -163,14 +165,14 @@ export default function CartDrawer() {
                 onClick={closeCart}
                 className="flex-1 py-2.5 text-center border border-border rounded-lg text-sm font-medium hover:bg-muted transition-colors"
               >
-                Sepete Git
+                {t("goToCart")}
               </Link>
               <Link
                 href="/odeme"
                 onClick={closeCart}
                 className="flex-1 py-2.5 text-center bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors"
               >
-                Odemeye Gec
+                {t("proceedToCheckout")}
               </Link>
             </div>
           </div>
