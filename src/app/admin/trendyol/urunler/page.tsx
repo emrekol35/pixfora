@@ -393,21 +393,17 @@ export default function TrendyolProductsPage() {
                 <p className="text-xs text-muted-foreground">Sonuc bulunamadi</p>
               )}
               {trendyolCategories.length > 0 && (
-                <select
-                  value={bulkCategoryId || ""}
-                  onChange={(e) => {
-                    const id = e.target.value ? Number(e.target.value) : null;
-                    setBulkCategoryId(id);
-                    const cat = trendyolCategories.find((c) => c.id === id);
-                    setSelectedCatName(cat ? (cat.path || cat.name) : "");
-                  }}
-                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm"
-                  size={Math.min(trendyolCategories.length, 6)}
-                >
+                <div className="border border-border rounded-lg max-h-40 overflow-y-auto">
                   {trendyolCategories.slice(0, 100).map((c) => (
-                    <option key={c.id} value={c.id}>{c.path || c.name}</option>
+                    <div
+                      key={c.id}
+                      onClick={() => { setBulkCategoryId(c.id); setSelectedCatName(c.path || c.name); }}
+                      className={`px-3 py-2 text-sm cursor-pointer hover:bg-muted/60 ${bulkCategoryId === c.id ? "bg-primary/10 text-primary font-medium" : ""}`}
+                    >
+                      {c.path || c.name}
+                    </div>
                   ))}
-                </select>
+                </div>
               )}
               {bulkCategoryId && selectedCatName && (
                 <p className="text-xs text-green-600 mt-1">✓ Secilen: {selectedCatName}</p>
@@ -425,21 +421,17 @@ export default function TrendyolProductsPage() {
                 <p className="text-xs text-muted-foreground">Sonuc bulunamadi</p>
               )}
               {trendyolBrands.length > 0 && (
-                <select
-                  value={bulkBrandId || ""}
-                  onChange={(e) => {
-                    const id = e.target.value ? Number(e.target.value) : null;
-                    setBulkBrandId(id);
-                    const brand = trendyolBrands.find((b) => b.id === id);
-                    setSelectedBrandName(brand ? brand.name : "");
-                  }}
-                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm"
-                  size={Math.min(trendyolBrands.length, 6)}
-                >
+                <div className="border border-border rounded-lg max-h-40 overflow-y-auto">
                   {trendyolBrands.slice(0, 100).map((b) => (
-                    <option key={b.id} value={b.id}>{b.name}</option>
+                    <div
+                      key={b.id}
+                      onClick={() => { setBulkBrandId(b.id); setSelectedBrandName(b.name); }}
+                      className={`px-3 py-2 text-sm cursor-pointer hover:bg-muted/60 ${bulkBrandId === b.id ? "bg-primary/10 text-primary font-medium" : ""}`}
+                    >
+                      {b.name}
+                    </div>
                   ))}
-                </select>
+                </div>
               )}
               {bulkBrandId && selectedBrandName && (
                 <p className="text-xs text-green-600 mt-1">✓ Secilen: {selectedBrandName}</p>
