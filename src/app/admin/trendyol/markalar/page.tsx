@@ -48,9 +48,13 @@ export default function TrendyolBrandsPage() {
     try {
       const res = await fetch("/api/admin/marketplace/trendyol/brands", { method: "POST" });
       const data = await res.json();
-      alert(data.message || "Senkronizasyon tamamlandı");
-      fetchBrands();
-    } catch { alert("Senkronizasyon hatası"); } finally { setSyncing(false); }
+      if (!res.ok) {
+        alert(data.error || "Senkronizasyon başarısız");
+      } else {
+        alert(data.message || "Senkronizasyon tamamlandı");
+        fetchBrands();
+      }
+    } catch { alert("Senkronizasyon hatası — bağlantı zaman aşımına uğramış olabilir"); } finally { setSyncing(false); }
   }
 
   async function handleAutoMatch() {

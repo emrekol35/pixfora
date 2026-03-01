@@ -65,10 +65,14 @@ export default function TrendyolCategoriesPage() {
     try {
       const res = await fetch("/api/admin/marketplace/trendyol/categories", { method: "POST" });
       const data = await res.json();
-      alert(data.message || "Senkronizasyon tamamlandı");
-      fetchCategories();
+      if (!res.ok) {
+        alert(data.error || "Senkronizasyon başarısız");
+      } else {
+        alert(data.message || "Senkronizasyon tamamlandı");
+        fetchCategories();
+      }
     } catch {
-      alert("Senkronizasyon hatası");
+      alert("Senkronizasyon hatası — bağlantı zaman aşımına uğramış olabilir");
     } finally {
       setSyncing(false);
     }

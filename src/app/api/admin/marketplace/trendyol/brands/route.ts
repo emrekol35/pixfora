@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/** POST — Trendyol'dan markaları çek ve DB'ye kaydet */
+/** POST — Trendyol'dan markaları çek ve DB'ye kaydet (ilk 5 sayfa = ~5000 marka) */
 export async function POST() {
   try {
     const session = await auth();
@@ -58,28 +58,30 @@ export async function POST() {
     });
     const mappingMap = new Map(existingMappings.map((m) => [m.id, m.localBrandId]));
 
+    // Trendyol tüm global markaları döndürür (100.000+), sadece ilk 5 sayfa çekilir
+    const MAX_PAGES = 5;
     let allBrands: { id: number; name: string }[] = [];
-    let page = 0;
-    let hasMore = true;
-    while (hasMore) {
+    for (let page = 0; page < MAX_PAGES; page++) {
       const brands = await getBrands(client, page, 1000);
-      if (brands.length === 0) {
-        hasMore = false;
-      } else {
-        allBrands = allBrands.concat(brands);
-        page++;
-        if (page > 100) hasMore = false;
-      }
+      if (brands.length === 0) break;
+      allBrands = allBrands.concat(brands);
     }
 
+    // Toplu upsert — 500'lük batch'ler halinde
     let upserted = 0;
-    for (const brand of allBrands) {
-      await prisma.trendyolBrand.upsert({
-        where: { id: brand.id },
-        create: { id: brand.id, name: brand.name, localBrandId: mappingMap.get(brand.id) || null },
-        update: { name: brand.name },
-      });
-      upserted++;
+    const BATCH_SIZE = 500;
+    for (let i = 0; i < allBrands.length; i += BATCH_SIZE) {
+      const batch = allBrands.slice(i, i + BATCH_SIZE);
+      await prisma.$transaction(
+        batch.map((brand) =>
+          prisma.trendyolBrand.upsert({
+            where: { id: brand.id },
+            create: { id: brand.id, name: brand.name, localBrandId: mappingMap.get(brand.id) || null },
+            update: { name: brand.name },
+          })
+        )
+      );
+      upserted += batch.length;
     }
 
     return NextResponse.json({ success: true, message: `${upserted} marka senkronize edildi`, total: upserted });
