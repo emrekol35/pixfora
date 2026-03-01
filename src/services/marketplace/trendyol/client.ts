@@ -137,23 +137,30 @@ export class TrendyolClient {
           continue;
         }
 
-        // 5xx hataları — tekrar dene
-        if (response.status >= 500) {
-          lastError = new Error(
-            `Trendyol API ${response.status}: ${response.statusText}`
-          );
-          if (attempt < MAX_RETRIES - 1) {
-            await new Promise((resolve) =>
-              setTimeout(resolve, RETRY_BASE_DELAY * Math.pow(2, attempt))
-            );
-            continue;
-          }
-          throw lastError;
-        }
-
-        // 4xx hataları — tekrar deneme
+        // Başarısız yanıt — hata detayını oku
         if (!response.ok) {
-          const errorBody = await response.text();
+          let errorBody = "";
+          try {
+            errorBody = await response.text();
+          } catch {
+            errorBody = response.statusText;
+          }
+
+          // 5xx hataları — tekrar dene
+          if (response.status >= 500) {
+            lastError = new Error(
+              `Trendyol API ${response.status}: ${errorBody || response.statusText}`
+            );
+            if (attempt < MAX_RETRIES - 1) {
+              await new Promise((resolve) =>
+                setTimeout(resolve, RETRY_BASE_DELAY * Math.pow(2, attempt))
+              );
+              continue;
+            }
+            throw lastError;
+          }
+
+          // 4xx hataları — tekrar deneme
           throw new Error(
             `Trendyol API Hata ${response.status}: ${errorBody}`
           );

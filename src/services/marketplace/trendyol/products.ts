@@ -209,11 +209,23 @@ export interface LocalProductForTrendyol {
   attributes: { attributeId: number; attributeValueId?: number; customAttributeValue?: string }[] | null;
 }
 
+/** Göreceli URL'yi mutlak URL'ye çevir */
+function toAbsoluteUrl(url: string): string {
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://pixfora.com").replace(/\/$/, "");
+  return `${siteUrl}${url.startsWith("/") ? "" : "/"}${url}`;
+}
+
 /** Yerel ürünü Trendyol formatına çevir */
 export function mapProductToTrendyol(
   product: LocalProductForTrendyol
 ): TrendyolProductItem[] {
   const items: TrendyolProductItem[] = [];
+
+  // Resimleri mutlak URL'ye çevir
+  const sortedImages = product.images
+    .sort((a, b) => a.order - b.order)
+    .map((img) => ({ url: toAbsoluteUrl(img.url) }));
 
   // Varyantlı ürün — her varyant ayrı Trendyol ürünü olarak gider
   if (product.hasVariants && product.variants.length > 0) {
@@ -235,12 +247,11 @@ export function mapProductToTrendyol(
         stockCode: variant.sku || barcode,
         dimensionalWeight: product.desi ?? undefined,
         description: product.description || product.name,
+        currencyType: "TRY",
         listPrice,
         salePrice: variantPrice,
         vatRate: 10,
-        images: product.images
-          .sort((a, b) => a.order - b.order)
-          .map((img) => ({ url: img.url })),
+        images: sortedImages,
         attributes: product.attributes || undefined,
       });
     }
@@ -262,12 +273,11 @@ export function mapProductToTrendyol(
       stockCode: product.sku || barcode,
       dimensionalWeight: product.desi ?? undefined,
       description: product.description || product.name,
+      currencyType: "TRY",
       listPrice,
       salePrice: product.price,
       vatRate: 10,
-      images: product.images
-        .sort((a, b) => a.order - b.order)
-        .map((img) => ({ url: img.url })),
+      images: sortedImages,
       attributes: product.attributes || undefined,
     });
   }
