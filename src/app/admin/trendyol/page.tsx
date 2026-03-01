@@ -36,9 +36,10 @@ export default function TrendyolSettingsPage() {
 
   async function fetchConfig() {
     try {
-      const res = await fetch("/api/admin/integrations");
+      const res = await fetch("/api/integrations");
       const data = await res.json();
-      const trendyol = data.find?.((i: any) => i.service === "trendyol");
+      const list = Array.isArray(data) ? data : [];
+      const trendyol = list.find((i: any) => i.service === "trendyol");
       if (trendyol) {
         setIsActive(trendyol.isActive);
         if (trendyol.config) {
@@ -86,7 +87,7 @@ export default function TrendyolSettingsPage() {
     setSaving(true);
     try {
       // Upsert integration
-      await fetch("/api/admin/integrations", {
+      const res = await fetch("/api/integrations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -95,6 +96,7 @@ export default function TrendyolSettingsPage() {
           config,
         }),
       });
+      if (!res.ok) throw new Error("Kaydetme başarısız");
       alert("Ayarlar kaydedildi");
     } catch {
       alert("Kaydetme hatası");
@@ -108,7 +110,7 @@ export default function TrendyolSettingsPage() {
     setTestResult(null);
     try {
       // Geçici kaydet
-      await fetch("/api/admin/integrations", {
+      await fetch("/api/integrations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ service: "trendyol", isActive: true, config }),

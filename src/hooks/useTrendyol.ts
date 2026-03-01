@@ -8,7 +8,7 @@ export function useTrendyolConfig() {
   return useQuery({
     queryKey: ["trendyol", "config"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/integrations");
+      const res = await fetch("/api/integrations");
       const data = await res.json();
       const trendyol = (Array.isArray(data) ? data : []).find(
         (i: any) => i.service === "trendyol"

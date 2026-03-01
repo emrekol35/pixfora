@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { resetTrendyolClient } from "@/services/marketplace/trendyol";
 
 export async function GET() {
   try {
@@ -40,15 +41,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const integration = await prisma.integration.create({
-      data: {
+    const integration = await prisma.integration.upsert({
+      where: { service },
+      create: {
         service,
+        config,
+        isActive: isActive ?? true,
+      },
+      update: {
         config,
         isActive: isActive ?? true,
       },
     });
 
-    return NextResponse.json(integration, { status: 201 });
+    // Trendyol client cache'ini sıfırla (credential değişikliğinde)
+    if (service === "trendyol") {
+      resetTrendyolClient();
+    }
+
+    return NextResponse.json(integration);
   } catch (error) {
     console.error("Entegrasyon olusturulamadi:", error);
     return NextResponse.json(
