@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search") || "";
     const mappedOnly = searchParams.get("mappedOnly") === "true";
     const parentId = searchParams.get("parentId");
+    const all = searchParams.get("all") === "true";
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {};
@@ -29,10 +30,14 @@ export async function GET(request: NextRequest) {
       ];
     }
     if (mappedOnly) where.localCategoryId = { not: null };
-    if (parentId) {
-      where.parentId = parseInt(parentId);
-    } else if (!search) {
-      where.parentId = null;
+
+    // all=true: tüm kategorileri döndür (yapılandırma modal'ı için)
+    if (!all) {
+      if (parentId) {
+        where.parentId = parseInt(parentId);
+      } else if (!search) {
+        where.parentId = null;
+      }
     }
 
     const categories = await prisma.trendyolCategory.findMany({
@@ -42,7 +47,7 @@ export async function GET(request: NextRequest) {
         children: { select: { id: true, name: true }, take: 5 },
       },
       orderBy: { name: "asc" },
-      take: 100,
+      take: all ? 10000 : 100,
     });
 
     const total = await prisma.trendyolCategory.count();

@@ -77,7 +77,7 @@ export default function TrendyolProductsPage() {
 
   // Trendyol kategorileri ve markaları yükle
   useEffect(() => {
-    fetch("/api/admin/marketplace/trendyol/categories?search=")
+    fetch("/api/admin/marketplace/trendyol/categories?all=true")
       .then((r) => r.json())
       .then((data) => setTrendyolCategories(
         (data.categories || []).map((c: TrendyolCat & { children?: unknown[] }) => ({
@@ -86,7 +86,7 @@ export default function TrendyolProductsPage() {
       ))
       .catch(() => {});
 
-    fetch("/api/admin/marketplace/trendyol/brands?size=5000")
+    fetch("/api/admin/marketplace/trendyol/brands?size=10000")
       .then((r) => r.json())
       .then((data) => setTrendyolBrands(
         (data.brands || []).map((b: TrendyolBrand) => ({ id: b.id, name: b.name }))
