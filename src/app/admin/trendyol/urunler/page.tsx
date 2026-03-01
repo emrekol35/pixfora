@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 interface TrendyolProductInfo {
   id: string;
@@ -45,11 +45,19 @@ export default function TrendyolProductsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [actionLoading, setActionLoading] = useState("");
 
-  // Trendyol kategori/marka listeleri
+  // Trendyol kategori/marka arama sonuçları
   const [trendyolCategories, setTrendyolCategories] = useState<TrendyolCat[]>([]);
   const [trendyolBrands, setTrendyolBrands] = useState<TrendyolBrand[]>([]);
   const [catSearch, setCatSearch] = useState("");
   const [brandSearch, setBrandSearch] = useState("");
+  const [catLoading, setCatLoading] = useState(false);
+  const [brandLoading, setBrandLoading] = useState(false);
+  const catTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const brandTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Seçilen kategori/marka bilgisi (adını göstermek için)
+  const [selectedCatName, setSelectedCatName] = useState("");
+  const [selectedBrandName, setSelectedBrandName] = useState("");
 
   // Toplu yapılandırma modal
   const [showBulkConfig, setShowBulkConfig] = useState(false);
@@ -75,24 +83,55 @@ export default function TrendyolProductsPage() {
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
-  // Trendyol kategorileri ve markaları yükle
+  // Debounced kategori arama
   useEffect(() => {
-    fetch("/api/admin/marketplace/trendyol/categories?all=true")
-      .then((r) => r.json())
-      .then((data) => setTrendyolCategories(
-        (data.categories || []).map((c: TrendyolCat & { children?: unknown[] }) => ({
-          id: c.id, name: c.name, path: c.path,
-        }))
-      ))
-      .catch(() => {});
+    if (catTimerRef.current) clearTimeout(catTimerRef.current);
+    if (!catSearch || catSearch.length < 2) {
+      setTrendyolCategories([]);
+      return;
+    }
+    setCatLoading(true);
+    catTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/admin/marketplace/trendyol/categories?all=true&search=${encodeURIComponent(catSearch)}`);
+        const data = await res.json();
+        setTrendyolCategories(
+          (data.categories || []).map((c: TrendyolCat & { children?: unknown[] }) => ({
+            id: c.id, name: c.name, path: c.path,
+          }))
+        );
+      } catch {
+        setTrendyolCategories([]);
+      } finally {
+        setCatLoading(false);
+      }
+    }, 400);
+    return () => { if (catTimerRef.current) clearTimeout(catTimerRef.current); };
+  }, [catSearch]);
 
-    fetch("/api/admin/marketplace/trendyol/brands?size=10000")
-      .then((r) => r.json())
-      .then((data) => setTrendyolBrands(
-        (data.brands || []).map((b: TrendyolBrand) => ({ id: b.id, name: b.name }))
-      ))
-      .catch(() => {});
-  }, []);
+  // Debounced marka arama
+  useEffect(() => {
+    if (brandTimerRef.current) clearTimeout(brandTimerRef.current);
+    if (!brandSearch || brandSearch.length < 2) {
+      setTrendyolBrands([]);
+      return;
+    }
+    setBrandLoading(true);
+    brandTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/admin/marketplace/trendyol/brands?search=${encodeURIComponent(brandSearch)}&size=50`);
+        const data = await res.json();
+        setTrendyolBrands(
+          (data.brands || []).map((b: TrendyolBrand) => ({ id: b.id, name: b.name }))
+        );
+      } catch {
+        setTrendyolBrands([]);
+      } finally {
+        setBrandLoading(false);
+      }
+    }, 400);
+    return () => { if (brandTimerRef.current) clearTimeout(brandTimerRef.current); };
+  }, [brandSearch]);
 
   function toggleSelect(id: string) {
     setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -201,13 +240,7 @@ export default function TrendyolProductsPage() {
     return STATUS_LABELS[p.trendyolProduct.syncStatus] || STATUS_LABELS.NOT_SYNCED;
   }
 
-  const filteredCats = catSearch
-    ? trendyolCategories.filter((c) => c.name.toLowerCase().includes(catSearch.toLowerCase()) || c.path?.toLowerCase().includes(catSearch.toLowerCase()))
-    : trendyolCategories;
-
-  const filteredBrands = brandSearch
-    ? trendyolBrands.filter((b) => b.name.toLowerCase().includes(brandSearch.toLowerCase()))
-    : trendyolBrands;
+  // Artık client-side filtreleme yok, API'den arama yapılıyor
 
   return (
     <div className="p-6 space-y-6">
@@ -353,38 +386,64 @@ export default function TrendyolProductsPage() {
             <div>
               <label className="text-sm font-medium block mb-1">Trendyol Kategorisi</label>
               <input type="text" value={catSearch} onChange={(e) => setCatSearch(e.target.value)}
-                placeholder="Kategori ara..."
+                placeholder="En az 2 harf yazin... (ornek: tisort)"
                 className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm mb-1" />
-              <select
-                value={bulkCategoryId || ""}
-                onChange={(e) => setBulkCategoryId(e.target.value ? Number(e.target.value) : null)}
-                className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm"
-                size={5}
-              >
-                {filteredCats.slice(0, 100).map((c) => (
-                  <option key={c.id} value={c.id}>{c.path || c.name}</option>
-                ))}
-              </select>
-              {bulkCategoryId && <p className="text-xs text-green-600 mt-1">Secilen: {trendyolCategories.find((c) => c.id === bulkCategoryId)?.name}</p>}
+              {catLoading && <p className="text-xs text-muted-foreground">Araniyor...</p>}
+              {!catLoading && catSearch.length >= 2 && trendyolCategories.length === 0 && (
+                <p className="text-xs text-muted-foreground">Sonuc bulunamadi</p>
+              )}
+              {trendyolCategories.length > 0 && (
+                <select
+                  value={bulkCategoryId || ""}
+                  onChange={(e) => {
+                    const id = e.target.value ? Number(e.target.value) : null;
+                    setBulkCategoryId(id);
+                    const cat = trendyolCategories.find((c) => c.id === id);
+                    setSelectedCatName(cat ? (cat.path || cat.name) : "");
+                  }}
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm"
+                  size={Math.min(trendyolCategories.length, 6)}
+                >
+                  {trendyolCategories.slice(0, 100).map((c) => (
+                    <option key={c.id} value={c.id}>{c.path || c.name}</option>
+                  ))}
+                </select>
+              )}
+              {bulkCategoryId && selectedCatName && (
+                <p className="text-xs text-green-600 mt-1">✓ Secilen: {selectedCatName}</p>
+              )}
             </div>
 
             {/* Marka Seç */}
             <div>
               <label className="text-sm font-medium block mb-1">Trendyol Markasi</label>
               <input type="text" value={brandSearch} onChange={(e) => setBrandSearch(e.target.value)}
-                placeholder="Marka ara..."
+                placeholder="En az 2 harf yazin... (ornek: lecatte)"
                 className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm mb-1" />
-              <select
-                value={bulkBrandId || ""}
-                onChange={(e) => setBulkBrandId(e.target.value ? Number(e.target.value) : null)}
-                className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm"
-                size={5}
-              >
-                {filteredBrands.slice(0, 100).map((b) => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
-                ))}
-              </select>
-              {bulkBrandId && <p className="text-xs text-green-600 mt-1">Secilen: {trendyolBrands.find((b) => b.id === bulkBrandId)?.name}</p>}
+              {brandLoading && <p className="text-xs text-muted-foreground">Araniyor...</p>}
+              {!brandLoading && brandSearch.length >= 2 && trendyolBrands.length === 0 && (
+                <p className="text-xs text-muted-foreground">Sonuc bulunamadi</p>
+              )}
+              {trendyolBrands.length > 0 && (
+                <select
+                  value={bulkBrandId || ""}
+                  onChange={(e) => {
+                    const id = e.target.value ? Number(e.target.value) : null;
+                    setBulkBrandId(id);
+                    const brand = trendyolBrands.find((b) => b.id === id);
+                    setSelectedBrandName(brand ? brand.name : "");
+                  }}
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm"
+                  size={Math.min(trendyolBrands.length, 6)}
+                >
+                  {trendyolBrands.slice(0, 100).map((b) => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+              )}
+              {bulkBrandId && selectedBrandName && (
+                <p className="text-xs text-green-600 mt-1">✓ Secilen: {selectedBrandName}</p>
+              )}
             </div>
 
             <div className="flex gap-2 justify-end pt-2">
