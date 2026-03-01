@@ -38,7 +38,7 @@ export default function TrendyolBrandsPage() {
   useEffect(() => { fetchBrands(); }, [fetchBrands]);
 
   useEffect(() => {
-    fetch("/api/admin/brands").then((r) => r.json()).then((data) => {
+    fetch("/api/brands").then((r) => r.json()).then((data) => {
       setLocalBrands(Array.isArray(data) ? data : data.brands || []);
     }).catch(() => {});
   }, []);

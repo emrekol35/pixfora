@@ -51,17 +51,11 @@ export default function TrendyolCategoriesPage() {
   }, [fetchCategories]);
 
   useEffect(() => {
-    fetch("/api/admin/categories")
+    fetch("/api/categories?flat=true")
       .then((r) => r.json())
       .then((data) => {
-        const flatten = (cats: any[], result: LocalCategory[] = []): LocalCategory[] => {
-          for (const c of cats) {
-            result.push({ id: c.id, name: c.name, slug: c.slug });
-            if (c.children) flatten(c.children, result);
-          }
-          return result;
-        };
-        setLocalCategories(flatten(Array.isArray(data) ? data : data.categories || []));
+        const list = Array.isArray(data) ? data : data.categories || [];
+        setLocalCategories(list.map((c: any) => ({ id: c.id, name: c.name, slug: c.slug })));
       })
       .catch(() => {});
   }, []);
