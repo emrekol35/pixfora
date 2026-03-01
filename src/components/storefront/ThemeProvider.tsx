@@ -3,20 +3,30 @@
 import { useEffect, useState, createContext, useContext, useCallback } from "react";
 import { COLOR_CSS_MAP, DARK_COLOR_CSS_MAP } from "@/lib/theme-utils";
 import { useThemeSettings } from "@/hooks/useThemeSettings";
+import { getThemeLoader, getThemeMeta } from "@/themes/registry";
+import type { ThemeComponents } from "@/themes/types";
+
+// Default components (static import for instant fallback)
+import defaultComponents from "@/themes/default";
 
 interface ThemeContextValue {
   isDark: boolean;
   toggleDarkMode: () => void;
   darkModeEnabled: boolean;
+  activeThemeId: string;
+  components: ThemeComponents;
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
   isDark: false,
   toggleDarkMode: () => {},
   darkModeEnabled: true,
+  activeThemeId: "default",
+  components: defaultComponents,
 });
 
 export const useTheme = () => useContext(ThemeContext);
+export const useThemeComponents = () => useContext(ThemeContext).components;
 
 function loadGoogleFont(fontFamily: string) {
   const id = `gfont-${fontFamily.replace(/\s+/g, "-").toLowerCase()}`;
@@ -39,6 +49,8 @@ const RADIUS_MAP: Record<string, string> = {
 export default function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [isDark, setIsDark] = useState(false);
+  const [activeThemeId, setActiveThemeId] = useState("default");
+  const [components, setComponents] = useState<ThemeComponents>(defaultComponents);
   const setThemeStoreSettings = useThemeSettings((s) => s.setSettings);
 
   // Fetch theme settings
@@ -48,14 +60,48 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
         const res = await fetch("/api/settings/theme");
         const data = await res.json();
         const s = data.settings || {};
-        setSettings(s);
-        setThemeStoreSettings(s);
+
+        // Merge theme default settings with user overrides
+        const themeId = s.theme_active_theme || "default";
+        const meta = getThemeMeta(themeId);
+        const merged = { ...(meta?.defaultSettings || {}), ...s };
+
+        setSettings(merged);
+        setActiveThemeId(themeId);
+        setThemeStoreSettings(merged);
       } catch {
-        // Fallback: use static CSS @theme values
+        // Fallback: use default theme
       }
     }
     loadTheme();
   }, [setThemeStoreSettings]);
+
+  // Load active theme components
+  useEffect(() => {
+    if (activeThemeId === "default") {
+      setComponents(defaultComponents);
+      return;
+    }
+    const loader = getThemeLoader(activeThemeId);
+    if (!loader) {
+      setComponents(defaultComponents);
+      return;
+    }
+    loader()
+      .then((themeComponents) => {
+        // Fallback to default for any missing components
+        setComponents({
+          Header: themeComponents.Header || defaultComponents.Header,
+          Footer: themeComponents.Footer || defaultComponents.Footer,
+          ProductCard: themeComponents.ProductCard || defaultComponents.ProductCard,
+          HeroSection: themeComponents.HeroSection || defaultComponents.HeroSection,
+          CategoryGrid: themeComponents.CategoryGrid || defaultComponents.CategoryGrid,
+          PromotionBanner: themeComponents.PromotionBanner || defaultComponents.PromotionBanner,
+          TrustBadges: themeComponents.TrustBadges || defaultComponents.TrustBadges,
+        });
+      })
+      .catch(() => setComponents(defaultComponents));
+  }, [activeThemeId]);
 
   // Initialize dark mode
   useEffect(() => {
@@ -78,29 +124,24 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
       if (value) root.style.setProperty(cssVar, value);
     }
 
-    // Font size
     if (settings.theme_font_size_base) {
       root.style.fontSize = settings.theme_font_size_base;
     }
 
-    // Border radius
     if (settings.theme_border_radius) {
       root.dataset.radius = settings.theme_border_radius;
     }
 
-    // Container width
     if (settings.theme_container_width) {
       root.style.setProperty("--container-max-width", settings.theme_container_width + "px");
     }
 
-    // Dark class
     if (isDark) {
       root.classList.add("dark");
     } else {
       root.classList.remove("dark");
     }
 
-    // Custom CSS
     if (settings.theme_custom_css) {
       let styleEl = document.getElementById("pixfora-custom-css");
       if (!styleEl) {
@@ -143,7 +184,7 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
   const darkModeEnabled = settings.theme_dark_mode_enabled !== "false";
 
   return (
-    <ThemeContext.Provider value={{ isDark, toggleDarkMode, darkModeEnabled }}>
+    <ThemeContext.Provider value={{ isDark, toggleDarkMode, darkModeEnabled, activeThemeId, components }}>
       {children}
     </ThemeContext.Provider>
   );
