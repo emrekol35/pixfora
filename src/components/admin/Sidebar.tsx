@@ -283,7 +283,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-64 min-h-screen bg-sidebar border-r border-border flex-col shrink-0">
+      <aside className="hidden md:flex w-64 h-screen bg-sidebar border-r border-border flex-col shrink-0 sticky top-0">
         {sidebarContent}
       </aside>
 
