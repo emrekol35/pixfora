@@ -10,9 +10,22 @@ import { useSearchStore } from "@/store/search";
 import NotificationBell from "@/components/storefront/NotificationBell";
 import SearchDropdown from "@/components/storefront/SearchDropdown";
 import LanguageSwitcher from "@/components/storefront/LanguageSwitcher";
+import DarkModeToggle from "@/components/storefront/DarkModeToggle";
 import { useTranslations } from "next-intl";
+import { useThemeSettings } from "@/hooks/useThemeSettings";
+import HeaderCentered from "@/components/storefront/header/HeaderCentered";
+import HeaderMinimal from "@/components/storefront/header/HeaderMinimal";
 
 export default function Header() {
+  const headerStyle = useThemeSettings((s) => s.getSetting("theme_header_style", "default"));
+
+  if (headerStyle === "centered") return <HeaderCentered />;
+  if (headerStyle === "minimal") return <HeaderMinimal />;
+
+  return <HeaderDefault />;
+}
+
+function HeaderDefault() {
   const t = useTranslations("header");
   const tc = useTranslations("common");
   const router = useRouter();
@@ -100,7 +113,7 @@ export default function Header() {
   }, [query, recentSearches.length, openSearch]);
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-border">
+    <header className="sticky top-0 z-50 bg-background border-b border-border">
       {/* Top Bar */}
       <div className="bg-foreground text-white text-xs py-1.5">
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between">
@@ -170,6 +183,9 @@ export default function Header() {
               </svg>
               <span className="hidden lg:inline">{session?.user ? session.user.name || tc("myAccount") : tc("login")}</span>
             </Link>
+
+            {/* Dark Mode Toggle */}
+            <DarkModeToggle />
 
             {/* Notifications */}
             <NotificationBell />
@@ -268,7 +284,7 @@ export default function Header() {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-border bg-white">
+        <div className="md:hidden border-t border-border bg-background">
           {/* Mobile Search */}
           <div className="p-4 border-b border-border">
             <input

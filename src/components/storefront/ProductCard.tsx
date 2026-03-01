@@ -9,6 +9,9 @@ import { useCartStore } from "@/store/cart";
 import { useWishlistStore } from "@/store/wishlist";
 import { useCompareStore } from "@/store/compare";
 import { trackEvent } from "@/lib/tracking";
+import { useThemeSettings } from "@/hooks/useThemeSettings";
+import ProductCardMinimal from "@/components/storefront/product-card/ProductCardMinimal";
+import ProductCardDetailed from "@/components/storefront/product-card/ProductCardDetailed";
 
 // Sabit NumberFormat instance (her render'da yeniden oluşturulmaz)
 const priceFormatter = new Intl.NumberFormat("tr-TR", {
@@ -112,7 +115,7 @@ function ProductCardInner({ product }: ProductCardProps) {
   return (
     <Link
       href={`/urun/${product.slug}`}
-      className="group bg-white rounded-xl border border-border overflow-hidden hover:shadow-lg transition-all duration-300"
+      className="group bg-card rounded-xl border border-border overflow-hidden hover:shadow-lg transition-all duration-300"
       onClick={() => trackEvent("product_click", { productId: product.id, productName: product.name })}
     >
       {/* Image */}
@@ -225,5 +228,14 @@ function ProductCardInner({ product }: ProductCardProps) {
   );
 }
 
-const ProductCard = memo(ProductCardInner);
+const ProductCardDefault = memo(ProductCardInner);
+
+function ProductCardDispatcher(props: ProductCardProps) {
+  const cardStyle = useThemeSettings((s) => s.getSetting("theme_product_card_style", "default"));
+  if (cardStyle === "minimal") return <ProductCardMinimal {...props} />;
+  if (cardStyle === "detailed") return <ProductCardDetailed {...props} />;
+  return <ProductCardDefault {...props} />;
+}
+
+const ProductCard = memo(ProductCardDispatcher);
 export default ProductCard;

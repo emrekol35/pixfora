@@ -29,7 +29,20 @@ body {
   font-family: var(--font-sans);
   background-color: var(--color-background);
   color: var(--color-foreground);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading, var(--font-sans));
+}
+
+/* Theme border radius system */
+:root { --radius-base: 0.75rem; }
+html[data-radius="none"] { --radius-base: 0px; }
+html[data-radius="sm"] { --radius-base: 0.25rem; }
+html[data-radius="md"] { --radius-base: 0.5rem; }
+html[data-radius="lg"] { --radius-base: 0.75rem; }
+html[data-radius="full"] { --radius-base: 9999px; }
 
 /* Admin Sidebar slide-in animation */
 @keyframes slide-in-left {

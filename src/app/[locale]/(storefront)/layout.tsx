@@ -4,6 +4,7 @@ import Footer from "@/components/storefront/Footer";
 import WishlistInit from "@/components/storefront/WishlistInit";
 import CartSyncProvider from "@/components/storefront/CartSyncProvider";
 import Providers from "@/components/storefront/Providers";
+import ThemeProvider from "@/components/storefront/ThemeProvider";
 import OfflineIndicator from "@/components/shared/OfflineIndicator";
 
 // Lazy load: client JS bundle'i ayri chunk olarak yuklenir (code splitting)
@@ -39,6 +40,7 @@ export default function StorefrontLayout({
 }) {
   return (
     <Providers>
+      <ThemeProvider>
       <TrackingProvider>
         <div className="min-h-screen flex flex-col">
           <OfflineIndicator />
@@ -56,6 +58,7 @@ export default function StorefrontLayout({
           <MarketingPopup />
         </div>
       </TrackingProvider>
+      </ThemeProvider>
     </Providers>
   );
 }

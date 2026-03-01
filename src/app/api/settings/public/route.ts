@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
-const ALLOWED_PREFIXES = ["bank_account_", "free_shipping_", "flat_shipping_"];
+const ALLOWED_PREFIXES = ["bank_account_", "free_shipping_", "flat_shipping_", "theme_"];
 
 export async function GET(request: NextRequest) {
   try {

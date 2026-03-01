@@ -3,8 +3,20 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { useThemeSettings } from "@/hooks/useThemeSettings";
+import FooterCompact from "@/components/storefront/footer/FooterCompact";
+import FooterMinimal from "@/components/storefront/footer/FooterMinimal";
 
 export default function Footer() {
+  const footerStyle = useThemeSettings((s) => s.getSetting("theme_footer_style", "default"));
+
+  if (footerStyle === "compact") return <FooterCompact />;
+  if (footerStyle === "minimal") return <FooterMinimal />;
+
+  return <FooterDefault />;
+}
+
+function FooterDefault() {
   const t = useTranslations("footer");
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);

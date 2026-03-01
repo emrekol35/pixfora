@@ -174,6 +174,11 @@ const menuItems = [
     ],
   },
   {
+    title: "Tema",
+    href: "/admin/tema",
+    icon: "🎨",
+  },
+  {
     title: "Ayarlar",
     href: "/admin/ayarlar",
     icon: "⚙️",
