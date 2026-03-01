@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 interface TrendyolBrandItem {
   id: number;
@@ -17,10 +17,14 @@ export default function TrendyolBrandsPage() {
   const [total, setTotal] = useState(0);
   const [mapped, setMapped] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
   const [autoMatching, setAutoMatching] = useState(false);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
+
+  // Kademeli sync state
+  const [syncing, setSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0, message: "" });
+  const abortRef = useRef(false);
 
   const fetchBrands = useCallback(async () => {
     setLoading(true);
@@ -32,7 +36,9 @@ export default function TrendyolBrandsPage() {
       setBrands(data.brands || []);
       setTotal(data.total || 0);
       setMapped(data.mapped || 0);
-    } catch {} finally { setLoading(false); }
+    } catch {
+      // ignore
+    } finally { setLoading(false); }
   }, [search, page]);
 
   useEffect(() => { fetchBrands(); }, [fetchBrands]);
@@ -45,16 +51,49 @@ export default function TrendyolBrandsPage() {
 
   async function handleSync() {
     setSyncing(true);
+    abortRef.current = false;
+    let syncPage = 0;
+    let hasMore = true;
+
     try {
-      const res = await fetch("/api/admin/marketplace/trendyol/brands", { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || "Senkronizasyon başarısız");
-      } else {
-        alert(data.message || "Senkronizasyon tamamlandı");
+      while (hasMore && !abortRef.current) {
+        const res = await fetch(`/api/admin/marketplace/trendyol/brands?syncPage=${syncPage}`, {
+          method: "POST",
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert(data.error || "Senkronizasyon başarısız");
+          break;
+        }
+
+        hasMore = data.hasMore;
+        syncPage = data.nextPage ?? syncPage + 1;
+
+        setSyncProgress({
+          current: data.totalInDb || 0,
+          total: hasMore ? data.totalInDb + 1000 : data.totalInDb,
+          message: data.message || "",
+        });
+
+        if (!hasMore) {
+          fetchBrands();
+        }
+      }
+
+      if (abortRef.current) {
+        setSyncProgress((prev) => ({ ...prev, message: "Senkronizasyon durduruldu" }));
         fetchBrands();
       }
-    } catch { alert("Senkronizasyon hatası — bağlantı zaman aşımına uğramış olabilir"); } finally { setSyncing(false); }
+    } catch {
+      alert("Senkronizasyon hatası — bağlantı zaman aşımına uğramış olabilir");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  function handleStopSync() {
+    abortRef.current = true;
   }
 
   async function handleAutoMatch() {
@@ -86,16 +125,46 @@ export default function TrendyolBrandsPage() {
           <p className="text-muted-foreground mt-1">Toplam: {total} | Eşleşmiş: {mapped}</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={handleAutoMatch} disabled={autoMatching}
+          <button onClick={handleAutoMatch} disabled={autoMatching || syncing}
             className="px-4 py-2 border border-border rounded-lg text-sm hover:bg-muted disabled:opacity-50">
             {autoMatching ? "Eşleştiriliyor..." : "Otomatik Eşleştir"}
           </button>
-          <button onClick={handleSync} disabled={syncing}
-            className="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:opacity-90 disabled:opacity-50">
-            {syncing ? "Senkronize Ediliyor..." : "Markaları Senkronize Et"}
-          </button>
+          {syncing ? (
+            <button onClick={handleStopSync}
+              className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm hover:opacity-90">
+              Durdur
+            </button>
+          ) : (
+            <button onClick={handleSync}
+              className="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:opacity-90">
+              Markaları Senkronize Et
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Sync Progress Bar */}
+      {syncing && (
+        <div className="bg-card border border-border rounded-lg p-4 space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="font-medium">Senkronizasyon devam ediyor...</span>
+            <span className="text-muted-foreground">{syncProgress.current.toLocaleString("tr-TR")} marka</span>
+          </div>
+          <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+            <div
+              className="bg-primary h-full rounded-full transition-all duration-500 animate-pulse"
+              style={{ width: "100%" }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">{syncProgress.message}</p>
+        </div>
+      )}
+
+      {!syncing && syncProgress.message && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">
+          ✓ {syncProgress.message}
+        </div>
+      )}
 
       <input type="text" value={search} onChange={(e) => { setSearch(e.target.value); setPage(0); }}
         placeholder="Marka ara..." className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm" />
@@ -115,7 +184,7 @@ export default function TrendyolBrandsPage() {
               <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">Yükleniyor...</td></tr>
             ) : brands.length === 0 ? (
               <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">
-                {total === 0 ? 'Marka bulunamadı. Önce "Markaları Senkronize Et" butonuna tıklayın.' : "Sonuç bulunamadı"}
+                {total === 0 ? 'Marka bulunamadı. "Markaları Senkronize Et" butonuna tıklayın.' : "Sonuç bulunamadı"}
               </td></tr>
             ) : (
               brands.map((brand) => (

@@ -73,20 +73,27 @@ export async function POST() {
     });
     const mappingMap = new Map(existingMappings.map((m) => [m.id, m.localCategoryId]));
 
+    // Toplu upsert — 500'lük batch'ler halinde
     let upserted = 0;
-    for (const cat of flatList) {
-      await prisma.trendyolCategory.upsert({
-        where: { id: cat.id },
-        create: {
-          id: cat.id,
-          name: cat.name,
-          parentId: cat.parentId,
-          path: cat.path,
-          localCategoryId: mappingMap.get(cat.id) || null,
-        },
-        update: { name: cat.name, parentId: cat.parentId, path: cat.path },
-      });
-      upserted++;
+    const BATCH_SIZE = 500;
+    for (let i = 0; i < flatList.length; i += BATCH_SIZE) {
+      const batch = flatList.slice(i, i + BATCH_SIZE);
+      await prisma.$transaction(
+        batch.map((cat) =>
+          prisma.trendyolCategory.upsert({
+            where: { id: cat.id },
+            create: {
+              id: cat.id,
+              name: cat.name,
+              parentId: cat.parentId,
+              path: cat.path,
+              localCategoryId: mappingMap.get(cat.id) || null,
+            },
+            update: { name: cat.name, parentId: cat.parentId, path: cat.path },
+          })
+        )
+      );
+      upserted += batch.length;
     }
 
     return NextResponse.json({ success: true, message: `${upserted} kategori senkronize edildi`, total: upserted });

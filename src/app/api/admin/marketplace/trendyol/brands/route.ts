@@ -42,38 +42,34 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/** POST — Trendyol'dan markaları çek ve DB'ye kaydet (ilk 5 sayfa = ~5000 marka) */
-export async function POST() {
+/** POST — Trendyol'dan tek sayfa marka çek ve DB'ye kaydet (kademeli sync) */
+export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user || (session.user as { role?: string }).role !== "ADMIN") {
       return NextResponse.json({ error: "Yetkisiz" }, { status: 403 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const syncPage = parseInt(searchParams.get("syncPage") || "0");
+
     const client = await getTrendyolClient();
 
+    // Mevcut mapping'leri koru
     const existingMappings = await prisma.trendyolBrand.findMany({
       where: { localBrandId: { not: null } },
       select: { id: true, localBrandId: true },
     });
     const mappingMap = new Map(existingMappings.map((m) => [m.id, m.localBrandId]));
 
-    // Trendyol tüm global markaları döndürür (100.000+), sadece ilk 5 sayfa çekilir
-    const MAX_PAGES = 5;
-    let allBrands: { id: number; name: string }[] = [];
-    for (let page = 0; page < MAX_PAGES; page++) {
-      const brands = await getBrands(client, page, 1000);
-      if (brands.length === 0) break;
-      allBrands = allBrands.concat(brands);
-    }
+    // Trendyol'dan tek sayfa çek
+    const brands = await getBrands(client, syncPage, 1000);
+    const hasMore = brands.length === 1000;
 
-    // Toplu upsert — 500'lük batch'ler halinde
-    let upserted = 0;
-    const BATCH_SIZE = 500;
-    for (let i = 0; i < allBrands.length; i += BATCH_SIZE) {
-      const batch = allBrands.slice(i, i + BATCH_SIZE);
+    // Toplu upsert — transaction ile
+    if (brands.length > 0) {
       await prisma.$transaction(
-        batch.map((brand) =>
+        brands.map((brand) =>
           prisma.trendyolBrand.upsert({
             where: { id: brand.id },
             create: { id: brand.id, name: brand.name, localBrandId: mappingMap.get(brand.id) || null },
@@ -81,10 +77,20 @@ export async function POST() {
           })
         )
       );
-      upserted += batch.length;
     }
 
-    return NextResponse.json({ success: true, message: `${upserted} marka senkronize edildi`, total: upserted });
+    const totalInDb = await prisma.trendyolBrand.count();
+
+    return NextResponse.json({
+      success: true,
+      synced: brands.length,
+      hasMore,
+      nextPage: hasMore ? syncPage + 1 : null,
+      totalInDb,
+      message: hasMore
+        ? `Sayfa ${syncPage + 1}: ${brands.length} marka eklendi (toplam: ${totalInDb})`
+        : `Tamamlandı! Toplam ${totalInDb} marka senkronize edildi`,
+    });
   } catch (error) {
     console.error("Trendyol marka sync hatası:", error);
     return NextResponse.json(
