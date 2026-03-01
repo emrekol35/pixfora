@@ -116,15 +116,12 @@ const menuItems = [
     ],
   },
   {
-    title: "Trendyol",
-    href: "/admin/trendyol",
-    icon: "🛍️",
+    title: "Pazaryerleri",
+    href: "/admin/pazaryerleri",
+    icon: "🏪",
     children: [
-      { title: "Genel Ayarlar", href: "/admin/trendyol" },
-      { title: "Kategori Eşleştirme", href: "/admin/trendyol/kategoriler" },
-      { title: "Marka Eşleştirme", href: "/admin/trendyol/markalar" },
-      { title: "Ürün Yönetimi", href: "/admin/trendyol/urunler" },
-      { title: "Siparişler", href: "/admin/trendyol/siparisler" },
+      { title: "Genel Bakis", href: "/admin/pazaryerleri" },
+      { title: "Trendyol", href: "/admin/pazaryerleri/trendyol" },
     ],
   },
   {
