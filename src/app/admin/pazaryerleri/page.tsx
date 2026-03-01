@@ -14,6 +14,7 @@ interface MarketplaceStatItem {
 interface MarketplaceStats {
   trendyol: MarketplaceStatItem;
   hepsiburada: MarketplaceStatItem;
+  n11: MarketplaceStatItem;
 }
 
 const defaultStat: MarketplaceStatItem = {
@@ -64,14 +65,30 @@ export default function PazaryerleriPage() {
           } catch {}
         }
 
+        // N11 stats
+        const n11Int = integrations.find(
+          (i: { service: string }) => i.service === "n11"
+        );
+        let n11Stats = { ...defaultStat };
+        if (n11Int?.isActive) {
+          n11Stats.connected = true;
+          try {
+            const prodRes = await fetch("/api/admin/marketplace/n11/products?size=1");
+            const prodData = await prodRes.json();
+            n11Stats.totalProducts = prodData.total || 0;
+          } catch {}
+        }
+
         setStats({
           trendyol: trendyolStats,
           hepsiburada: hepsiburadaStats,
+          n11: n11Stats,
         });
       } catch {
         setStats({
           trendyol: { ...defaultStat },
           hepsiburada: { ...defaultStat },
+          n11: { ...defaultStat },
         });
       } finally {
         setLoading(false);
@@ -102,11 +119,11 @@ export default function PazaryerleriPage() {
     {
       name: "N11",
       icon: "🟣",
-      href: "#",
+      href: "/admin/pazaryerleri/n11",
       color: "from-purple-500 to-purple-600",
-      connected: false,
-      stats: null,
-      available: false,
+      connected: stats?.n11.connected || false,
+      stats: stats?.n11,
+      available: true,
     },
     {
       name: "Amazon",

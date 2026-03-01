@@ -151,6 +151,7 @@ model Category {
   products           Product[]
   trendyolCategories    TrendyolCategory[]
   hepsiburadaCategories HepsiburadaCategory[]
+  n11Categories         N11Category[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -229,6 +230,7 @@ model Product {
   questions           ProductQuestion[]
   trendyolProduct     TrendyolProduct?
   hepsiburadaProduct  HepsiburadaProduct?
+  n11Product          N11Product?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -412,6 +414,7 @@ model Order {
   shipments      Shipment[]
   trendyolOrders    TrendyolOrder[]
   hepsiburadaOrders HepsiburadaOrder[]
+  n11Orders         N11Order[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1217,4 +1220,68 @@ model HepsiburadaCategory {
   localCategory Category?             @relation(fields: [localCategoryId], references: [id])
 
   @@map("hepsiburada_categories")
+}
+
+// ============================================================
+// N11 Marketplace Integration
+// ============================================================
+
+enum N11SyncStatus {
+  PENDING
+  SYNCED
+  FAILED
+  NOT_SYNCED
+}
+
+model N11Product {
+  id              String       @id @default(cuid())
+  productId       String       @unique @map("product_id")
+  n11ProductId    BigInt?      @map("n11_product_id")
+  stockCode       String?      @map("stock_code")
+  barcode         String?
+  syncStatus      N11SyncStatus @default(PENDING) @map("sync_status")
+  lastSyncedAt    DateTime?    @map("last_synced_at")
+  lastError       String?      @db.Text @map("last_error")
+  n11CategoryId   BigInt?      @map("n11_category_id")
+  brandName       String?      @map("brand_name")
+  attributes      Json?
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([syncStatus])
+  @@map("n11_products")
+}
+
+model N11Order {
+  id                String   @id @default(cuid())
+  orderId           String?  @map("order_id")
+  n11OrderNumber    String   @unique @map("n11_order_number")
+  n11PackageId      String?  @map("n11_package_id")
+  orderStatus       String?  @map("order_status")
+  rawData           Json     @map("raw_data")
+  syncedAt          DateTime @default(now()) @map("synced_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  order Order? @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@index([n11PackageId])
+  @@map("n11_orders")
+}
+
+model N11Category {
+  id              BigInt   @id
+  name            String
+  parentId        BigInt?  @map("parent_id")
+  path            String?
+  leaf            Boolean  @default(false)
+  localCategoryId String?  @map("local_category_id")
+
+  parent        N11Category?  @relation("N11CategoryTree", fields: [parentId], references: [id])
+  children      N11Category[] @relation("N11CategoryTree")
+  localCategory Category?     @relation(fields: [localCategoryId], references: [id])
+
+  @@map("n11_categories")
 }
