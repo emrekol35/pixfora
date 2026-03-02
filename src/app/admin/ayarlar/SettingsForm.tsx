@@ -156,7 +156,8 @@ export default function SettingsForm({ initialSettings }: Props) {
       });
 
       const data = await res.json();
-      setMngStatus({ connected: data.connected, message: data.message });
+      const fullMessage = data.hint ? `${data.message}\n\n💡 ${data.hint}` : data.message;
+      setMngStatus({ connected: data.connected, message: fullMessage });
     } catch {
       setMngStatus({ connected: false, message: "Baglanti testi sirasinda bir hata olustu." });
     } finally {
@@ -284,7 +285,7 @@ export default function SettingsForm({ initialSettings }: Props) {
                 )}
               </div>
               {mngStatus && (
-                <p className={`mt-2 text-sm ${mngStatus.connected ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                <p className={`mt-2 text-sm whitespace-pre-line ${mngStatus.connected ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
                   {mngStatus.message}
                 </p>
               )}
