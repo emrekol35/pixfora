@@ -6,6 +6,8 @@ import NaturalHeroSection from "./NaturalHeroSection";
 import NaturalCategoryGrid from "./NaturalCategoryGrid";
 import NaturalPromotionBanner from "./NaturalPromotionBanner";
 import NaturalTrustBadges from "./NaturalTrustBadges";
+import NaturalProductDetail from "./NaturalProductDetail";
+import NaturalCategoryProducts from "./NaturalCategoryProducts";
 
 const components: ThemeComponents = {
   Header: NaturalHeader,
@@ -15,6 +17,8 @@ const components: ThemeComponents = {
   CategoryGrid: NaturalCategoryGrid,
   PromotionBanner: NaturalPromotionBanner,
   TrustBadges: NaturalTrustBadges,
+  ProductDetail: NaturalProductDetail,
+  CategoryProducts: NaturalCategoryProducts,
 };
 
 export default components;

@@ -6,6 +6,8 @@ import TechHeroSection from "./TechHeroSection";
 import TechCategoryGrid from "./TechCategoryGrid";
 import TechPromotionBanner from "./TechPromotionBanner";
 import TechTrustBadges from "./TechTrustBadges";
+import TechProductDetail from "./TechProductDetail";
+import TechCategoryProducts from "./TechCategoryProducts";
 
 const components: ThemeComponents = {
   Header: TechHeader,
@@ -15,6 +17,8 @@ const components: ThemeComponents = {
   CategoryGrid: TechCategoryGrid,
   PromotionBanner: TechPromotionBanner,
   TrustBadges: TechTrustBadges,
+  ProductDetail: TechProductDetail,
+  CategoryProducts: TechCategoryProducts,
 };
 
 export default components;

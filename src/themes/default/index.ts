@@ -6,6 +6,8 @@ import DefaultHeroSection from "./DefaultHeroSection";
 import DefaultCategoryGrid from "./DefaultCategoryGrid";
 import DefaultPromotionBanner from "./DefaultPromotionBanner";
 import DefaultTrustBadges from "./DefaultTrustBadges";
+import DefaultProductDetail from "./DefaultProductDetail";
+import DefaultCategoryProducts from "./DefaultCategoryProducts";
 
 const components: ThemeComponents = {
   Header: DefaultHeader,
@@ -15,6 +17,8 @@ const components: ThemeComponents = {
   CategoryGrid: DefaultCategoryGrid,
   PromotionBanner: DefaultPromotionBanner,
   TrustBadges: DefaultTrustBadges,
+  ProductDetail: DefaultProductDetail,
+  CategoryProducts: DefaultCategoryProducts,
 };
 
 export default components;

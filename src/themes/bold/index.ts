@@ -6,6 +6,8 @@ import BoldHeroSection from "./BoldHeroSection";
 import BoldCategoryGrid from "./BoldCategoryGrid";
 import BoldPromotionBanner from "./BoldPromotionBanner";
 import BoldTrustBadges from "./BoldTrustBadges";
+import BoldProductDetail from "./BoldProductDetail";
+import BoldCategoryProducts from "./BoldCategoryProducts";
 
 const components: ThemeComponents = {
   Header: BoldHeader,
@@ -15,6 +17,8 @@ const components: ThemeComponents = {
   CategoryGrid: BoldCategoryGrid,
   PromotionBanner: BoldPromotionBanner,
   TrustBadges: BoldTrustBadges,
+  ProductDetail: BoldProductDetail,
+  CategoryProducts: BoldCategoryProducts,
 };
 
 export default components;

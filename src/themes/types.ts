@@ -47,6 +47,10 @@ export interface CategoryGridProps {
   categories: CategoryData[];
 }
 
+// Re-export from hooks for convenience
+export type { ProductDetailProps } from "./hooks/useProductDetailLogic";
+export type { CategoryProductsProps } from "./hooks/useCategoryLogic";
+
 // ---- Theme components interface ----
 
 export interface ThemeComponents {
@@ -57,6 +61,8 @@ export interface ThemeComponents {
   CategoryGrid: ComponentType<CategoryGridProps>;
   PromotionBanner: ComponentType;
   TrustBadges: ComponentType;
+  ProductDetail: ComponentType<import("./hooks/useProductDetailLogic").ProductDetailProps>;
+  CategoryProducts: ComponentType<import("./hooks/useCategoryLogic").CategoryProductsProps>;
 }
 
 // ---- Theme definition ----

@@ -6,6 +6,8 @@ import ElegantHeroSection from "./ElegantHeroSection";
 import ElegantCategoryGrid from "./ElegantCategoryGrid";
 import ElegantPromotionBanner from "./ElegantPromotionBanner";
 import ElegantTrustBadges from "./ElegantTrustBadges";
+import ElegantProductDetail from "./ElegantProductDetail";
+import ElegantCategoryProducts from "./ElegantCategoryProducts";
 
 const components: ThemeComponents = {
   Header: ElegantHeader,
@@ -15,6 +17,8 @@ const components: ThemeComponents = {
   CategoryGrid: ElegantCategoryGrid,
   PromotionBanner: ElegantPromotionBanner,
   TrustBadges: ElegantTrustBadges,
+  ProductDetail: ElegantProductDetail,
+  CategoryProducts: ElegantCategoryProducts,
 };
 
 export default components;

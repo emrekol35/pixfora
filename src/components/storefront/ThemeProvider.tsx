@@ -98,6 +98,8 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
           CategoryGrid: themeComponents.CategoryGrid || defaultComponents.CategoryGrid,
           PromotionBanner: themeComponents.PromotionBanner || defaultComponents.PromotionBanner,
           TrustBadges: themeComponents.TrustBadges || defaultComponents.TrustBadges,
+          ProductDetail: themeComponents.ProductDetail || defaultComponents.ProductDetail,
+          CategoryProducts: themeComponents.CategoryProducts || defaultComponents.CategoryProducts,
         });
       })
       .catch(() => setComponents(defaultComponents));
