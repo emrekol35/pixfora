@@ -48,6 +48,10 @@ export async function POST(request: NextRequest) {
       zipCode,
       type = "shipping",
       isDefault = false,
+      isCompany = false,
+      companyName,
+      taxOffice,
+      taxNumber,
     } = body;
 
     // Zorunlu alan kontrolu
@@ -56,6 +60,16 @@ export async function POST(request: NextRequest) {
         { error: "Zorunlu alanlar eksik" },
         { status: 400 }
       );
+    }
+
+    // Kurumsal adres icin ek validasyon
+    if (isCompany) {
+      if (!companyName || !taxOffice || !taxNumber) {
+        return NextResponse.json(
+          { error: "Kurumsal adres icin firma adi, vergi dairesi ve vergi numarasi zorunludur" },
+          { status: 400 }
+        );
+      }
     }
 
     // Eger varsayilan olarak ayarlanacaksa, diger varsayilanlari kaldir
@@ -80,6 +94,10 @@ export async function POST(request: NextRequest) {
         zipCode: zipCode || null,
         type,
         isDefault,
+        isCompany,
+        companyName: isCompany ? companyName : null,
+        taxOffice: isCompany ? taxOffice : null,
+        taxNumber: isCompany ? taxNumber : null,
       },
     });
 

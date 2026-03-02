@@ -159,6 +159,14 @@
     "update": "Update",
     "newAddress": "Add New Address",
     "confirmDeleteAddress": "Are you sure you want to delete this address?",
+    "addressType": "Address Type",
+    "individual": "Individual",
+    "corporate": "Corporate",
+    "companyName": "Company Name",
+    "companyNamePlaceholder": "Company or business name",
+    "taxOffice": "Tax Office",
+    "taxNumber": "Tax Number",
+    "updating": "Saving...",
     "profileSettings": "Profile Settings",
     "ordersMetaTitle": "My Orders | Pixfora",
     "addressesMetaTitle": "My Addresses | Pixfora",
@@ -430,7 +438,10 @@
     "creditCardMasked": "Credit Card (**** {last4})",
     "orderCreateError": "Order could not be created",
     "paymentError": "Payment initiation error",
-    "genericError": "An error occurred"
+    "genericError": "An error occurred",
+    "corporate": "Corporate",
+    "taxOffice": "Tax Office",
+    "taxNumber": "Tax No"
   },
   "tracking": {
     "title": "Track Your Order",

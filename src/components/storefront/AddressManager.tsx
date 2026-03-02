@@ -17,6 +17,10 @@ interface Address {
   zipCode: string | null;
   type: string;
   isDefault: boolean;
+  isCompany: boolean;
+  companyName: string | null;
+  taxOffice: string | null;
+  taxNumber: string | null;
 }
 
 interface AddressFormData {
@@ -30,6 +34,10 @@ interface AddressFormData {
   address: string;
   zipCode: string;
   isDefault: boolean;
+  isCompany: boolean;
+  companyName: string;
+  taxOffice: string;
+  taxNumber: string;
 }
 
 const emptyForm: AddressFormData = {
@@ -43,6 +51,10 @@ const emptyForm: AddressFormData = {
   address: "",
   zipCode: "",
   isDefault: false,
+  isCompany: false,
+  companyName: "",
+  taxOffice: "",
+  taxNumber: "",
 };
 
 export default function AddressManager({
@@ -79,6 +91,10 @@ export default function AddressManager({
       address: addr.address,
       zipCode: addr.zipCode || "",
       isDefault: addr.isDefault,
+      isCompany: addr.isCompany || false,
+      companyName: addr.companyName || "",
+      taxOffice: addr.taxOffice || "",
+      taxNumber: addr.taxNumber || "",
     });
     setShowForm(true);
     setError(null);
@@ -109,6 +125,9 @@ export default function AddressManager({
           ...form,
           neighborhood: form.neighborhood || undefined,
           zipCode: form.zipCode || undefined,
+          companyName: form.isCompany ? form.companyName : undefined,
+          taxOffice: form.isCompany ? form.taxOffice : undefined,
+          taxNumber: form.isCompany ? form.taxNumber : undefined,
         }),
       });
 
@@ -186,7 +205,14 @@ export default function AddressManager({
             className="bg-card border border-border rounded-xl p-5"
           >
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-medium text-foreground">{addr.title}</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-medium text-foreground">{addr.title}</h3>
+                {addr.isCompany && (
+                  <span className="text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-0.5 rounded">
+                    {t("corporate")}
+                  </span>
+                )}
+              </div>
               {addr.isDefault && (
                 <span className="text-xs font-medium bg-primary/10 text-primary px-2 py-1 rounded">
                   {t("defaultAddress")}
@@ -197,6 +223,9 @@ export default function AddressManager({
               <p className="text-foreground">
                 {addr.firstName} {addr.lastName}
               </p>
+              {addr.isCompany && addr.companyName && (
+                <p className="text-foreground font-medium">{addr.companyName}</p>
+              )}
               <p>{addr.address}</p>
               <p>
                 {addr.neighborhood && `${addr.neighborhood}, `}
@@ -204,6 +233,11 @@ export default function AddressManager({
                 {addr.zipCode && ` - ${addr.zipCode}`}
               </p>
               <p>{addr.phone}</p>
+              {addr.isCompany && addr.taxOffice && addr.taxNumber && (
+                <p className="text-xs text-muted-foreground">
+                  {t("taxOffice")}: {addr.taxOffice} &middot; {t("taxNumber")}: {addr.taxNumber}
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-3 mt-4 pt-3 border-t border-border">
               <button
@@ -252,6 +286,88 @@ export default function AddressManager({
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Bireysel / Kurumsal Secimi */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  {t("addressType")}
+                </label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="addressType"
+                      checked={!form.isCompany}
+                      onChange={() =>
+                        setForm((f) => ({ ...f, isCompany: false }))
+                      }
+                      className="w-4 h-4 text-primary focus:ring-primary"
+                    />
+                    <span className="text-sm text-foreground">{t("individual")}</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="addressType"
+                      checked={form.isCompany}
+                      onChange={() =>
+                        setForm((f) => ({ ...f, isCompany: true }))
+                      }
+                      className="w-4 h-4 text-primary focus:ring-primary"
+                    />
+                    <span className="text-sm text-foreground">{t("corporate")}</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Kurumsal Bilgiler */}
+              {form.isCompany && (
+                <>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-foreground mb-1">
+                      {t("companyName")} <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={form.companyName}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, companyName: e.target.value }))
+                      }
+                      className="w-full px-3 py-2 border border-border rounded-lg bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder={t("companyNamePlaceholder")}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">
+                      {t("taxOffice")} <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={form.taxOffice}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, taxOffice: e.target.value }))
+                      }
+                      className="w-full px-3 py-2 border border-border rounded-lg bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">
+                      {t("taxNumber")} <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={form.taxNumber}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, taxNumber: e.target.value }))
+                      }
+                      className="w-full px-3 py-2 border border-border rounded-lg bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                </>
+              )}
+
               {/* Adres Basligi */}
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-foreground mb-1">

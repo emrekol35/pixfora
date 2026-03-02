@@ -48,6 +48,10 @@ interface SavedAddress {
   address: string;
   zipCode?: string;
   isDefault: boolean;
+  isCompany?: boolean;
+  companyName?: string | null;
+  taxOffice?: string | null;
+  taxNumber?: string | null;
 }
 
 interface ShippingRate {
@@ -362,6 +366,16 @@ export default function CheckoutClient() {
       // Adres ID gonder (kayitli adres secildiyse)
       const shippingAddressId = (!useNewAddress && selectedAddressId) ? selectedAddressId : undefined;
 
+      // Kurumsal fatura bilgisi
+      const selectedAddr = savedAddresses.find((a) => a.id === selectedAddressId);
+      const companyData = selectedAddr?.isCompany
+        ? {
+            companyName: selectedAddr.companyName,
+            taxOffice: selectedAddr.taxOffice,
+            taxNumber: selectedAddr.taxNumber,
+          }
+        : undefined;
+
       // 1. Siparis olustur
       const res = await fetch("/api/orders", {
         method: "POST",
@@ -377,6 +391,7 @@ export default function CheckoutClient() {
           shippingAddressId,
           shippingProvider: selectedShippingProvider || undefined,
           shippingCost: shippingCost,
+          company: companyData,
         }),
       });
 
@@ -577,6 +592,9 @@ export default function CheckoutClient() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <p className="text-sm font-medium">{addr.title}</p>
+                            {addr.isCompany && (
+                              <span className="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 rounded font-medium">{t("corporate")}</span>
+                            )}
                             {addr.isDefault && (
                               <span className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary rounded font-medium">{t("defaultBadge")}</span>
                             )}
@@ -584,6 +602,9 @@ export default function CheckoutClient() {
                           <p className="text-sm text-muted-foreground mt-0.5">
                             {addr.firstName} {addr.lastName} - {addr.phone}
                           </p>
+                          {addr.isCompany && addr.companyName && (
+                            <p className="text-xs text-muted-foreground mt-0.5 font-medium">{addr.companyName}</p>
+                          )}
                           <p className="text-xs text-muted-foreground mt-0.5">
                             {addr.address}, {addr.district}/{addr.city}
                           </p>
@@ -841,7 +862,7 @@ export default function CheckoutClient() {
           {step === "confirm" && (
             <div className="bg-white rounded-xl border border-border p-6">
               <h2 className="text-lg font-bold mb-4">{t("orderSummary")}</h2>
-              <div className="p-4 bg-muted rounded-lg mb-4"><p className="text-sm font-medium mb-1">{t("shippingAddress")}</p><p className="text-sm text-muted-foreground">{addressForm.firstName} {addressForm.lastName} - {addressForm.phone}<br />{addressForm.address}, {addressForm.district}/{addressForm.city}</p></div>
+              <div className="p-4 bg-muted rounded-lg mb-4"><p className="text-sm font-medium mb-1">{t("shippingAddress")}</p><p className="text-sm text-muted-foreground">{addressForm.firstName} {addressForm.lastName} - {addressForm.phone}<br />{addressForm.address}, {addressForm.district}/{addressForm.city}</p>{(() => { const sa = savedAddresses.find((a) => a.id === selectedAddressId); return sa?.isCompany ? <p className="text-xs text-muted-foreground mt-1 pt-1 border-t border-border">{sa.companyName} &middot; {t("taxOffice")}: {sa.taxOffice} &middot; {t("taxNumber")}: {sa.taxNumber}</p> : null; })()}</div>
               <div className="p-4 bg-muted rounded-lg mb-4">
                 <p className="text-sm font-medium mb-1">{t("shipping")}</p>
                 <p className="text-sm text-muted-foreground">

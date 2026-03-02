@@ -159,6 +159,14 @@
     "update": "Guncelle",
     "newAddress": "Yeni Adres Ekle",
     "confirmDeleteAddress": "Bu adresi silmek istediginize emin misiniz?",
+    "addressType": "Adres Turu",
+    "individual": "Bireysel",
+    "corporate": "Kurumsal",
+    "companyName": "Firma Adi",
+    "companyNamePlaceholder": "Firma veya sirket adi",
+    "taxOffice": "Vergi Dairesi",
+    "taxNumber": "Vergi Numarasi",
+    "updating": "Kaydediliyor...",
     "profileSettings": "Profil Ayarlari",
     "ordersMetaTitle": "Siparislerim | Pixfora",
     "addressesMetaTitle": "Adreslerim | Pixfora",
@@ -430,7 +438,10 @@
     "creditCardMasked": "Kredi Karti (**** {last4})",
     "orderCreateError": "Siparis olusturulamadi",
     "paymentError": "Odeme baslatma hatasi",
-    "genericError": "Bir hata olustu"
+    "genericError": "Bir hata olustu",
+    "corporate": "Kurumsal",
+    "taxOffice": "Vergi Dairesi",
+    "taxNumber": "Vergi No"
   },
   "tracking": {
     "title": "Siparisinizi Takip Edin",

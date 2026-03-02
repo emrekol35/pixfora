@@ -33,11 +33,18 @@ export async function GET(
     // Fatura yoksa olustur
     let invoice = order.invoice;
     if (!invoice) {
+      // Kurumsal adres bilgisini shipping address'ten al
+      const addr = order.shippingAddress;
+      const isCompanyAddr = addr?.isCompany === true;
+
       invoice = await prisma.invoice.create({
         data: {
           orderId: order.id,
           invoiceNo: generateInvoiceNumber(),
-          type: "e-arsiv",
+          type: isCompanyAddr ? "e-fatura" : "e-arsiv",
+          companyName: isCompanyAddr ? addr?.companyName : null,
+          taxOffice: isCompanyAddr ? addr?.taxOffice : null,
+          taxNumber: isCompanyAddr ? addr?.taxNumber : null,
           data: {
             orderNumber: order.orderNumber,
             total: order.total,

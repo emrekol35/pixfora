@@ -35,7 +35,21 @@ export async function PUT(
       zipCode,
       type,
       isDefault,
+      isCompany,
+      companyName,
+      taxOffice,
+      taxNumber,
     } = body;
+
+    // Kurumsal adres icin ek validasyon
+    if (isCompany === true) {
+      if (!companyName || !taxOffice || !taxNumber) {
+        return NextResponse.json(
+          { error: "Kurumsal adres icin firma adi, vergi dairesi ve vergi numarasi zorunludur" },
+          { status: 400 }
+        );
+      }
+    }
 
     // Eger varsayilan olarak ayarlanacaksa, diger varsayilanlari kaldir
     if (isDefault === true) {
@@ -62,6 +76,12 @@ export async function PUT(
     if (zipCode !== undefined) updateData.zipCode = zipCode || null;
     if (type !== undefined) updateData.type = type;
     if (isDefault !== undefined) updateData.isDefault = isDefault;
+    if (isCompany !== undefined) {
+      updateData.isCompany = isCompany;
+      updateData.companyName = isCompany ? companyName : null;
+      updateData.taxOffice = isCompany ? taxOffice : null;
+      updateData.taxNumber = isCompany ? taxNumber : null;
+    }
 
     const updated = await prisma.address.update({
       where: { id },

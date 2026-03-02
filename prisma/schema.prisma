@@ -116,6 +116,10 @@ model Address {
   zipCode   String? @map("zip_code")
   isDefault Boolean @default(false) @map("is_default")
   type      String  @default("shipping") // shipping | billing
+  isCompany   Boolean  @default(false) @map("is_company")
+  companyName String?  @map("company_name")
+  taxOffice   String?  @map("tax_office")
+  taxNumber   String?  @map("tax_number")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
