@@ -1,78 +1,89 @@
-// Trendyol Public Discovery API response tipleri
+// Trendyol HTML sayfa scraping tipleri
+// Veri kaynagi: window["__envoy__PROPS"] icindeki JSON
 
-export interface TrendyolProductResponse {
-  result: TrendyolProductData;
-  isSuccess: boolean;
-  statusCode: number;
+export interface TrendyolEnvoyProps {
+  st: number; // 200 = basarili, 404 = bulunamadi
+  product: TrendyolProductData;
 }
 
 export interface TrendyolProductData {
   id: number;
   name: string;
+  productCode?: string;
+  productGroupId?: number;
+  tax?: number;
+  inStock?: boolean;
+
   brand: { id: number; name: string };
   category: { id: number; name: string; hierarchy: string };
-  url: string;
-  description: string;
-  contentDescriptions: TrendyolContentDescription[];
-  images: string[]; // relative paths like "/ty123/product.jpg"
-  price: {
-    sellingPrice: number;
-    originalPrice: number;
-    discountedPrice: number;
+  gender?: { id: number; name: string };
+
+  images: string[]; // Tam CDN URL'leri: https://cdn.dsmcdn.com/...
+
+  // Fiyat merchantListing icinde
+  merchantListing?: {
+    winnerVariant?: {
+      price?: {
+        currency?: string;
+        discountedPrice?: { value: number; text: string };
+        sellingPrice?: { value: number; text: string };
+        originalPrice?: { value: number; text: string };
+      };
+    };
+    merchant?: {
+      id: number;
+      name: string;
+      officialName?: string;
+    };
+    promotions?: TrendyolPromotion[];
   };
+
+  // Beden/renk varyantlari
+  variants?: TrendyolSizeVariant[];
+  slicingAttributes?: Record<string, string>; // { DsmColor: "Lacivert" }
+
+  // Urun ozellikleri (description yerine)
+  attributes?: TrendyolAttribute[];
+  hasHtmlContent?: boolean;
+
   ratingScore?: {
     averageRating: number;
-    totalRatingCount: number;
-    totalCommentCount: number;
+    commentCount: number;
+    totalCount: number;
   };
-  allVariants?: TrendyolVariantGroup[];
-  variants?: TrendyolVariant[];
-  attributes?: TrendyolAttribute[];
-  productGroupId?: number;
-  merchantId?: number;
-  color?: string;
-  promotions?: unknown[];
-  hasStock?: boolean;
+
+  favoriteCount?: number;
+  sizeChartUrl?: string;
 }
 
-export interface TrendyolContentDescription {
-  description: string;
-  bold?: boolean;
-}
-
-export interface TrendyolVariantGroup {
-  attributeId: number;
-  attributeName: string;
-  attributeType: string;
-  attributeValue: string;
-  stamps: unknown[];
-  price: {
-    sellingPrice: number;
-    originalPrice: number;
-    discountedPrice: number;
-  };
-  hasStock?: boolean;
-  itemNumber?: number;
+export interface TrendyolSizeVariant {
+  itemNumber: number;
+  value: string; // "36", "M", "XL" vb.
+  beautifiedValue?: string;
+  inStock: boolean;
   barcode?: string;
-  url?: string;
-  listingId?: string;
-}
-
-export interface TrendyolVariant {
-  attributeId: number;
-  attributeName: string;
-  attributeType: string;
-  attributeValue: string;
+  isSelected?: boolean;
   price?: {
-    sellingPrice: number;
-    originalPrice: number;
+    value: number;
+    text: string;
   };
-  barcode?: string;
+}
+
+export interface TrendyolPromotion {
+  id: number;
+  name: string;
+  discountType?: number;
+  promotionDiscountType?: string;
+  promotionEndDate?: string;
+  isApplied?: boolean;
 }
 
 export interface TrendyolAttribute {
   key: { name: string; id: number };
   value: { name: string; id: number };
+  searchable?: boolean;
+  type?: string;
+  isStarred?: boolean;
 }
 
 export interface TrendyolImportResult {

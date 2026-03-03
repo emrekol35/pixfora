@@ -10,7 +10,6 @@ import type {
   TrendyolImportOptions,
 } from "./types";
 
-const CDN_BASE = "https://cdn.dsmcdn.com";
 const MAX_WIDTH = 1920;
 const THUMB_SIZE = 400;
 const WEBP_QUALITY = 85;
@@ -19,12 +18,7 @@ const WEBP_QUALITY = 85;
 
 async function downloadAndSaveImage(imageUrl: string): Promise<string | null> {
   try {
-    // Tam URL olustur
-    const fullUrl = imageUrl.startsWith("http")
-      ? imageUrl
-      : `${CDN_BASE}${imageUrl}`;
-
-    const res = await fetch(fullUrl, {
+    const res = await fetch(imageUrl, {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
@@ -117,6 +111,37 @@ async function findOrCreateBrand(brandName: string): Promise<string> {
   return brand.id;
 }
 
+// ---- Fiyat bilgisini cikar ----
+
+function extractPrice(data: TrendyolProductData): {
+  price: number;
+  comparePrice: number | null;
+} {
+  const winnerPrice = data.merchantListing?.winnerVariant?.price;
+
+  if (winnerPrice) {
+    const discounted = winnerPrice.discountedPrice?.value || 0;
+    const selling = winnerPrice.sellingPrice?.value || 0;
+    const original = winnerPrice.originalPrice?.value || 0;
+
+    // discountedPrice = indirimli fiyat (satış fiyati)
+    // sellingPrice = normal liste fiyati
+    const price = discounted || selling;
+    const comparePrice =
+      selling > price ? selling : original > price ? original : null;
+
+    return { price, comparePrice };
+  }
+
+  // Fallback: ilk varyantin fiyatindan al
+  const firstVariant = data.variants?.[0];
+  if (firstVariant?.price?.value) {
+    return { price: firstVariant.price.value, comparePrice: null };
+  }
+
+  return { price: 0, comparePrice: null };
+}
+
 // ---- Varyantlari cikar ----
 
 function extractVariants(data: TrendyolProductData): {
@@ -129,50 +154,72 @@ function extractVariants(data: TrendyolProductData): {
     options: Record<string, string>;
   }[];
 } {
-  const allVariants = data.allVariants || [];
-  if (allVariants.length === 0) {
+  const sizeVariants = data.variants || [];
+  if (sizeVariants.length === 0) {
     return { variantTypes: [], variants: [] };
   }
 
-  // Attribute isimlerine gore grupla
-  const typeMap = new Map<string, Set<string>>();
-  for (const v of allVariants) {
-    if (!v.attributeName || !v.attributeValue) continue;
-    if (!typeMap.has(v.attributeName)) {
-      typeMap.set(v.attributeName, new Set());
-    }
-    typeMap.get(v.attributeName)!.add(v.attributeValue);
+  // Beden varyantlarini topla
+  const sizeValues = sizeVariants.map((v) => v.value).filter(Boolean);
+  if (sizeValues.length === 0) {
+    return { variantTypes: [], variants: [] };
   }
 
-  const variantTypes = Array.from(typeMap.entries()).map(([name, values]) => ({
-    name,
-    options: Array.from(values),
-  }));
+  const variantTypes = [{ name: "Beden", options: sizeValues }];
 
-  const variants = allVariants
-    .filter((v) => v.attributeName && v.attributeValue)
+  // Renk bilgisi varsa ekle
+  const color = data.slicingAttributes?.DsmColor;
+  if (color) {
+    variantTypes.unshift({ name: "Renk", options: [color] });
+  }
+
+  const variants = sizeVariants
+    .filter((v) => v.value)
     .map((v) => ({
-      sku: null,
+      sku: v.itemNumber ? String(v.itemNumber) : null,
       barcode: v.barcode || null,
-      price: v.price?.sellingPrice || null,
+      price: v.price?.value || null,
       stock: 0,
-      options: { [v.attributeName]: v.attributeValue },
+      options: {
+        ...(color ? { Renk: color } : {}),
+        Beden: v.value,
+      },
     }));
 
   return { variantTypes, variants };
 }
 
-// ---- Aciklama olustur ----
+// ---- Aciklama olustur (ozelliklerden) ----
 
 function buildDescription(data: TrendyolProductData): string {
-  if (data.contentDescriptions?.length) {
-    return data.contentDescriptions
-      .map((d) =>
-        d.bold ? `<strong>${d.description}</strong>` : d.description
-      )
-      .join("<br/>");
+  const parts: string[] = [];
+
+  // Ozelliklerden HTML tablo olustur
+  const attrs = data.attributes || [];
+  const starred = attrs.filter((a) => a.isStarred);
+  const rest = attrs.filter((a) => !a.isStarred);
+
+  if (starred.length > 0) {
+    parts.push("<table><tbody>");
+    for (const attr of starred) {
+      parts.push(
+        `<tr><td><strong>${attr.key.name}</strong></td><td>${attr.value.name}</td></tr>`
+      );
+    }
+    parts.push("</tbody></table>");
   }
-  return data.description || data.name || "";
+
+  if (rest.length > 0) {
+    parts.push("<h4>Tum Ozellikler</h4><table><tbody>");
+    for (const attr of rest) {
+      parts.push(
+        `<tr><td><strong>${attr.key.name}</strong></td><td>${attr.value.name}</td></tr>`
+      );
+    }
+    parts.push("</tbody></table>");
+  }
+
+  return parts.join("\n") || data.name;
 }
 
 // ---- Ana import fonksiyonu ----
@@ -241,11 +288,7 @@ export async function importTrendyolProduct(
     const description = buildDescription(data);
 
     // 8. Fiyat
-    const price = data.price?.sellingPrice || data.price?.discountedPrice || 0;
-    const comparePrice =
-      data.price?.originalPrice && data.price.originalPrice > price
-        ? data.price.originalPrice
-        : null;
+    const { price, comparePrice } = extractPrice(data);
 
     // 9. Etiketler
     const tags: string[] = [];
