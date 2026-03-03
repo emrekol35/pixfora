@@ -245,13 +245,22 @@ export async function fetchTrendyolListProducts(
   }));
 
   // Sayfa bilgisi
+  // Trendyol gercek alan adlari: data.total (toplam urun), data.pageIndex (her zaman 1 doner)
   const totalCount =
-    data?.data?.totalCount ?? data?.totalCount ?? products.length;
-  const currentPage = data?.data?.currentPage ?? data?.currentPage ?? 1;
-  const totalPages =
-    data?.data?.totalPages ??
-    data?.totalPages ??
-    Math.ceil(totalCount / 24);
+    data?.data?.total ?? data?.data?.totalCount ?? data?.totalCount ?? products.length;
+
+  // pageIndex guvenilmez (hep 1), URL'den pi parametresini oku
+  let currentPage = 1;
+  try {
+    const parsedUrl = new URL(listUrl);
+    const pi = parsedUrl.searchParams.get("pi");
+    if (pi && /^\d+$/.test(pi)) currentPage = parseInt(pi, 10);
+  } catch {
+    // URL parse edilemezse sayfa 1 kabul et
+  }
+
+  const PRODUCTS_PER_PAGE = 24;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PRODUCTS_PER_PAGE));
 
   return { products, totalCount, currentPage, totalPages };
 }

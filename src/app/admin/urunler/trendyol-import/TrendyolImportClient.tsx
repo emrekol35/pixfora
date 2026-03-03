@@ -74,6 +74,12 @@ export default function TrendyolImportClient() {
   const [listProducts, setListProducts] = useState<ListProduct[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [totalCount, setTotalCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [productMap, setProductMap] = useState<Map<number, ListProduct>>(
+    new Map()
+  );
+  const [pageLoading, setPageLoading] = useState(false);
 
   // Kategorileri yukle
   useEffect(() => {
@@ -153,6 +159,16 @@ export default function TrendyolImportClient() {
 
   // ---- Arama Modu ----
 
+  function buildPageUrl(baseUrl: string, page: number): string {
+    try {
+      const url = new URL(baseUrl);
+      url.searchParams.set("pi", String(page));
+      return url.toString();
+    } catch {
+      return `${baseUrl}${baseUrl.includes("?") ? "&" : "?"}pi=${page}`;
+    }
+  }
+
   async function handleFetchProducts() {
     if (!searchUrl.trim()) return;
 
@@ -160,6 +176,9 @@ export default function TrendyolImportClient() {
     setSearchError("");
     setListProducts([]);
     setSelectedIds(new Set());
+    setProductMap(new Map());
+    setCurrentPage(1);
+    setTotalPages(1);
 
     try {
       const res = await fetch("/api/admin/trendyol-import/search", {
@@ -176,17 +195,71 @@ export default function TrendyolImportClient() {
         return;
       }
 
-      setListProducts(data.products || []);
+      const products: ListProduct[] = data.products || [];
+      setListProducts(products);
       setTotalCount(data.totalCount || 0);
+      setCurrentPage(data.currentPage || 1);
+      setTotalPages(data.totalPages || 1);
+
+      // Product map'e ekle
+      const map = new Map<number, ListProduct>();
+      products.forEach((p) => map.set(p.id, p));
+      setProductMap(map);
+
       // Tum urunleri sec
-      setSelectedIds(
-        new Set((data.products || []).map((p: ListProduct) => p.id))
-      );
+      setSelectedIds(new Set(products.map((p) => p.id)));
       setStep("preview");
     } catch {
       setSearchError("Baglanti hatasi");
     } finally {
       setSearchLoading(false);
+    }
+  }
+
+  async function handlePageChange(page: number) {
+    if (page < 1 || page > totalPages || page === currentPage) return;
+
+    setPageLoading(true);
+    setSearchError("");
+
+    try {
+      const pageUrl = buildPageUrl(searchUrl.trim(), page);
+      const res = await fetch("/api/admin/trendyol-import/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ searchUrl: pageUrl }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setSearchError(data.error || "Sayfa yuklenemedi");
+        return;
+      }
+
+      const newProducts: ListProduct[] = data.products || [];
+      setListProducts(newProducts);
+      setCurrentPage(data.currentPage || page);
+      setTotalPages(data.totalPages || totalPages);
+
+      // Product map'e ekle (onceki sayfalarin verileri korunuyor)
+      setProductMap((prev) => {
+        const next = new Map(prev);
+        newProducts.forEach((p) => next.set(p.id, p));
+        return next;
+      });
+
+      // Yeni sayfa urunlerini otomatik sec
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        newProducts.forEach((p) => next.add(p.id));
+        return next;
+      });
+    } catch {
+      setSearchError("Baglanti hatasi");
+    } finally {
+      setPageLoading(false);
     }
   }
 
@@ -200,15 +273,27 @@ export default function TrendyolImportClient() {
   }
 
   function toggleAll() {
-    if (selectedIds.size === listProducts.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(listProducts.map((p) => p.id)));
-    }
+    const currentPageIds = listProducts.map((p) => p.id);
+    const allCurrentSelected = currentPageIds.every((id) =>
+      selectedIds.has(id)
+    );
+
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allCurrentSelected) {
+        currentPageIds.forEach((id) => next.delete(id));
+      } else {
+        currentPageIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
   }
 
   async function handleStartSearchImport() {
-    const selectedProducts = listProducts.filter((p) => selectedIds.has(p.id));
+    // Tum sayfalardaki secili urunleri productMap'ten al
+    const selectedProducts = Array.from(selectedIds)
+      .map((id) => productMap.get(id))
+      .filter(Boolean) as ListProduct[];
     if (selectedProducts.length === 0) return;
 
     // Secilen urunlerin URL'lerini olustur
@@ -274,6 +359,10 @@ export default function TrendyolImportClient() {
     setListProducts([]);
     setSelectedIds(new Set());
     setTotalCount(0);
+    setCurrentPage(1);
+    setTotalPages(1);
+    setProductMap(new Map());
+    setPageLoading(false);
   }
 
   const validCount = parsedUrls.filter((p) => p.valid).length;
@@ -541,26 +630,34 @@ export default function TrendyolImportClient() {
             <div>
               <h2 className="text-lg font-bold">Urun Secimi</h2>
               <p className="text-sm text-muted-foreground">
-                {totalCount} urun bulundu, {listProducts.length} tanesi bu
-                sayfada
+                {totalCount} urun bulundu — Sayfa {currentPage}/{totalPages}
               </p>
             </div>
             <button
               onClick={toggleAll}
               className="text-sm text-primary hover:underline"
             >
-              {selectedIds.size === listProducts.length
-                ? "Secimi Kaldir"
-                : "Tumunu Sec"}
+              {listProducts.every((p) => selectedIds.has(p.id))
+                ? "Bu Sayfanin Secimini Kaldir"
+                : "Bu Sayfanin Tumunu Sec"}
             </button>
           </div>
 
           <div className="text-sm text-muted-foreground mb-4">
-            {selectedIds.size} urun secildi
+            Toplam {selectedIds.size} urun secildi
+            {totalPages > 1 && " (tum sayfalar)"}
           </div>
 
           {/* Urun listesi — grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[600px] overflow-y-auto">
+          <div className="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[600px] overflow-y-auto">
+            {pageLoading && (
+              <div className="absolute inset-0 bg-background/60 z-10 flex items-center justify-center rounded-lg">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" />
+                  Sayfa yukleniyor...
+                </div>
+              </div>
+            )}
             {listProducts.map((p) => (
               <label
                 key={p.id}
@@ -621,12 +718,77 @@ export default function TrendyolImportClient() {
             ))}
           </div>
 
+          {/* Sayfalama */}
+          {totalPages > 1 && (
+            <div className="mt-4 flex items-center justify-center gap-3">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage <= 1 || pageLoading}
+                className="px-4 py-2 border border-border rounded-lg text-sm font-medium hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Onceki
+              </button>
+
+              <div className="flex items-center gap-1">
+                {(() => {
+                  const pages: number[] = [];
+                  const start = Math.max(1, currentPage - 2);
+                  const end = Math.min(totalPages, currentPage + 2);
+                  for (let i = start; i <= end; i++) pages.push(i);
+                  return pages.map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => handlePageChange(p)}
+                      disabled={pageLoading}
+                      className={`w-9 h-9 rounded-lg text-sm font-medium ${
+                        p === currentPage
+                          ? "bg-primary text-white"
+                          : "border border-border hover:bg-muted"
+                      } disabled:cursor-not-allowed`}
+                    >
+                      {p}
+                    </button>
+                  ));
+                })()}
+                {currentPage + 2 < totalPages && (
+                  <span className="text-muted-foreground px-1">...</span>
+                )}
+                {currentPage + 2 < totalPages && (
+                  <button
+                    onClick={() => handlePageChange(totalPages)}
+                    disabled={pageLoading}
+                    className="w-9 h-9 rounded-lg text-sm font-medium border border-border hover:bg-muted disabled:cursor-not-allowed"
+                  >
+                    {totalPages}
+                  </button>
+                )}
+              </div>
+
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage >= totalPages || pageLoading}
+                className="px-4 py-2 border border-border rounded-lg text-sm font-medium hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Sonraki
+              </button>
+            </div>
+          )}
+
+          {searchError && (
+            <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <p className="text-sm text-red-600">{searchError}</p>
+            </div>
+          )}
+
           <div className="mt-6 flex gap-3">
             <button
               onClick={() => {
                 setStep("input");
                 setListProducts([]);
                 setSelectedIds(new Set());
+                setProductMap(new Map());
+                setCurrentPage(1);
+                setTotalPages(1);
               }}
               className="flex-1 py-2.5 border border-border rounded-lg text-sm font-medium hover:bg-muted"
             >
