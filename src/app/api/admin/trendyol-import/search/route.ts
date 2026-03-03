@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { searchUrl } = body;
+    const { searchUrl, offset } = body;
 
     if (!searchUrl || typeof searchUrl !== "string") {
       return NextResponse.json(
@@ -38,7 +38,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await fetchTrendyolListProducts(searchUrl);
+    const parsedOffset =
+      typeof offset === "number" ? offset : undefined;
+    const result = await fetchTrendyolListProducts(searchUrl, parsedOffset);
 
     return NextResponse.json(result);
   } catch (error) {

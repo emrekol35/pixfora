@@ -139,15 +139,27 @@ function extractJsonBlock(html: string, startIndex: number): string | null {
  * Trendyol kategori/liste sayfasindan urun listesini cek.
  * window["__single-search-result__PROPS"] icindeki JSON'u parse eder.
  *
- * Desteklenen URL'ler:
- * - Kategori: https://www.trendyol.com/erkek-spor-ayakkabi-x-c114?pi=1
- * - Butik:    https://www.trendyol.com/butik/liste/...
- * - Arama:    https://www.trendyol.com/sr?q=... (Cloudflare engelleyebilir)
+ * Sayfalama: Trendyol SSR her zaman sayfa 1 verisini dondurur.
+ * Farkli sayfalara gecmek icin onceki sayfanin dondurdugu `offset` degeri gerekir.
+ * Bu offset URL'ye `?pi=N&offset=X` olarak eklenir.
  */
 export async function fetchTrendyolListProducts(
-  listUrl: string
+  listUrl: string,
+  offset?: number
 ): Promise<TrendyolListResult> {
-  const res = await fetch(listUrl, {
+  // offset varsa URL'ye ekle
+  let finalUrl = listUrl;
+  if (offset !== undefined) {
+    try {
+      const u = new URL(listUrl);
+      u.searchParams.set("offset", String(offset));
+      finalUrl = u.toString();
+    } catch {
+      finalUrl = `${listUrl}${listUrl.includes("?") ? "&" : "?"}offset=${offset}`;
+    }
+  }
+
+  const res = await fetch(finalUrl, {
     headers: {
       "User-Agent": USER_AGENT,
       Accept:
@@ -262,5 +274,9 @@ export async function fetchTrendyolListProducts(
   const PRODUCTS_PER_PAGE = 24;
   const totalPages = Math.max(1, Math.ceil(totalCount / PRODUCTS_PER_PAGE));
 
-  return { products, totalCount, currentPage, totalPages };
+  // Sonraki sayfa icin offset — data.offset veya data.data.offset
+  const nextOffset: number | undefined =
+    data?.data?.offset ?? data?.offset ?? undefined;
+
+  return { products, totalCount, currentPage, totalPages, nextOffset };
 }

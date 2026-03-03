@@ -126,4 +126,6 @@ export interface TrendyolListResult {
   totalCount: number;
   currentPage: number;
   totalPages: number;
+  /** Sonraki sayfayi yuklemek icin Trendyol offset degeri */
+  nextOffset?: number;
 }

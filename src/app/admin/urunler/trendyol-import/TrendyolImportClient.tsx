@@ -80,6 +80,15 @@ export default function TrendyolImportClient() {
     new Map()
   );
   const [pageLoading, setPageLoading] = useState(false);
+  // Offset-bazli sayfalama: her sayfa bir sonraki sayfanin offset'ini dondurur
+  const [pageOffsets, setPageOffsets] = useState<Map<number, number>>(
+    new Map()
+  );
+  const [pageProducts, setPageProducts] = useState<
+    Map<number, ListProduct[]>
+  >(new Map());
+  // En son yuklenen sayfa numarasi (ileri navigasyon siniri)
+  const [maxLoadedPage, setMaxLoadedPage] = useState(1);
 
   // Kategorileri yukle
   useEffect(() => {
@@ -159,14 +168,44 @@ export default function TrendyolImportClient() {
 
   // ---- Arama Modu ----
 
-  function buildPageUrl(baseUrl: string, page: number): string {
-    try {
-      const url = new URL(baseUrl);
-      url.searchParams.set("pi", String(page));
-      return url.toString();
-    } catch {
-      return `${baseUrl}${baseUrl.includes("?") ? "&" : "?"}pi=${page}`;
+  function applyPageData(
+    products: ListProduct[],
+    page: number,
+    data: {
+      totalCount?: number;
+      totalPages?: number;
+      nextOffset?: number;
     }
+  ) {
+    setListProducts(products);
+    setCurrentPage(page);
+    if (data.totalCount) setTotalCount(data.totalCount);
+    if (data.totalPages) setTotalPages(data.totalPages);
+
+    // Product map'e ekle
+    setProductMap((prev) => {
+      const next = new Map(prev);
+      products.forEach((p) => next.set(p.id, p));
+      return next;
+    });
+
+    // Sayfa cache'e kaydet
+    setPageProducts((prev) => new Map(prev).set(page, products));
+
+    // Sonraki sayfa icin offset'i kaydet
+    if (data.nextOffset !== undefined) {
+      setPageOffsets((prev) => new Map(prev).set(page + 1, data.nextOffset!));
+    }
+
+    // Max loaded page guncelle
+    setMaxLoadedPage((prev) => Math.max(prev, page));
+
+    // Yeni sayfa urunlerini otomatik sec
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      products.forEach((p) => next.add(p.id));
+      return next;
+    });
   }
 
   async function handleFetchProducts() {
@@ -179,6 +218,9 @@ export default function TrendyolImportClient() {
     setProductMap(new Map());
     setCurrentPage(1);
     setTotalPages(1);
+    setPageOffsets(new Map());
+    setPageProducts(new Map());
+    setMaxLoadedPage(1);
 
     try {
       const res = await fetch("/api/admin/trendyol-import/search", {
@@ -196,18 +238,7 @@ export default function TrendyolImportClient() {
       }
 
       const products: ListProduct[] = data.products || [];
-      setListProducts(products);
-      setTotalCount(data.totalCount || 0);
-      setCurrentPage(data.currentPage || 1);
-      setTotalPages(data.totalPages || 1);
-
-      // Product map'e ekle
-      const map = new Map<number, ListProduct>();
-      products.forEach((p) => map.set(p.id, p));
-      setProductMap(map);
-
-      // Tum urunleri sec
-      setSelectedIds(new Set(products.map((p) => p.id)));
+      applyPageData(products, 1, data);
       setStep("preview");
     } catch {
       setSearchError("Baglanti hatasi");
@@ -219,16 +250,37 @@ export default function TrendyolImportClient() {
   async function handlePageChange(page: number) {
     if (page < 1 || page > totalPages || page === currentPage) return;
 
+    // Cache'de varsa direkt goster (geri navigasyon)
+    const cached = pageProducts.get(page);
+    if (cached) {
+      setListProducts(cached);
+      setCurrentPage(page);
+      return;
+    }
+
+    // Ileri navigasyon — offset gerekli
+    const offset = pageOffsets.get(page);
+    if (offset === undefined) return; // Bu sayfaya henuz gidilemez
+
     setPageLoading(true);
     setSearchError("");
 
     try {
-      const pageUrl = buildPageUrl(searchUrl.trim(), page);
+      // pi parametresi URL'ye eklenir, offset body'de gonderilir
+      let pageUrl = searchUrl.trim();
+      try {
+        const u = new URL(pageUrl);
+        u.searchParams.set("pi", String(page));
+        pageUrl = u.toString();
+      } catch {
+        pageUrl = `${pageUrl}${pageUrl.includes("?") ? "&" : "?"}pi=${page}`;
+      }
+
       const res = await fetch("/api/admin/trendyol-import/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ searchUrl: pageUrl }),
+        body: JSON.stringify({ searchUrl: pageUrl, offset }),
       });
 
       const data = await res.json();
@@ -239,23 +291,7 @@ export default function TrendyolImportClient() {
       }
 
       const newProducts: ListProduct[] = data.products || [];
-      setListProducts(newProducts);
-      setCurrentPage(data.currentPage || page);
-      setTotalPages(data.totalPages || totalPages);
-
-      // Product map'e ekle (onceki sayfalarin verileri korunuyor)
-      setProductMap((prev) => {
-        const next = new Map(prev);
-        newProducts.forEach((p) => next.set(p.id, p));
-        return next;
-      });
-
-      // Yeni sayfa urunlerini otomatik sec
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        newProducts.forEach((p) => next.add(p.id));
-        return next;
-      });
+      applyPageData(newProducts, page, data);
     } catch {
       setSearchError("Baglanti hatasi");
     } finally {
@@ -363,6 +399,9 @@ export default function TrendyolImportClient() {
     setTotalPages(1);
     setProductMap(new Map());
     setPageLoading(false);
+    setPageOffsets(new Map());
+    setPageProducts(new Map());
+    setMaxLoadedPage(1);
   }
 
   const validCount = parsedUrls.filter((p) => p.valid).length;
@@ -730,16 +769,20 @@ export default function TrendyolImportClient() {
               </button>
 
               <div className="flex items-center gap-1">
-                {(() => {
-                  const pages: number[] = [];
-                  const start = Math.max(1, currentPage - 2);
-                  const end = Math.min(totalPages, currentPage + 2);
-                  for (let i = start; i <= end; i++) pages.push(i);
-                  return pages.map((p) => (
+                {Array.from(
+                  { length: maxLoadedPage + (pageOffsets.has(maxLoadedPage + 1) ? 1 : 0) },
+                  (_, i) => i + 1
+                )
+                  .filter(
+                    (p) =>
+                      p >= currentPage - 2 &&
+                      p <= currentPage + 2
+                  )
+                  .map((p) => (
                     <button
                       key={p}
                       onClick={() => handlePageChange(p)}
-                      disabled={pageLoading}
+                      disabled={pageLoading || p === currentPage}
                       className={`w-9 h-9 rounded-lg text-sm font-medium ${
                         p === currentPage
                           ? "bg-primary text-white"
@@ -748,25 +791,17 @@ export default function TrendyolImportClient() {
                     >
                       {p}
                     </button>
-                  ));
-                })()}
-                {currentPage + 2 < totalPages && (
-                  <span className="text-muted-foreground px-1">...</span>
-                )}
-                {currentPage + 2 < totalPages && (
-                  <button
-                    onClick={() => handlePageChange(totalPages)}
-                    disabled={pageLoading}
-                    className="w-9 h-9 rounded-lg text-sm font-medium border border-border hover:bg-muted disabled:cursor-not-allowed"
-                  >
-                    {totalPages}
-                  </button>
-                )}
+                  ))}
               </div>
 
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage >= totalPages || pageLoading}
+                disabled={
+                  currentPage >= totalPages ||
+                  pageLoading ||
+                  (!pageProducts.has(currentPage + 1) &&
+                    !pageOffsets.has(currentPage + 1))
+                }
                 className="px-4 py-2 border border-border rounded-lg text-sm font-medium hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Sonraki
@@ -789,6 +824,9 @@ export default function TrendyolImportClient() {
                 setProductMap(new Map());
                 setCurrentPage(1);
                 setTotalPages(1);
+                setPageOffsets(new Map());
+                setPageProducts(new Map());
+                setMaxLoadedPage(1);
               }}
               className="flex-1 py-2.5 border border-border rounded-lg text-sm font-medium hover:bg-muted"
             >
