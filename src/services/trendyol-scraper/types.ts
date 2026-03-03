@@ -99,3 +99,31 @@ export interface TrendyolImportOptions {
   categoryId?: string;
   defaultStock?: number;
 }
+
+// ---- Arama/kategori sayfa tipleri ----
+
+export interface TrendyolListProduct {
+  id: number;
+  name: string;
+  brand: string;
+  url: string; // relative: /marka/urun-p-{id}
+  price: {
+    current: number;
+    original?: number;
+    discounted?: number;
+    currency: string;
+  };
+  image: string; // CDN URL
+  ratingScore?: { averageRating: number; totalCount: number };
+  merchantName?: string;
+  categoryName?: string;
+  freeCargo?: boolean;
+  hasStock?: boolean;
+}
+
+export interface TrendyolListResult {
+  products: TrendyolListProduct[];
+  totalCount: number;
+  currentPage: number;
+  totalPages: number;
+}

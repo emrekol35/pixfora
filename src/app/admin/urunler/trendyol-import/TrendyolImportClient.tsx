@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 interface ParsedUrl {
   url: string;
@@ -24,6 +25,26 @@ interface Category {
   parentId: string | null;
 }
 
+interface ListProduct {
+  id: number;
+  name: string;
+  brand: string;
+  url: string;
+  price: {
+    current: number;
+    original?: number;
+    discounted?: number;
+    currency: string;
+  };
+  image: string;
+  ratingScore?: { averageRating: number; totalCount: number };
+  merchantName?: string;
+  categoryName?: string;
+  freeCargo?: boolean;
+  hasStock?: boolean;
+}
+
+type Mode = "urls" | "search";
 type Step = "input" | "preview" | "importing" | "result";
 
 function parseContentId(url: string): string | null {
@@ -34,14 +55,25 @@ function parseContentId(url: string): string | null {
 }
 
 export default function TrendyolImportClient() {
+  const [mode, setMode] = useState<Mode>("search");
   const [step, setStep] = useState<Step>("input");
-  const [urlText, setUrlText] = useState("");
-  const [parsedUrls, setParsedUrls] = useState<ParsedUrl[]>([]);
   const [categoryId, setCategoryId] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
   const [results, setResults] = useState<ImportResult[]>([]);
   const [progress, setProgress] = useState(0);
   const [currentUrl, setCurrentUrl] = useState("");
+
+  // URL modu state
+  const [urlText, setUrlText] = useState("");
+  const [parsedUrls, setParsedUrls] = useState<ParsedUrl[]>([]);
+
+  // Arama modu state
+  const [searchUrl, setSearchUrl] = useState("");
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState("");
+  const [listProducts, setListProducts] = useState<ListProduct[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [totalCount, setTotalCount] = useState(0);
 
   // Kategorileri yukle
   useEffect(() => {
@@ -54,7 +86,8 @@ export default function TrendyolImportClient() {
       .catch(() => {});
   }, []);
 
-  // URL'leri parse et
+  // ---- URL Modu ----
+
   function handleParseUrls() {
     const lines = urlText
       .split("\n")
@@ -70,8 +103,7 @@ export default function TrendyolImportClient() {
     setStep("preview");
   }
 
-  // Import baslat
-  async function handleStartImport() {
+  async function handleStartUrlImport() {
     const validUrls = parsedUrls.filter((p) => p.valid).map((p) => p.url);
     if (validUrls.length === 0) return;
 
@@ -80,7 +112,6 @@ export default function TrendyolImportClient() {
     setResults([]);
 
     try {
-      // Tek seferde gonder — backend sirayla isler
       const res = await fetch("/api/admin/trendyol-import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -120,7 +151,117 @@ export default function TrendyolImportClient() {
     setStep("result");
   }
 
-  // Yeniden basla
+  // ---- Arama Modu ----
+
+  async function handleFetchProducts() {
+    if (!searchUrl.trim()) return;
+
+    setSearchLoading(true);
+    setSearchError("");
+    setListProducts([]);
+    setSelectedIds(new Set());
+
+    try {
+      const res = await fetch("/api/admin/trendyol-import/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ searchUrl: searchUrl.trim() }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setSearchError(data.error || "Urun listesi alinamadi");
+        return;
+      }
+
+      setListProducts(data.products || []);
+      setTotalCount(data.totalCount || 0);
+      // Tum urunleri sec
+      setSelectedIds(
+        new Set((data.products || []).map((p: ListProduct) => p.id))
+      );
+      setStep("preview");
+    } catch {
+      setSearchError("Baglanti hatasi");
+    } finally {
+      setSearchLoading(false);
+    }
+  }
+
+  function toggleProduct(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    if (selectedIds.size === listProducts.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(listProducts.map((p) => p.id)));
+    }
+  }
+
+  async function handleStartSearchImport() {
+    const selectedProducts = listProducts.filter((p) => selectedIds.has(p.id));
+    if (selectedProducts.length === 0) return;
+
+    // Secilen urunlerin URL'lerini olustur
+    const urls = selectedProducts.map(
+      (p) => `https://www.trendyol.com${p.url}`
+    );
+
+    setStep("importing");
+    setProgress(0);
+    setResults([]);
+
+    try {
+      const res = await fetch("/api/admin/trendyol-import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          urls,
+          categoryId: categoryId || undefined,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setResults([
+          {
+            url: "",
+            contentId: "",
+            status: "failed",
+            error: data.error || "Aktarim hatasi",
+          },
+        ]);
+      } else {
+        setResults(data.results || []);
+      }
+    } catch {
+      setResults([
+        {
+          url: "",
+          contentId: "",
+          status: "failed",
+          error: "Baglanti hatasi",
+        },
+      ]);
+    }
+
+    setProgress(100);
+    setStep("result");
+  }
+
+  // ---- Ortak ----
+
   function handleReset() {
     setStep("input");
     setUrlText("");
@@ -128,6 +269,11 @@ export default function TrendyolImportClient() {
     setResults([]);
     setProgress(0);
     setCurrentUrl("");
+    setSearchUrl("");
+    setSearchError("");
+    setListProducts([]);
+    setSelectedIds(new Set());
+    setTotalCount(0);
   }
 
   const validCount = parsedUrls.filter((p) => p.valid).length;
@@ -137,16 +283,26 @@ export default function TrendyolImportClient() {
   const failCount = results.filter((r) => r.status === "failed").length;
   const dupCount = results.filter((r) => r.status === "duplicate").length;
 
-  return (
-    <div className="max-w-4xl">
-      {/* Adim gostergesi */}
-      <div className="flex items-center gap-2 mb-8">
-        {[
+  const stepLabels =
+    mode === "search"
+      ? [
+          { key: "input", label: "1. Link Gir" },
+          { key: "preview", label: "2. Urun Sec" },
+          { key: "importing", label: "3. Aktariliyor" },
+          { key: "result", label: "4. Sonuc" },
+        ]
+      : [
           { key: "input", label: "1. URL Gir" },
           { key: "preview", label: "2. Onizle" },
           { key: "importing", label: "3. Aktariliyor" },
           { key: "result", label: "4. Sonuc" },
-        ].map((s, i) => (
+        ];
+
+  return (
+    <div className="max-w-5xl">
+      {/* Adim gostergesi */}
+      <div className="flex items-center gap-2 mb-8">
+        {stepLabels.map((s, i) => (
           <div key={s.key} className="flex items-center gap-2">
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
@@ -174,22 +330,83 @@ export default function TrendyolImportClient() {
         ))}
       </div>
 
-      {/* Step 1: URL Gir */}
+      {/* Step 1: Input */}
       {step === "input" && (
         <div className="bg-card border border-border rounded-xl p-8">
-          <h2 className="text-lg font-bold mb-2">Trendyol Urun Linkleri</h2>
-          <p className="text-sm text-muted-foreground mb-4">
-            Aktarmak istediginiz Trendyol urun linklerini asagiya yapistirin. Her satira bir link yazin.
-          </p>
+          {/* Mod secimi */}
+          <div className="flex gap-1 bg-muted p-1 rounded-lg mb-6">
+            <button
+              onClick={() => setMode("search")}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                mode === "search"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Kategori / Liste Linki
+            </button>
+            <button
+              onClick={() => setMode("urls")}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                mode === "urls"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Tekil Urun Linkleri
+            </button>
+          </div>
 
-          <textarea
-            value={urlText}
-            onChange={(e) => setUrlText(e.target.value)}
-            placeholder={`https://www.trendyol.com/marka/urun-adi-p-123456789\nhttps://www.trendyol.com/marka/diger-urun-p-987654321`}
-            rows={8}
-            className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground font-mono text-sm resize-y focus:outline-none focus:ring-2 focus:ring-primary"
-          />
+          {mode === "search" ? (
+            <>
+              <h2 className="text-lg font-bold mb-2">
+                Trendyol Kategori / Liste Linki
+              </h2>
+              <p className="text-sm text-muted-foreground mb-4">
+                Bir Trendyol kategori veya liste sayfasinin linkini yapistirin.
+                Sayfadaki tum urunler otomatik olarak listelenecek.
+              </p>
 
+              <input
+                type="url"
+                value={searchUrl}
+                onChange={(e) => setSearchUrl(e.target.value)}
+                placeholder="https://www.trendyol.com/erkek-spor-ayakkabi-x-c114"
+                className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+
+              <p className="mt-2 text-xs text-muted-foreground">
+                Ornek: https://www.trendyol.com/erkek-spor-ayakkabi-x-c114 veya
+                butik/liste linkleri
+              </p>
+
+              {searchError && (
+                <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <p className="text-sm text-red-600">{searchError}</p>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <h2 className="text-lg font-bold mb-2">
+                Trendyol Urun Linkleri
+              </h2>
+              <p className="text-sm text-muted-foreground mb-4">
+                Aktarmak istediginiz Trendyol urun linklerini asagiya
+                yapistirin. Her satira bir link yazin.
+              </p>
+
+              <textarea
+                value={urlText}
+                onChange={(e) => setUrlText(e.target.value)}
+                placeholder={`https://www.trendyol.com/marka/urun-adi-p-123456789\nhttps://www.trendyol.com/marka/diger-urun-p-987654321`}
+                rows={8}
+                className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground font-mono text-sm resize-y focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </>
+          )}
+
+          {/* Kategori secimi — her iki mod icin de ortak */}
           <div className="mt-4 flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <label className="block text-sm font-medium text-foreground mb-1">
@@ -211,19 +428,36 @@ export default function TrendyolImportClient() {
           </div>
 
           <div className="mt-6 flex justify-end">
-            <button
-              onClick={handleParseUrls}
-              disabled={!urlText.trim()}
-              className="px-6 py-2.5 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
-            >
-              Devam Et
-            </button>
+            {mode === "search" ? (
+              <button
+                onClick={handleFetchProducts}
+                disabled={!searchUrl.trim() || searchLoading}
+                className="px-6 py-2.5 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
+              >
+                {searchLoading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                    Yukleniyor...
+                  </span>
+                ) : (
+                  "Urunleri Getir"
+                )}
+              </button>
+            ) : (
+              <button
+                onClick={handleParseUrls}
+                disabled={!urlText.trim()}
+                className="px-6 py-2.5 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
+              >
+                Devam Et
+              </button>
+            )}
           </div>
         </div>
       )}
 
-      {/* Step 2: Onizle */}
-      {step === "preview" && (
+      {/* Step 2: Preview — URL Modu */}
+      {step === "preview" && mode === "urls" && (
         <div className="bg-card border border-border rounded-xl p-8">
           <h2 className="text-lg font-bold mb-4">URL Kontrolu</h2>
 
@@ -244,7 +478,9 @@ export default function TrendyolImportClient() {
                 <tr>
                   <th className="text-left px-4 py-2 font-medium">#</th>
                   <th className="text-left px-4 py-2 font-medium">URL</th>
-                  <th className="text-left px-4 py-2 font-medium">Content ID</th>
+                  <th className="text-left px-4 py-2 font-medium">
+                    Content ID
+                  </th>
                   <th className="text-left px-4 py-2 font-medium">Durum</th>
                 </tr>
               </thead>
@@ -254,7 +490,9 @@ export default function TrendyolImportClient() {
                     key={i}
                     className={`border-t border-border ${!p.valid ? "bg-red-50 dark:bg-red-900/10" : ""}`}
                   >
-                    <td className="px-4 py-2 text-muted-foreground">{i + 1}</td>
+                    <td className="px-4 py-2 text-muted-foreground">
+                      {i + 1}
+                    </td>
                     <td className="px-4 py-2 font-mono text-xs max-w-md truncate">
                       {p.url}
                     </td>
@@ -263,9 +501,13 @@ export default function TrendyolImportClient() {
                     </td>
                     <td className="px-4 py-2">
                       {p.valid ? (
-                        <span className="text-green-600 font-medium">Gecerli</span>
+                        <span className="text-green-600 font-medium">
+                          Gecerli
+                        </span>
                       ) : (
-                        <span className="text-red-600 font-medium">Gecersiz</span>
+                        <span className="text-red-600 font-medium">
+                          Gecersiz
+                        </span>
                       )}
                     </td>
                   </tr>
@@ -282,11 +524,120 @@ export default function TrendyolImportClient() {
               Geri
             </button>
             <button
-              onClick={handleStartImport}
+              onClick={handleStartUrlImport}
               disabled={validCount === 0}
               className="flex-1 py-2.5 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
             >
               Aktarimi Baslat ({validCount} urun)
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 2: Preview — Arama Modu */}
+      {step === "preview" && mode === "search" && (
+        <div className="bg-card border border-border rounded-xl p-8">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-bold">Urun Secimi</h2>
+              <p className="text-sm text-muted-foreground">
+                {totalCount} urun bulundu, {listProducts.length} tanesi bu
+                sayfada
+              </p>
+            </div>
+            <button
+              onClick={toggleAll}
+              className="text-sm text-primary hover:underline"
+            >
+              {selectedIds.size === listProducts.length
+                ? "Secimi Kaldir"
+                : "Tumunu Sec"}
+            </button>
+          </div>
+
+          <div className="text-sm text-muted-foreground mb-4">
+            {selectedIds.size} urun secildi
+          </div>
+
+          {/* Urun listesi — grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[600px] overflow-y-auto">
+            {listProducts.map((p) => (
+              <label
+                key={p.id}
+                className={`flex gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                  selectedIds.has(p.id)
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/50"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(p.id)}
+                  onChange={() => toggleProduct(p.id)}
+                  className="mt-1 shrink-0"
+                />
+                <div className="flex gap-3 min-w-0 flex-1">
+                  {p.image && (
+                    <Image
+                      src={p.image}
+                      alt={p.name}
+                      width={64}
+                      height={64}
+                      className="w-16 h-16 object-cover rounded-md shrink-0"
+                      unoptimized
+                    />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium line-clamp-2 leading-tight">
+                      {p.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {p.brand}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-sm font-bold text-foreground">
+                        {p.price.current.toLocaleString("tr-TR", {
+                          minimumFractionDigits: 2,
+                        })}{" "}
+                        TL
+                      </span>
+                      {p.price.original &&
+                        p.price.original > p.price.current && (
+                          <span className="text-xs text-muted-foreground line-through">
+                            {p.price.original.toLocaleString("tr-TR", {
+                              minimumFractionDigits: 2,
+                            })}
+                          </span>
+                        )}
+                    </div>
+                    {p.ratingScore && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {p.ratingScore.averageRating.toFixed(1)} ({p.ratingScore.totalCount})
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </label>
+            ))}
+          </div>
+
+          <div className="mt-6 flex gap-3">
+            <button
+              onClick={() => {
+                setStep("input");
+                setListProducts([]);
+                setSelectedIds(new Set());
+              }}
+              className="flex-1 py-2.5 border border-border rounded-lg text-sm font-medium hover:bg-muted"
+            >
+              Geri
+            </button>
+            <button
+              onClick={handleStartSearchImport}
+              disabled={selectedIds.size === 0}
+              className="flex-1 py-2.5 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
+            >
+              Aktarimi Baslat ({selectedIds.size} urun)
             </button>
           </div>
         </div>
@@ -297,7 +648,8 @@ export default function TrendyolImportClient() {
         <div className="bg-card border border-border rounded-xl p-8 text-center">
           <h2 className="text-lg font-bold mb-4">Urunler Aktariliyor...</h2>
           <p className="text-sm text-muted-foreground mb-6">
-            Trendyol&apos;dan urun bilgileri ve gorseller indiriliyor. Bu islem birka dakika surebilir.
+            Trendyol&apos;dan urun bilgileri ve gorseller indiriliyor. Bu islem
+            birka&ccedil; dakika surebilir.
           </p>
 
           <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 mb-4">
