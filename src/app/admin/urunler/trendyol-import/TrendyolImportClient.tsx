@@ -203,8 +203,30 @@ export default function TrendyolImportClient() {
     // Urunler otomatik secilmez, kullanici manuel secer
   }
 
-  async function handleFetchProducts() {
-    if (!searchUrl.trim()) return;
+  /**
+   * Kullanicinin girdisini Trendyol URL'sine cevir.
+   * - URL ise olduGu gibi kullan
+   * - Duz metin ise marka sayfasi olarak dene (trendyol.com/{slug})
+   */
+  function buildTrendyolUrl(input: string): string {
+    const trimmed = input.trim();
+    // Zaten URL ise dokunma
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("www.")) {
+      return trimmed.startsWith("www.") ? `https://${trimmed}` : trimmed;
+    }
+    // Duz metin -> marka sayfasi URL'si
+    const slug = trimmed
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9\-]/g, "");
+    return `https://www.trendyol.com/${slug}`;
+  }
+
+  async function handleFetchProducts(overrideUrl?: string) {
+    const input = overrideUrl || searchUrl;
+    if (!input.trim()) return;
+
+    const finalUrl = buildTrendyolUrl(input);
 
     setSearchLoading(true);
     setSearchError("");
@@ -217,12 +239,19 @@ export default function TrendyolImportClient() {
     setPageProducts(new Map());
     setMaxLoadedPage(1);
 
+    // Marka/duz metin arama ise searchUrl'i guncelle
+    if (!overrideUrl) {
+      // searchUrl zaten set, sadece arka planda finalUrl kullanalim
+    } else {
+      setSearchUrl(overrideUrl);
+    }
+
     try {
       const res = await fetch("/api/admin/trendyol-import/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ searchUrl: searchUrl.trim() }),
+        body: JSON.stringify({ searchUrl: finalUrl }),
       });
 
       const data = await res.json();
@@ -262,7 +291,7 @@ export default function TrendyolImportClient() {
 
     try {
       // pi parametresi URL'ye eklenir, offset body'de gonderilir
-      let pageUrl = searchUrl.trim();
+      let pageUrl = buildTrendyolUrl(searchUrl);
       try {
         const u = new URL(pageUrl);
         u.searchParams.set("pi", String(page));
@@ -409,7 +438,7 @@ export default function TrendyolImportClient() {
   const stepLabels =
     mode === "search"
       ? [
-          { key: "input", label: "1. Link Gir" },
+          { key: "input", label: "1. Ara" },
           { key: "preview", label: "2. Urun Sec" },
           { key: "importing", label: "3. Aktariliyor" },
           { key: "result", label: "4. Sonuc" },
@@ -466,7 +495,7 @@ export default function TrendyolImportClient() {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Kategori / Liste Linki
+              Marka / Kategori Ara
             </button>
             <button
               onClick={() => setMode("urls")}
@@ -483,25 +512,97 @@ export default function TrendyolImportClient() {
           {mode === "search" ? (
             <>
               <h2 className="text-lg font-bold mb-2">
-                Trendyol Kategori / Liste Linki
+                Trendyol&apos;dan Urun Ara
               </h2>
               <p className="text-sm text-muted-foreground mb-4">
-                Bir Trendyol kategori veya liste sayfasinin linkini yapistirin.
-                Sayfadaki tum urunler otomatik olarak listelenecek.
+                Marka adi yazin veya bir Trendyol kategori linkini yapistirin.
               </p>
 
-              <input
-                type="url"
-                value={searchUrl}
-                onChange={(e) => setSearchUrl(e.target.value)}
-                placeholder="https://www.trendyol.com/erkek-spor-ayakkabi-x-c114"
-                className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchUrl}
+                  onChange={(e) => setSearchUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && searchUrl.trim()) {
+                      e.preventDefault();
+                      handleFetchProducts();
+                    }
+                  }}
+                  placeholder="Marka adi (orn: nike, adidas) veya kategori linki"
+                  className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+              </div>
 
               <p className="mt-2 text-xs text-muted-foreground">
-                Ornek: https://www.trendyol.com/erkek-spor-ayakkabi-x-c114 veya
-                butik/liste linkleri
+                Ornekler: <strong>nike</strong>, <strong>adidas</strong>, <strong>puma</strong> veya{" "}
+                <strong>https://www.trendyol.com/erkek-spor-ayakkabi-x-c114</strong>
               </p>
+
+              {/* Populer Kategoriler */}
+              <div className="mt-5">
+                <p className="text-sm font-medium text-foreground mb-2">
+                  Populer Kategoriler
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { label: "Kadin Elbise", url: "https://www.trendyol.com/kadin-elbise-x-c56" },
+                    { label: "Erkek Tisort", url: "https://www.trendyol.com/erkek-t-shirt-x-c1020" },
+                    { label: "Kadin Tisort", url: "https://www.trendyol.com/kadin-t-shirt-x-c1049" },
+                    { label: "Erkek Spor Ayakkabi", url: "https://www.trendyol.com/erkek-spor-ayakkabi-x-c114" },
+                    { label: "Kadin Spor Ayakkabi", url: "https://www.trendyol.com/kadin-spor-ayakkabi-x-c110" },
+                    { label: "Kadin Canta", url: "https://www.trendyol.com/kadin-omuz-cantasi-x-c106" },
+                    { label: "Erkek Gomlek", url: "https://www.trendyol.com/erkek-gomlek-x-c1021" },
+                    { label: "Kadin Pantolon", url: "https://www.trendyol.com/kadin-pantolon-x-c70" },
+                    { label: "Erkek Esofman", url: "https://www.trendyol.com/erkek-esofman-alti-x-c1047" },
+                    { label: "Kadin Etek", url: "https://www.trendyol.com/kadin-etek-x-c55" },
+                  ].map((cat) => (
+                    <button
+                      key={cat.url}
+                      onClick={() => handleFetchProducts(cat.url)}
+                      disabled={searchLoading}
+                      className="px-3 py-1.5 text-xs font-medium rounded-full border border-border hover:border-primary hover:text-primary hover:bg-primary/5 transition-colors disabled:opacity-50"
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Populer Markalar */}
+              <div className="mt-4">
+                <p className="text-sm font-medium text-foreground mb-2">
+                  Populer Markalar
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { label: "Nike", url: "https://www.trendyol.com/nike" },
+                    { label: "Adidas", url: "https://www.trendyol.com/adidas" },
+                    { label: "Puma", url: "https://www.trendyol.com/puma" },
+                    { label: "New Balance", url: "https://www.trendyol.com/new-balance" },
+                    { label: "DeFacto", url: "https://www.trendyol.com/defacto" },
+                    { label: "LC Waikiki", url: "https://www.trendyol.com/lc-waikiki" },
+                    { label: "Mavi", url: "https://www.trendyol.com/mavi" },
+                    { label: "Zara", url: "https://www.trendyol.com/zara" },
+                    { label: "H&M", url: "https://www.trendyol.com/h-m--hm-" },
+                    { label: "Trendyolmilla", url: "https://www.trendyol.com/trendyolmilla" },
+                  ].map((brand) => (
+                    <button
+                      key={brand.url}
+                      onClick={() => handleFetchProducts(brand.url)}
+                      disabled={searchLoading}
+                      className="px-3 py-1.5 text-xs font-medium rounded-full bg-muted hover:bg-primary/10 hover:text-primary transition-colors disabled:opacity-50"
+                    >
+                      {brand.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               {searchError && (
                 <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
@@ -553,7 +654,7 @@ export default function TrendyolImportClient() {
           <div className="mt-6 flex justify-end">
             {mode === "search" ? (
               <button
-                onClick={handleFetchProducts}
+                onClick={() => handleFetchProducts()}
                 disabled={!searchUrl.trim() || searchLoading}
                 className="px-6 py-2.5 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
               >
