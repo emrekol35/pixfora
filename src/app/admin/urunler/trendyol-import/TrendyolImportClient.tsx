@@ -200,12 +200,7 @@ export default function TrendyolImportClient() {
     // Max loaded page guncelle
     setMaxLoadedPage((prev) => Math.max(prev, page));
 
-    // Yeni sayfa urunlerini otomatik sec
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      products.forEach((p) => next.add(p.id));
-      return next;
-    });
+    // Urunler otomatik secilmez, kullanici manuel secer
   }
 
   async function handleFetchProducts() {
