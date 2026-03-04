@@ -10,6 +10,7 @@ export async function GET() {
     }
 
     const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
@@ -30,6 +31,11 @@ export async function GET() {
       last30DaysOrders,
       pendingShipments,
       pendingReturns,
+      // Yeni sorgular
+      todayOrdersData,
+      pendingOrderCount,
+      topProducts,
+      paymentMethods,
     ] = await Promise.all([
       prisma.product.count({ where: { isActive: true } }),
       prisma.order.count(),
@@ -90,7 +96,56 @@ export async function GET() {
       prisma.return.count({
         where: { status: "PENDING" },
       }),
+      // --- YENİ SORGULAR ---
+      // Bugunun siparisleri
+      prisma.order.aggregate({
+        where: { createdAt: { gte: todayStart } },
+        _count: { id: true },
+        _sum: { total: true },
+      }),
+      // Onay bekleyen siparisler
+      prisma.order.count({
+        where: { status: "PENDING" },
+      }),
+      // En cok satan urunler
+      prisma.product.findMany({
+        where: { isActive: true, salesCount: { gt: 0 } },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          salesCount: true,
+          price: true,
+          images: {
+            select: { url: true },
+            orderBy: { order: "asc" },
+            take: 1,
+          },
+        },
+        orderBy: { salesCount: "desc" },
+        take: 5,
+      }),
+      // Odeme yontemi dagilimi
+      prisma.order.groupBy({
+        by: ["paymentMethod"],
+        _count: { id: true },
+      }),
     ]);
+
+    // Bugunun ziyaretcileri (tracking tablosu varsa)
+    let todayVisitors = 0;
+    try {
+      const visitors = await prisma.trackingEvent.groupBy({
+        by: ["visitorId"],
+        where: {
+          eventType: "page_view",
+          createdAt: { gte: todayStart },
+        },
+      });
+      todayVisitors = visitors.length;
+    } catch {
+      // Tracking tablosu yoksa veya hata olursa 0 dondur
+    }
 
     // 30 gunluk gelir trendi
     const dailyRevenue: { date: string; revenue: number; orders: number }[] = [];
@@ -134,6 +189,11 @@ export async function GET() {
         newCustomersLastMonth,
         pendingShipments,
         pendingReturns,
+        // Yeni
+        todayRevenue: Number(todayOrdersData._sum.total || 0),
+        todayOrders: todayOrdersData._count.id,
+        todayVisitors,
+        pendingOrderCount,
       },
       recentOrders: recentOrders.map((o) => ({
         id: o.id,
@@ -148,6 +208,19 @@ export async function GET() {
       ordersByStatus: ordersByStatus.map((s) => ({
         status: s.status,
         count: s._count.id,
+      })),
+      // Yeni
+      topSellingProducts: topProducts.map((p) => ({
+        id: p.id,
+        name: p.name,
+        slug: p.slug,
+        salesCount: p.salesCount,
+        price: Number(p.price),
+        image: p.images[0]?.url || null,
+      })),
+      paymentMethodDistribution: paymentMethods.map((pm) => ({
+        method: pm.paymentMethod,
+        count: pm._count.id,
       })),
     });
   } catch (error) {
