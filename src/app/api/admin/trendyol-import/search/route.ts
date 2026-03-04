@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { fetchTrendyolListProducts } from "@/services/trendyol-scraper";
+import { fetchTrendyolWithBrowser } from "@/services/trendyol-scraper/browser-client";
 
 export const dynamic = "force-dynamic";
 
@@ -38,11 +39,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const parsedOffset =
-      typeof offset === "number" ? offset : undefined;
-    const result = await fetchTrendyolListProducts(searchUrl, parsedOffset);
+    const parsedOffset = typeof offset === "number" ? offset : undefined;
 
-    return NextResponse.json(result);
+    // Once normal fetch ile dene (hizli), basarisiz olursa browser ile dene
+    try {
+      const result = await fetchTrendyolListProducts(searchUrl, parsedOffset);
+      return NextResponse.json(result);
+    } catch (fetchError) {
+      console.log(
+        "[Trendyol Search] Fetch basarisiz, browser ile deneniyor:",
+        fetchError instanceof Error ? fetchError.message : fetchError
+      );
+
+      // Browser ile dene
+      const result = await fetchTrendyolWithBrowser(searchUrl, parsedOffset);
+      return NextResponse.json(result);
+    }
   } catch (error) {
     console.error("Trendyol search error:", error);
     const message =

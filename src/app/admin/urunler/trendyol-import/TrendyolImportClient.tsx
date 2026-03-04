@@ -205,8 +205,9 @@ export default function TrendyolImportClient() {
 
   /**
    * Kullanicinin girdisini Trendyol URL'sine cevir.
-   * - URL ise olduGu gibi kullan
-   * - Duz metin ise marka sayfasi olarak dene (trendyol.com/{slug})
+   * - URL ise oldugu gibi kullan
+   * - Tek kelime ise marka sayfasi dene (trendyol.com/{slug})
+   * - Birden fazla kelime ise arama URL'si olustur (trendyol.com/sr?q=...)
    */
   function buildTrendyolUrl(input: string): string {
     const trimmed = input.trim();
@@ -214,10 +215,14 @@ export default function TrendyolImportClient() {
     if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("www.")) {
       return trimmed.startsWith("www.") ? `https://${trimmed}` : trimmed;
     }
-    // Duz metin -> marka sayfasi URL'si
+    // Bosluk iceriyorsa arama URL'si olustur
+    if (trimmed.includes(" ")) {
+      const query = encodeURIComponent(trimmed);
+      return `https://www.trendyol.com/sr?q=${query}`;
+    }
+    // Tek kelime -> marka sayfasi URL'si
     const slug = trimmed
       .toLowerCase()
-      .replace(/\s+/g, "-")
       .replace(/[^a-z0-9\-]/g, "");
     return `https://www.trendyol.com/${slug}`;
   }
@@ -515,7 +520,7 @@ export default function TrendyolImportClient() {
                 Trendyol&apos;dan Urun Ara
               </h2>
               <p className="text-sm text-muted-foreground mb-4">
-                Marka adi yazin veya bir Trendyol kategori linkini yapistirin.
+                Marka adi, anahtar kelime yazin veya bir Trendyol linkini yapistirin.
               </p>
 
               <div className="relative">
@@ -529,7 +534,7 @@ export default function TrendyolImportClient() {
                       handleFetchProducts();
                     }
                   }}
-                  placeholder="Marka adi (orn: nike, adidas) veya kategori linki"
+                  placeholder="Marka adi veya Trendyol linki (orn: nike, adidas, https://www.trendyol.com/sr?q=ayakkabi)"
                   className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -540,8 +545,8 @@ export default function TrendyolImportClient() {
               </div>
 
               <p className="mt-2 text-xs text-muted-foreground">
-                Ornekler: <strong>nike</strong>, <strong>adidas</strong>, <strong>puma</strong> veya{" "}
-                <strong>https://www.trendyol.com/erkek-spor-ayakkabi-x-c114</strong>
+                Ornekler: <strong>nike</strong>, <strong>adidas</strong> veya{" "}
+                <strong>https://www.trendyol.com/sr?q=spor+ayakkabi</strong>
               </p>
 
               {/* Populer Kategoriler */}

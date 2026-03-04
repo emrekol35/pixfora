@@ -5,7 +5,7 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  serverExternalPackages: ["iyzipay", "pdfkit"],
+  serverExternalPackages: ["iyzipay", "pdfkit", "puppeteer-core"],
   images: {
     formats: ["image/webp", "image/avif"],
     remotePatterns: [

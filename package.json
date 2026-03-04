@@ -26,6 +26,7 @@
     "nodemailer": "^7.0.13",
     "pdfkit": "^0.17.2",
     "prisma": "^6.19.2",
+    "puppeteer-core": "^24.38.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "recharts": "^3.7.0",
