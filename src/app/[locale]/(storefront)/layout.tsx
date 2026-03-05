@@ -32,6 +32,9 @@ const MarketingPopup = dynamic(
 const TrackingProvider = dynamic(
   () => import("@/components/storefront/TrackingProvider")
 );
+const GoogleAnalytics = dynamic(
+  () => import("@/components/storefront/GoogleAnalytics")
+);
 
 export default function StorefrontLayout({
   children,
@@ -42,6 +45,7 @@ export default function StorefrontLayout({
     <Providers>
       <ThemeProvider>
       <TrackingProvider>
+        <GoogleAnalytics />
         <div className="min-h-screen flex flex-col">
           <OfflineIndicator />
           <AnnouncementBar />

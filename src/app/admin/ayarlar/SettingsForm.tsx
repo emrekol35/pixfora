@@ -100,6 +100,14 @@ const SETTING_GROUPS: SettingGroup[] = [
     ],
   },
   {
+    key: "analytics",
+    title: "Analitik",
+    fields: [
+      { key: "ga4_enabled", label: "Google Analytics 4 Aktif", type: "checkbox" },
+      { key: "ga4_measurement_id", label: "GA4 Measurement ID", type: "text", placeholder: "G-XXXXXXXXXX" },
+    ],
+  },
+  {
     key: "email",
     title: "E-posta Ayarlari",
     fields: [
