@@ -1,12 +1,6 @@
 -- CreateEnum
 CREATE TYPE "ReceiptStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
 
--- AlterTable
-ALTER TABLE "addresses" ADD COLUMN     "company_name" TEXT,
-ADD COLUMN     "is_company" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN     "tax_number" TEXT,
-ADD COLUMN     "tax_office" TEXT;
-
 -- CreateTable
 CREATE TABLE "bank_transfer_receipts" (
     "id" TEXT NOT NULL,
