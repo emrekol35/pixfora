@@ -355,7 +355,18 @@
     "noOrdersYet": "Henuz siparisIniz yok.",
     "startShopping": "Alisverise Basla",
     "orderDetail": "Siparis Detayi",
-    "piece": "adet"
+    "piece": "adet",
+    "uploadReceipt": "Dekont Yukle",
+    "uploadReceiptDesc": "Havale/EFT yaptiktan sonra dekontunuzu buraya yukleyin.",
+    "receiptUploaded": "Dekontunuz yuklendi, inceleniyor.",
+    "receiptApproved": "Dekontunuz onaylandi.",
+    "receiptRejected": "Dekontunuz reddedildi.",
+    "reuploadReceipt": "Tekrar Yukle",
+    "rejectionReason": "Red Sebebi",
+    "copyIban": "Kopyala",
+    "ibanCopied": "Kopyalandi!",
+    "paymentPending": "Odeme Bekleniyor",
+    "paymentCompleted": "Odeme Tamamlandi"
   },
   "checkout": {
     "title": "Odeme",
@@ -441,7 +452,18 @@
     "genericError": "Bir hata olustu",
     "corporate": "Kurumsal",
     "taxOffice": "Vergi Dairesi",
-    "taxNumber": "Vergi No"
+    "taxNumber": "Vergi No",
+    "copyIban": "Kopyala",
+    "ibanCopied": "Kopyalandi!",
+    "uploadReceipt": "Dekont Yukle",
+    "uploadReceiptDesc": "Havale/EFT yaptiktan sonra dekontunuzu buraya yukleyin.",
+    "receiptUploaded": "Dekontunuz yuklendi, inceleniyor.",
+    "receiptApproved": "Dekontunuz onaylandi.",
+    "receiptRejected": "Dekontunuz reddedildi.",
+    "reuploadReceipt": "Tekrar Yukle",
+    "rejectionReason": "Red Sebebi",
+    "paymentPending": "Odeme Bekleniyor",
+    "paymentCompleted": "Odeme Tamamlandi"
   },
   "tracking": {
     "title": "Siparisinizi Takip Edin",

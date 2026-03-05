@@ -384,6 +384,12 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum ReceiptStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model Order {
   id              String        @id @default(cuid())
   orderNumber     String        @unique @map("order_number")
@@ -419,6 +425,7 @@ model Order {
   trendyolOrders    TrendyolOrder[]
   hepsiburadaOrders HepsiburadaOrder[]
   n11Orders         N11Order[]
+  bankTransferReceipts BankTransferReceipt[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -464,6 +471,24 @@ model Payment {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("payments")
+}
+
+model BankTransferReceipt {
+  id         String        @id @default(cuid())
+  orderId    String        @map("order_id")
+  mediaUrl   String        @map("media_url")
+  status     ReceiptStatus @default(PENDING)
+  adminNote  String?       @map("admin_note")
+  reviewedAt DateTime?     @map("reviewed_at")
+  reviewedBy String?       @map("reviewed_by")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([orderId])
+  @@index([status])
+  @@map("bank_transfer_receipts")
 }
 
 model Invoice {

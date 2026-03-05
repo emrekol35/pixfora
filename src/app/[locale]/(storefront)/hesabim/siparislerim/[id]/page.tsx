@@ -33,6 +33,9 @@ export default async function OrderDetailPage({
         select: { id: true },
         take: 1,
       },
+      bankTransferReceipts: {
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
 
@@ -45,6 +48,7 @@ export default async function OrderDetailPage({
     orderNumber: order.orderNumber,
     status: order.status,
     paymentMethod: order.paymentMethod,
+    paymentStatus: order.paymentStatus,
     subtotal: Number(order.subtotal),
     shippingCost: Number(order.shippingCost),
     discount: Number(order.discount),
@@ -69,6 +73,13 @@ export default async function OrderDetailPage({
       productName: item.product.name,
       productSlug: item.product.slug,
       productImage: item.product.images[0]?.url || null,
+    })),
+    bankTransferReceipts: order.bankTransferReceipts.map((r) => ({
+      id: r.id,
+      mediaUrl: r.mediaUrl,
+      status: r.status,
+      adminNote: r.adminNote,
+      createdAt: r.createdAt.toISOString(),
     })),
   };
 

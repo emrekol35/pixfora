@@ -355,7 +355,18 @@
     "noOrdersYet": "You don't have any orders yet.",
     "startShopping": "Start Shopping",
     "orderDetail": "Order Detail",
-    "piece": "pcs"
+    "piece": "pcs",
+    "uploadReceipt": "Upload Receipt",
+    "uploadReceiptDesc": "Upload your bank transfer receipt after making the payment.",
+    "receiptUploaded": "Your receipt has been uploaded and is being reviewed.",
+    "receiptApproved": "Your receipt has been approved.",
+    "receiptRejected": "Your receipt has been rejected.",
+    "reuploadReceipt": "Re-upload",
+    "rejectionReason": "Rejection Reason",
+    "copyIban": "Copy",
+    "ibanCopied": "Copied!",
+    "paymentPending": "Payment Pending",
+    "paymentCompleted": "Payment Completed"
   },
   "checkout": {
     "title": "Checkout",
@@ -441,7 +452,18 @@
     "genericError": "An error occurred",
     "corporate": "Corporate",
     "taxOffice": "Tax Office",
-    "taxNumber": "Tax No"
+    "taxNumber": "Tax No",
+    "copyIban": "Copy",
+    "ibanCopied": "Copied!",
+    "uploadReceipt": "Upload Receipt",
+    "uploadReceiptDesc": "Upload your bank transfer receipt after making the payment.",
+    "receiptUploaded": "Your receipt has been uploaded and is being reviewed.",
+    "receiptApproved": "Your receipt has been approved.",
+    "receiptRejected": "Your receipt has been rejected.",
+    "reuploadReceipt": "Re-upload",
+    "rejectionReason": "Rejection Reason",
+    "paymentPending": "Payment Pending",
+    "paymentCompleted": "Payment Completed"
   },
   "tracking": {
     "title": "Track Your Order",

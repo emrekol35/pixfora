@@ -29,6 +29,9 @@ export default async function AdminOrderDetailPage({ params }: Props) {
       returns: {
         orderBy: { createdAt: "desc" },
       },
+      bankTransferReceipts: {
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
 
@@ -65,6 +68,13 @@ export default async function AdminOrderDetailPage({ params }: Props) {
           returnNumber: r.returnNumber,
           status: r.status,
           refundAmount: r.refundAmount,
+          createdAt: r.createdAt.toISOString(),
+        })),
+        bankTransferReceipts: order.bankTransferReceipts.map((r) => ({
+          id: r.id,
+          mediaUrl: r.mediaUrl,
+          status: r.status,
+          adminNote: r.adminNote,
           createdAt: r.createdAt.toISOString(),
         })),
       }}

@@ -54,6 +54,7 @@ const SETTING_GROUPS: SettingGroup[] = [
       { key: "bank_account_3_name", label: "3. Banka Adi", type: "text", placeholder: "Garanti BBVA" },
       { key: "bank_account_3_holder", label: "3. Hesap Sahibi", type: "text", placeholder: "Pixfora Ticaret A.S." },
       { key: "bank_account_3_iban", label: "3. IBAN", type: "text", placeholder: "TR00 0000 0000 0000 0000 0000 00" },
+      { key: "bank_transfer_reminder_hours", label: "Dekont Hatirlatma Suresi (saat)", type: "number", placeholder: "24" },
     ],
   },
   {

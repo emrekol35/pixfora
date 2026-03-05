@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import Image from "next/image";
+import DekontUploadForm from "./DekontUploadForm";
 
 interface OrderItem {
   id: string;
@@ -34,11 +35,20 @@ interface TrackingEvent {
   description: string;
 }
 
+interface BankTransferReceipt {
+  id: string;
+  mediaUrl: string;
+  status: string;
+  adminNote: string | null;
+  createdAt: string;
+}
+
 interface Order {
   id: string;
   orderNumber: string;
   status: string;
   paymentMethod?: string;
+  paymentStatus?: string;
   subtotal?: number;
   shippingCost?: number;
   discount?: number;
@@ -49,6 +59,7 @@ interface Order {
   createdAt: string;
   updatedAt: string;
   items: OrderItem[];
+  bankTransferReceipts?: BankTransferReceipt[];
 }
 
 function getStatusLabels(t: ReturnType<typeof useTranslations>): Record<string, string> {
@@ -260,6 +271,17 @@ export default function OrderDetailView({ order, hasActiveReturn, activeReturnId
           </div>
         )}
       </div>
+
+      {/* Dekont Yukleme / Odeme Durumu (Havale/EFT siparisleri) */}
+      {order.paymentMethod === "BANK_TRANSFER" && (
+        <div className="mb-6">
+          <DekontUploadForm
+            orderId={order.id}
+            orderNumber={order.orderNumber}
+            existingReceipts={order.bankTransferReceipts || []}
+          />
+        </div>
+      )}
 
       {/* Kargo Takip Timeline */}
       {order.trackingNumber && (

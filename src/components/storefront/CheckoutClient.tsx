@@ -9,6 +9,7 @@ import { useTranslations } from "next-intl";
 import { useCartStore } from "@/store/cart";
 import { useTracking } from "./TrackingProvider";
 import { useExperiment } from "@/hooks/useExperiment";
+import DekontUploadForm from "./DekontUploadForm";
 
 type Step = "address" | "shipping" | "payment" | "confirm";
 
@@ -107,6 +108,9 @@ export default function CheckoutClient() {
   const [guestEmail, setGuestEmail] = useState("");
   const [note, setNote] = useState("");
   const [showBankInfo, setShowBankInfo] = useState(false);
+  const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
+  const [createdOrderNumber, setCreatedOrderNumber] = useState<string | null>(null);
+  const [ibanCopied, setIbanCopied] = useState<string | null>(null);
 
   // Dinamik kargo
   const [shippingRates, setShippingRates] = useState<ShippingRate[]>([]);
@@ -400,6 +404,8 @@ export default function CheckoutClient() {
 
       const orderId = data.order.id;
       const orderNumber = data.order.orderNumber;
+      setCreatedOrderId(orderId);
+      setCreatedOrderNumber(orderNumber);
 
       trackEvent("purchase", {
         orderId,
@@ -465,6 +471,14 @@ export default function CheckoutClient() {
     }
   };
 
+  // IBAN kopyalama
+  const handleCopyIban = (iban: string) => {
+    navigator.clipboard.writeText(iban.replace(/\s/g, "")).then(() => {
+      setIbanCopied(iban);
+      setTimeout(() => setIbanCopied(null), 2000);
+    });
+  };
+
   // Havale bilgileri gosterimi
   if (showBankInfo) {
     return (
@@ -474,6 +488,11 @@ export default function CheckoutClient() {
             <span className="text-2xl">🏦</span>
           </div>
           <h1 className="text-2xl font-bold mb-2">{t("orderReceived")}</h1>
+          {createdOrderNumber && (
+            <p className="text-lg font-semibold text-primary mb-2">
+              Siparis #{createdOrderNumber}
+            </p>
+          )}
           <p className="text-muted-foreground mb-6">
             {t("bankTransferInfo")}
           </p>
@@ -488,7 +507,16 @@ export default function CheckoutClient() {
             {bankAccounts.map((bank) => (
               <div key={bank.bankName} className="p-4 bg-muted rounded-lg">
                 <p className="font-bold text-sm">{bank.bankName}</p>
-                <p className="text-sm text-muted-foreground mt-1">IBAN: {bank.iban}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <p className="text-sm text-muted-foreground flex-1">IBAN: {bank.iban}</p>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyIban(bank.iban)}
+                    className="shrink-0 px-2.5 py-1 text-xs font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors"
+                  >
+                    {ibanCopied === bank.iban ? t("ibanCopied") : t("copyIban")}
+                  </button>
+                </div>
                 <p className="text-sm text-muted-foreground">{t("accountHolder")}: {bank.accountHolder}</p>
               </div>
             ))}
@@ -497,6 +525,17 @@ export default function CheckoutClient() {
           <div className="bg-muted rounded-lg p-4 mb-6">
             <p className="text-sm"><strong>{t("amountToPay")}:</strong> <span className="text-primary font-bold">{formatPrice(total)}</span></p>
           </div>
+
+          {/* Dekont Yukleme */}
+          {createdOrderId && createdOrderNumber && (
+            <div className="mb-6">
+              <DekontUploadForm
+                orderId={createdOrderId}
+                orderNumber={createdOrderNumber}
+                existingReceipts={[]}
+              />
+            </div>
+          )}
 
           <Link href="/" className="inline-block px-6 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark">
             {t("returnHome")}

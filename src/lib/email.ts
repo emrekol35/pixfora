@@ -283,6 +283,82 @@ export function bankTransferInfoEmail(order: {
   };
 }
 
+// Havale Hatirlatma Maili
+export function bankTransferReminderEmail(order: {
+  orderNumber: string;
+  total: number;
+  bankAccounts: { bankName: string; iban: string; accountHolder: string }[];
+}, locale: EmailLocale = "tr") {
+  const t = getEmailTranslations(locale);
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pixfora.com";
+  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Pixfora";
+  const formatPrice = createPriceFormatter(locale);
+
+  const banksHtml = order.bankAccounts
+    .map((b) => `<div style="background:#f5f5f5;border-radius:8px;padding:12px;margin:8px 0"><p style="margin:2px 0;font-weight:bold">${b.bankName}</p><p style="margin:2px 0">IBAN: ${b.iban}</p><p style="margin:2px 0">${t.bankTransferInfo.accountHolder} ${b.accountHolder}</p></div>`)
+    .join("");
+
+  return {
+    subject: `${siteName} - Odeme Hatirlatmasi - Siparis #${order.orderNumber}`,
+    html: `
+    <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
+      <div style="background:#2563eb;padding:24px;text-align:center">
+        <h1 style="color:#fff;margin:0;font-size:24px">${siteName}</h1>
+      </div>
+      <div style="padding:24px;background:#fff">
+        <h2 style="color:#f59e0b;margin-top:0">&#9200; Odeme Hatirlatmasi</h2>
+        <p>${t.orderNumberLabel} <strong>#${order.orderNumber}</strong></p>
+        <p>Siparisiniz icin henuz odeme almadik. Havale/EFT yaptiyseniz lutfen dekontunuzu siparis detay sayfasindan yukleyiniz.</p>
+        <p>${t.bankTransferInfo.amountToPay} <strong style="color:#2563eb">${formatPrice(order.total)}</strong></p>
+        <p style="color:#dc2626;font-weight:bold">${t.bankTransferInfo.ibanReminder}</p>
+        ${banksHtml}
+        <div style="text-align:center;margin:24px 0">
+          <a href="${siteUrl}/hesabim/siparislerim" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Dekont Yukle</a>
+        </div>
+      </div>
+      <div style="padding:16px;background:#f5f5f5;text-align:center;font-size:12px;color:#888">
+        <p>${siteName} | ${t.autoEmail}</p>
+      </div>
+    </div>`,
+  };
+}
+
+// Dekont Red Maili
+export function bankTransferRejectedEmail(order: {
+  orderNumber: string;
+  total: number;
+  rejectionReason?: string;
+}, locale: EmailLocale = "tr") {
+  const t = getEmailTranslations(locale);
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pixfora.com";
+  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Pixfora";
+  const formatPrice = createPriceFormatter(locale);
+
+  return {
+    subject: `${siteName} - Dekontunuz Reddedildi - Siparis #${order.orderNumber}`,
+    html: `
+    <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
+      <div style="background:#2563eb;padding:24px;text-align:center">
+        <h1 style="color:#fff;margin:0;font-size:24px">${siteName}</h1>
+      </div>
+      <div style="padding:24px;background:#fff">
+        <h2 style="color:#dc2626;margin-top:0">&#10060; Dekontunuz Reddedildi</h2>
+        <p>${t.orderNumberLabel} <strong>#${order.orderNumber}</strong></p>
+        <p>Siparisiniz icin yuklediginiz dekont incelendi ve reddedildi.</p>
+        ${order.rejectionReason ? `<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px;margin:16px 0"><p style="margin:0;font-weight:bold;color:#dc2626">Red Sebebi:</p><p style="margin:4px 0 0">${order.rejectionReason}</p></div>` : ""}
+        <p>Lutfen dogru dekontu siparis detay sayfasindan tekrar yukleyiniz.</p>
+        <p>Odenecek tutar: <strong style="color:#2563eb">${formatPrice(order.total)}</strong></p>
+        <div style="text-align:center;margin:24px 0">
+          <a href="${siteUrl}/hesabim/siparislerim" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Tekrar Dekont Yukle</a>
+        </div>
+      </div>
+      <div style="padding:16px;background:#f5f5f5;text-align:center;font-size:12px;color:#888">
+        <p>${siteName} | ${t.autoEmail}</p>
+      </div>
+    </div>`,
+  };
+}
+
 // Dusuk Stok Uyari Maili (Admin icin)
 export function lowStockAlertEmail(products: {
   name: string;

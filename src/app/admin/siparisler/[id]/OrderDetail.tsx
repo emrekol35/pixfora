@@ -67,6 +67,13 @@ interface Props {
       refundAmount: number;
       createdAt: string;
     }[];
+    bankTransferReceipts?: {
+      id: string;
+      mediaUrl: string;
+      status: string;
+      adminNote: string | null;
+      createdAt: string;
+    }[];
   };
 }
 
@@ -117,6 +124,10 @@ export default function OrderDetail({ order }: Props) {
   const [refundAmount, setRefundAmount] = useState(String(order.total));
   const [refunding, setRefunding] = useState(false);
   const [showRefundForm, setShowRefundForm] = useState(false);
+  const [receipts, setReceipts] = useState(order.bankTransferReceipts || []);
+  const [reviewingReceipt, setReviewingReceipt] = useState<string | null>(null);
+  const [rejectNote, setRejectNote] = useState("");
+  const [showRejectForm, setShowRejectForm] = useState<string | null>(null);
 
   const formatPrice = (price: number) =>
     new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(price);
@@ -204,6 +215,62 @@ export default function OrderDetail({ order }: Props) {
       setMessage("Onay hatasi");
     } finally {
       setConfirmingPayment(false);
+    }
+  };
+
+  // Dekont onayla
+  const handleApproveReceipt = async (receiptId: string) => {
+    setReviewingReceipt(receiptId);
+    try {
+      const res = await fetch(`/api/payment/bank-transfer/receipt/${receiptId}/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approve" }),
+      });
+      if (res.ok) {
+        setReceipts((prev) => prev.map((r) => r.id === receiptId ? { ...r, status: "APPROVED" } : r));
+        setPaymentStatus("PAID");
+        setStatus("CONFIRMED");
+        setMessage("Dekont onaylandi, odeme alindi!");
+        setTimeout(() => setMessage(""), 3000);
+      } else {
+        const data = await res.json();
+        setMessage(data.error || "Onay hatasi");
+      }
+    } catch {
+      setMessage("Onay hatasi");
+    } finally {
+      setReviewingReceipt(null);
+    }
+  };
+
+  // Dekont reddet
+  const handleRejectReceipt = async (receiptId: string) => {
+    if (!rejectNote.trim()) {
+      setMessage("Red sebebi giriniz");
+      return;
+    }
+    setReviewingReceipt(receiptId);
+    try {
+      const res = await fetch(`/api/payment/bank-transfer/receipt/${receiptId}/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reject", adminNote: rejectNote }),
+      });
+      if (res.ok) {
+        setReceipts((prev) => prev.map((r) => r.id === receiptId ? { ...r, status: "REJECTED", adminNote: rejectNote } : r));
+        setShowRejectForm(null);
+        setRejectNote("");
+        setMessage("Dekont reddedildi");
+        setTimeout(() => setMessage(""), 3000);
+      } else {
+        const data = await res.json();
+        setMessage(data.error || "Red hatasi");
+      }
+    } catch {
+      setMessage("Red hatasi");
+    } finally {
+      setReviewingReceipt(null);
     }
   };
 
@@ -438,15 +505,116 @@ export default function OrderDetail({ order }: Props) {
             <div className="bg-yellow-50 rounded-xl border border-yellow-200 p-6">
               <h2 className="font-bold mb-2 text-yellow-800">Havale Bekliyor</h2>
               <p className="text-sm text-yellow-700 mb-4">
-                Bu siparis havale/EFT ile odenmek uzere bekliyor. Odeme alindiysa asagidan onaylayiniz.
+                Bu siparis havale/EFT ile odenmek uzere bekliyor.
               </p>
-              <button
-                onClick={handleConfirmPayment}
-                disabled={confirmingPayment}
-                className="w-full py-2.5 bg-success text-white rounded-lg text-sm font-semibold hover:bg-success/90 disabled:opacity-50"
-              >
-                {confirmingPayment ? "Onaylaniyor..." : "Havale Onay Alindi"}
-              </button>
+
+              {/* Yuklenen dekontlar */}
+              {receipts.length > 0 && (
+                <div className="space-y-3 mb-4">
+                  <p className="text-sm font-semibold text-yellow-800">Yuklenen Dekontlar:</p>
+                  {receipts.map((receipt) => (
+                    <div key={receipt.id} className="bg-white rounded-lg border border-yellow-200 p-3">
+                      <div className="flex items-center gap-3 mb-2">
+                        <a
+                          href={receipt.mediaUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="shrink-0 w-16 h-16 bg-muted rounded-lg overflow-hidden flex items-center justify-center hover:opacity-80 transition-opacity"
+                        >
+                          {receipt.mediaUrl.endsWith(".pdf") ? (
+                            <span className="text-2xl">📄</span>
+                          ) : (
+                            <img src={receipt.mediaUrl} alt="Dekont" className="w-full h-full object-cover" />
+                          )}
+                        </a>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(receipt.createdAt).toLocaleString("tr-TR")}
+                          </p>
+                          <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded mt-1 ${
+                            receipt.status === "PENDING" ? "bg-yellow-100 text-yellow-700" :
+                            receipt.status === "APPROVED" ? "bg-green-100 text-green-700" :
+                            "bg-red-100 text-red-700"
+                          }`}>
+                            {receipt.status === "PENDING" ? "Inceleniyor" :
+                             receipt.status === "APPROVED" ? "Onaylandi" :
+                             "Reddedildi"}
+                          </span>
+                          {receipt.adminNote && (
+                            <p className="text-xs text-red-600 mt-1">Red: {receipt.adminNote}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Onay/Ret butonlari */}
+                      {receipt.status === "PENDING" && (
+                        <div className="space-y-2">
+                          {showRejectForm === receipt.id ? (
+                            <div className="space-y-2">
+                              <input
+                                type="text"
+                                placeholder="Red sebebi..."
+                                value={rejectNote}
+                                onChange={(e) => setRejectNote(e.target.value)}
+                                className="w-full px-3 py-2 border border-border rounded-lg text-sm"
+                              />
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleRejectReceipt(receipt.id)}
+                                  disabled={reviewingReceipt === receipt.id}
+                                  className="flex-1 py-2 bg-danger text-white rounded-lg text-xs font-semibold hover:bg-danger/90 disabled:opacity-50"
+                                >
+                                  {reviewingReceipt === receipt.id ? "..." : "Reddet"}
+                                </button>
+                                <button
+                                  onClick={() => { setShowRejectForm(null); setRejectNote(""); }}
+                                  className="px-3 py-2 bg-muted rounded-lg text-xs font-medium hover:bg-border"
+                                >
+                                  Iptal
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleApproveReceipt(receipt.id)}
+                                disabled={reviewingReceipt === receipt.id}
+                                className="flex-1 py-2 bg-success text-white rounded-lg text-xs font-semibold hover:bg-success/90 disabled:opacity-50"
+                              >
+                                {reviewingReceipt === receipt.id ? "..." : "Onayla"}
+                              </button>
+                              <button
+                                onClick={() => setShowRejectForm(receipt.id)}
+                                className="flex-1 py-2 bg-danger/10 text-danger rounded-lg text-xs font-semibold hover:bg-danger/20"
+                              >
+                                Reddet
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Dekont yoksa veya tumu reddedildiyse - manuel onay butonu */}
+              {receipts.filter((r) => r.status === "PENDING").length === 0 && (
+                <>
+                  <p className="text-xs text-yellow-600 mb-3">
+                    {receipts.length === 0
+                      ? "Henuz dekont yuklenmedi. Banka ekstresinden kontrol edip manuel onaylayabilirsiniz."
+                      : "Tum dekontlar incelendi. Banka ekstresinden kontrol edip manuel onaylayabilirsiniz."}
+                  </p>
+                  <button
+                    onClick={handleConfirmPayment}
+                    disabled={confirmingPayment}
+                    className="w-full py-2.5 bg-success text-white rounded-lg text-sm font-semibold hover:bg-success/90 disabled:opacity-50"
+                  >
+                    {confirmingPayment ? "Onaylaniyor..." : "Manuel Havale Onayla"}
+                  </button>
+                </>
+              )}
             </div>
           )}
 
