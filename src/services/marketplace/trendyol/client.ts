@@ -23,10 +23,10 @@ interface RateLimitState {
 // ---------- Constants ----------
 
 const BASE_URL = "https://apigw.trendyol.com";
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 5;
 const RATE_LIMIT_MAX = 50; // 50 istek
 const RATE_LIMIT_WINDOW = 10_000; // 10 saniye
-const RETRY_BASE_DELAY = 1000; // 1 saniye
+const RETRY_BASE_DELAY = 2000; // 2 saniye
 
 // ---------- TrendyolClient ----------
 
@@ -146,14 +146,19 @@ export class TrendyolClient {
             errorBody = response.statusText;
           }
 
-          // 5xx hataları — tekrar dene
+          // 5xx hataları — tekrar dene (556 = Service Unavailable dahil)
           if (response.status >= 500) {
             lastError = new Error(
               `Trendyol API ${response.status}: ${errorBody || response.statusText}`
             );
             if (attempt < MAX_RETRIES - 1) {
+              // 556 icin daha uzun bekleme (Trendyol bakim/yuk altinda)
+              const delay = response.status === 556
+                ? RETRY_BASE_DELAY * Math.pow(3, attempt) // 2s, 6s, 18s, 54s
+                : RETRY_BASE_DELAY * Math.pow(2, attempt); // 2s, 4s, 8s, 16s
+              console.log(`[Trendyol] ${response.status} hatasi, ${Math.round(delay/1000)}s sonra tekrar denenecek (deneme ${attempt + 1}/${MAX_RETRIES})`);
               await new Promise((resolve) =>
-                setTimeout(resolve, RETRY_BASE_DELAY * Math.pow(2, attempt))
+                setTimeout(resolve, delay)
               );
               continue;
             }
