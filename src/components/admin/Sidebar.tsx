@@ -18,6 +18,7 @@ const menuItems = [
     children: [
       { title: "Tum Urunler", href: "/admin/urunler" },
       { title: "Yeni Urun", href: "/admin/urunler/yeni" },
+      { title: "Toplu Fiyat/Stok", href: "/admin/urunler/toplu-guncelle" },
       { title: "Trendyol'dan Aktar", href: "/admin/urunler/trendyol-import" },
     ],
   },

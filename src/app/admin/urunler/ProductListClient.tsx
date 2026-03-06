@@ -245,10 +245,16 @@ export default function ProductListClient() {
         </div>
       </div>
 
-      {/* Sonuc Sayisi + Sayfa Boyutu */}
+      {/* Sonuc Sayisi + Sayfa Boyutu + Hizli Linkler */}
       <div className="flex items-center justify-between mb-3">
-        <div className="text-sm text-muted-foreground">
-          {pagination.total} urun bulundu
+        <div className="text-sm text-muted-foreground flex items-center gap-3">
+          <span>{pagination.total} urun bulundu</span>
+          <Link
+            href="/admin/urunler/toplu-guncelle"
+            className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
+          >
+            📊 Toplu Fiyat/Stok
+          </Link>
           {selectedIds.size > 0 && (
             <span className="ml-2 text-primary font-medium">
               ({selectedIds.size} secili)

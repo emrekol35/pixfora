@@ -99,6 +99,74 @@ export function downloadCsv(csvContent: string, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
+// ---------- Fiyat/Stok Toplu Guncelleme ----------
+
+export const PRICE_STOCK_CSV_HEADERS = [
+  "SKU",
+  "Barkod",
+  "Urun Adi",
+  "Fiyat",
+  "Karsilastirma Fiyati",
+  "Stok",
+  "Varyant Bilgisi",
+];
+
+export const PRICE_STOCK_HEADER_MAP: Record<string, string> = {
+  "sku": "sku",
+  "barkod": "barcode",
+  "urun adi": "name",
+  "fiyat": "price",
+  "karsilastirma fiyati": "comparePrice",
+  "stok": "stock",
+  "varyant bilgisi": "variantInfo",
+};
+
+export interface PriceStockRow {
+  sku: string;
+  barcode: string;
+  name: string;
+  price: number | undefined;
+  comparePrice: number | undefined;
+  stock: number | undefined;
+  variantInfo: string;
+  isVariant: boolean;
+}
+
+export function mapRowToPriceStockUpdate(
+  row: string[],
+  headers: string[]
+): PriceStockRow {
+  const data: Record<string, string> = {};
+
+  headers.forEach((header, index) => {
+    const fieldName = PRICE_STOCK_HEADER_MAP[header.toLowerCase().trim()];
+    if (fieldName && index < row.length) {
+      data[fieldName] = row[index];
+    }
+  });
+
+  const variantInfo = data.variantInfo || "-";
+  const isVariant = variantInfo !== "-" && variantInfo.trim() !== "";
+
+  return {
+    sku: data.sku || "",
+    barcode: data.barcode || "",
+    name: data.name || "",
+    price: data.price ? parseFloat(data.price.replace(",", ".")) : undefined,
+    comparePrice: data.comparePrice
+      ? parseFloat(data.comparePrice.replace(",", "."))
+      : undefined,
+    stock: data.stock !== undefined && data.stock !== "" ? parseInt(data.stock) : undefined,
+    variantInfo,
+    isVariant,
+  };
+}
+
+export function generatePriceStockTemplate(): string {
+  const BOM = "\uFEFF";
+  return BOM + PRICE_STOCK_CSV_HEADERS.join(";");
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function mapRowToProduct(row: string[], headers: string[]): Record<string, any> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
